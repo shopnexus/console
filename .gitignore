@@ -7,6 +7,7 @@
 !/.github/
 !/.gitignore
 !/.oxlintrc.json
+!/.superdesign/
 !/AGENTS.md
 !/CLAUDE.md
 !/DESIGN.md
@@ -53,3 +54,7 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Superdesign scratch: renders, imports and the Python venv.
+.superdesign/tmp/
+__pycache__/
