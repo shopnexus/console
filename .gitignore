@@ -1,3 +1,30 @@
+# Everything at the top of the repository is ignored unless listed here, so
+# a stray file there is never committed by accident. A new top-level file or
+# directory needs its own line.
+/*
+!/.dockerignore
+!/.env.example
+!/.github/
+!/.gitignore
+!/.oxlintrc.json
+!/AGENTS.md
+!/CLAUDE.md
+!/DESIGN.md
+!/Dockerfile
+!/LICENSE
+!/README.md
+!/bun.lock
+!/index.html
+!/nginx.conf
+!/package.json
+!/public/
+!/src/
+!/tsconfig.app.json
+!/tsconfig.json
+!/tsconfig.node.json
+!/vite.config.ts
+
+# Inside the directories above:
 # Logs
 logs
 *.log
