@@ -1,2 +1,14 @@
 @import "tailwindcss";
 @import "./tokens.css";
+
+/* The dashboard handoff: a dot travelling to the dashboard, and the bar. */
+@keyframes travel {
+  0% { left: 0; opacity: 0 }
+  15% { opacity: 1 }
+  85% { opacity: 1 }
+  100% { left: calc(100% - 10px); opacity: 0 }
+}
+@keyframes bar {
+  0% { left: -40% }
+  100% { left: 100% }
+}
