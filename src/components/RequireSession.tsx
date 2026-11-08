@@ -12,7 +12,7 @@ export function RequireSession({ children }: { children: ReactNode }) {
   const location = useLocation()
   const me = useQuery({
     queryKey: meKey,
-    queryFn: () => api<Me>('/staff/me'),
+    queryFn: () => api<Me>('/console/me'),
     retry: false,
     staleTime: 60_000,
   })

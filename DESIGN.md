@@ -1,10 +1,10 @@
 # Console design
 
-The staff console at `console.<domain>`. People at ShopNexus handle three
+The console at `console.<domain>`. People at ShopNexus handle three
 things only: reported banned goods and fakes, organised fraud, and lawful
 requests from the authorities. The console is where they do it, and where
-staff accounts are managed. It calls `/v1/staff/*` on the API with the
-`staff_session` cookie.
+console members are managed. It calls `/v1/console/*` on the API with the
+`console_session` cookie.
 
 ## Source
 
@@ -23,7 +23,7 @@ most of its layout.
 - Colour roles, Be Vietnam Pro and the type scale, the corner scale, the
   springs, Material Symbols Rounded, and the tonal depth: only floating
   elements (menus, dialogs, toasts) get `shadow-float`.
-- The deal model. Staff read cases; they do not rule on deals. No screen
+- The deal model. Members read cases; they do not rule on deals. No screen
   offers to refund, hold money, or decide a dispute, because the platform
   does none of these.
 - Vietnamese copy with correct diacritics, prices in Vietnamese format.
@@ -55,7 +55,7 @@ lands in the audit log with its reason. `tertiary` keeps its meaning and so
 appears only where the console shows a listing's price or a bargain from the
 record.
 
-**Keyboard.** Staff work through queues, so every list moves with `j`/`k`,
+**Keyboard.** Members work through queues, so every list moves with `j`/`k`,
 opens with Enter and closes with Escape, and every control has a visible
 2 px `primary` focus ring. Hover takes the `state-layer` utility.
 

@@ -18,8 +18,8 @@ export class ApiError extends Error {
 }
 
 /**
- * Calls the Go server. The staff_session cookie rides along on /v1/staff, and
- * every staff call carries X-Requested-With, which the server requires so
+ * Calls the Go server. The console_session cookie rides along on /v1/console, and
+ * every call carries X-Requested-With, which the server requires so
  * that no other site's form can use the cookie.
  */
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -78,19 +78,19 @@ export interface Account {
 export type ActionKind =
   | 'account.suspend'
   | 'account.unsuspend'
-  | 'staff.create'
-  | 'staff.disable'
-  | 'staff.enable'
-  | 'staff.reset_password'
-  | 'staff.reset_totp'
-  | 'staff.unlock'
+  | 'member.create'
+  | 'member.disable'
+  | 'member.enable'
+  | 'member.reset_password'
+  | 'member.reset_totp'
+  | 'member.unlock'
 
 export interface Action {
   id: string
   at: string
-  actor: { kind: 'staff' | 'cli'; staff_id?: string; display_name?: string }
+  actor: { kind: 'member' | 'cli'; member_id?: string; display_name?: string }
   action: ActionKind
-  target: { kind: 'account' | 'staff'; id: string }
+  target: { kind: 'account' | 'member'; id: string }
   details?: Record<string, unknown>
 }
 

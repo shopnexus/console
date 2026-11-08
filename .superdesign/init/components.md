@@ -46,7 +46,7 @@ export class ApiError extends Error {
   }
 }
 
-/** Calls the Go server. The staff_session cookie rides along on /v1/staff. */
+/** Calls the Go server. The console_session cookie rides along on /v1/console. */
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...init,

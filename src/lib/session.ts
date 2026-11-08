@@ -11,7 +11,7 @@ export function useMe(): Me {
   return me
 }
 
-export const meKey = ['staff', 'me'] as const
+export const meKey = ['console', 'me'] as const
 
 /** Forgets the member after sign-out, so the next page asks again. */
 export function useForgetMe() {

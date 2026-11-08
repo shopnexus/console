@@ -1,8 +1,8 @@
 """The console's Home, for an admin and for a moderator, with the console shell.
 
 Writes ../mockups/home-<role>.html. Content uses only what the API serves
-today: account search (GET /v1/staff/accounts?q=), the audit log
-(GET /v1/staff/actions, admins), members (GET /v1/staff/members, admins) and
+today: account search (GET /v1/console/accounts?q=), the audit log
+(GET /v1/console/actions, admins), members (GET /v1/console/members, admins) and
 the dashboard tickets. Reports have no endpoints yet.
 """
 import sys
@@ -21,18 +21,18 @@ PEOPLE = {
 KIND = {
     "account.suspend": ("Tạm khoá", "block", "error"),
     "account.unsuspend": ("Mở khoá", "lock-open-right-outline-rounded", "primary"),
-    "staff.create": ("Tạo nhân viên", "person-add-outline-rounded", "secondary"),
-    "staff.reset_totp": ("Đặt lại 2 bước", "phonelink-lock-outline-rounded", "secondary"),
-    "staff.unlock": ("Mở đăng nhập", "key-outline-rounded", "secondary"),
-    "staff.disable": ("Vô hiệu hoá", "person-off-outline-rounded", "error"),
+    "member.create": ("Tạo nhân viên", "person-add-outline-rounded", "secondary"),
+    "member.reset_totp": ("Đặt lại 2 bước", "phonelink-lock-outline-rounded", "secondary"),
+    "member.unlock": ("Mở đăng nhập", "key-outline-rounded", "secondary"),
+    "member.disable": ("Vô hiệu hoá", "person-off-outline-rounded", "error"),
 }
 
 ACTIONS = [
     ("14:32", "Nguyễn Thị Lan", "account.suspend", "Phạm Quốc Huy", "3f9a2c71", "Bán iPhone dựng, ảnh lấy từ tin khác; 4 người mua báo cáo"),
-    ("13:58", "Trần Minh Khoa", "staff.unlock", "Lê Hoàng Nam", "b81e04d2", "Gõ sai mật khẩu sau khi đổi máy"),
+    ("13:58", "Trần Minh Khoa", "member.unlock", "Lê Hoàng Nam", "b81e04d2", "Gõ sai mật khẩu sau khi đổi máy"),
     ("11:20", "Đỗ Thu Hà", "account.unsuspend", "Võ Thanh Tâm", "c27d9e18", "Đã xác minh giấy tờ, không phải chủ nhóm"),
     ("10:47", "Nguyễn Thị Lan", "account.suspend", "Shop Đồng Hồ Sài Gòn", "e05b3a66", "Đồng hồ giả thương hiệu; theo yêu cầu của Cục QLTT"),
-    ("09:15", "Trần Minh Khoa", "staff.create", "Bùi Gia Bảo", "71c4fa09", "Kiểm duyệt viên ca tối"),
+    ("09:15", "Trần Minh Khoa", "member.create", "Bùi Gia Bảo", "71c4fa09", "Kiểm duyệt viên ca tối"),
     ("Hôm qua", "Đỗ Thu Hà", "account.suspend", "Nhóm 6 tài khoản", "9d02e7b3", "Cùng thiết bị, cùng mẫu tin xe máy cọc trước"),
 ]
 

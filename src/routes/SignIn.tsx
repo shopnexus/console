@@ -43,7 +43,7 @@ export function SignIn() {
     setBusy(true)
     setError(null)
     try {
-      const me = await post<Me>('/staff/login', { email, ...body })
+      const me = await post<Me>('/console/login', { email, ...body })
       client.setQueryData(meKey, me)
       navigate(safeRedirect(params.get('rd')), { replace: true })
     } catch (e) {
@@ -59,7 +59,7 @@ export function SignIn() {
         case 'totp_enrollment_required': {
           const pw = body.new_password ?? body.password
           setPassword(pw)
-          setEnrollment(await post<Enrollment>('/staff/login/totp-enrollment', { email, password: pw }))
+          setEnrollment(await post<Enrollment>('/console/login/totp-enrollment', { email, password: pw }))
           setStep('enroll')
           break
         }

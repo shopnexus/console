@@ -14,7 +14,7 @@ export interface NavItem {
   soon?: boolean
 }
 
-/** The work areas. The audit log and the members are admins' (GET /v1/staff/actions and /members). */
+/** The work areas. The audit log and the members are admins' (GET /v1/console/actions and /members). */
 export const navigation: NavItem[] = [
   { to: '/', label: 'Trang chủ', icon: <IconHome width={24} height={24} /> },
   { to: '/accounts', label: 'Tài khoản', icon: <IconAccounts width={24} height={24} />, soon: true },

@@ -19,7 +19,7 @@ export function Shell({ title, children }: { title: string; children: ReactNode 
   const forget = useForgetMe()
 
   async function signOut() {
-    await post('/staff/logout').catch(() => undefined)
+    await post('/console/logout').catch(() => undefined)
     forget()
     navigate('/signin', { replace: true })
   }

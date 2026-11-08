@@ -4,8 +4,8 @@ import { api, type Member, type Page } from './api'
 /** Members whose sign-in needs an admin: locked, or without TOTP. */
 export function useMembersToSee(enabled: boolean) {
   return useQuery({
-    queryKey: ['staff', 'members', 'to-see'],
-    queryFn: () => api<Page<Member>>('/staff/members?limit=100'),
+    queryKey: ['console', 'members', 'to-see'],
+    queryFn: () => api<Page<Member>>('/console/members?limit=100'),
     enabled,
     select: (p) =>
       p.items.filter(

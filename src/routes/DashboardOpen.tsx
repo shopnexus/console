@@ -25,7 +25,7 @@ export function DashboardOpen() {
   const rd = params.get('rd') ?? '/'
   const allowed = d ? mayOpen(me.role, d) : false
   const ticket = useMutation({
-    mutationFn: (app: DashboardApp) => post<Ticket>('/staff/dashboard-tickets', { app }),
+    mutationFn: (app: DashboardApp) => post<Ticket>('/console/dashboard-tickets', { app }),
     onSuccess: (t) => {
       const url = new URL(t.callback_url)
       url.searchParams.set('rd', rd)
@@ -46,7 +46,7 @@ export function DashboardOpen() {
     }
   }, [d, allowed, mutate])
 
-  const forbidden = (d && !allowed) || (ticket.error instanceof ApiError && ticket.error.code === 'staff_forbidden')
+  const forbidden = (d && !allowed) || (ticket.error instanceof ApiError && ticket.error.code === 'console_forbidden')
   // The ungated case leaves the page in onError; the card keeps showing progress.
   const notConfigured = ticket.error instanceof ApiError && ticket.error.code === 'dashboard_not_configured'
   const failed = ticket.isError && !forbidden && !notConfigured

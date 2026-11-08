@@ -1,8 +1,8 @@
 # ShopNexus Console design system
 
-The staff console at `console.<domain>`. People at ShopNexus handle reported
+The console at `console.<domain>`. People at ShopNexus handle reported
 banned goods and fakes, organised fraud, and lawful requests from the
-authorities, and manage staff accounts. It is a desk tool used for hours on a
+authorities, and manage console members. It is a desk tool used for hours on a
 large screen. Members are moderators ("Kiểm duyệt viên") or admins ("Quản trị
 viên").
 

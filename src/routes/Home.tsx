@@ -17,12 +17,12 @@ import { useMe } from '../lib/session'
 const kinds: Record<ActionKind, [string, ReactNode, 'error' | 'primary' | 'neutral']> = {
   'account.suspend': ['Tạm khoá', <IconBlock key="a" width={16} height={16} />, 'error'],
   'account.unsuspend': ['Mở khoá', <IconUnlock key="b" width={16} height={16} />, 'primary'],
-  'staff.create': ['Tạo nhân viên', <IconPerson key="c" width={16} height={16} />, 'neutral'],
-  'staff.disable': ['Vô hiệu hoá', <IconPersonOff key="d" width={16} height={16} />, 'error'],
-  'staff.enable': ['Bật lại', <IconPerson key="e" width={16} height={16} />, 'neutral'],
-  'staff.reset_password': ['Đặt lại mật khẩu', <IconKey key="f" width={16} height={16} />, 'neutral'],
-  'staff.reset_totp': ['Đặt lại 2 bước', <IconPhoneLock key="g" width={16} height={16} />, 'neutral'],
-  'staff.unlock': ['Mở đăng nhập', <IconKey key="h" width={16} height={16} />, 'neutral'],
+  'member.create': ['Tạo nhân viên', <IconPerson key="c" width={16} height={16} />, 'neutral'],
+  'member.disable': ['Vô hiệu hoá', <IconPersonOff key="d" width={16} height={16} />, 'error'],
+  'member.enable': ['Bật lại', <IconPerson key="e" width={16} height={16} />, 'neutral'],
+  'member.reset_password': ['Đặt lại mật khẩu', <IconKey key="f" width={16} height={16} />, 'neutral'],
+  'member.reset_totp': ['Đặt lại 2 bước', <IconPhoneLock key="g" width={16} height={16} />, 'neutral'],
+  'member.unlock': ['Mở đăng nhập', <IconKey key="h" width={16} height={16} />, 'neutral'],
 }
 
 const tone = {
@@ -128,8 +128,8 @@ function Search({ onOpen }: { onOpen: (a: Account) => void }) {
   const [q, setQ] = useState('')
   const [asked, setAsked] = useState('')
   const result = useQuery({
-    queryKey: ['staff', 'accounts', asked],
-    queryFn: () => api<Page<Account>>(`/staff/accounts?q=${encodeURIComponent(asked)}&limit=5`),
+    queryKey: ['console', 'accounts', asked],
+    queryFn: () => api<Page<Account>>(`/console/accounts?q=${encodeURIComponent(asked)}&limit=5`),
     enabled: asked !== '',
   })
   useEffect(() => {
@@ -176,7 +176,7 @@ function Search({ onOpen }: { onOpen: (a: Account) => void }) {
 }
 
 function ActionsCard() {
-  const actions = useQuery({ queryKey: ['staff', 'actions', 'latest'], queryFn: () => api<Page<Action>>('/staff/actions?limit=8') })
+  const actions = useQuery({ queryKey: ['console', 'actions', 'latest'], queryFn: () => api<Page<Action>>('/console/actions?limit=8') })
   const cols = 'grid grid-cols-[64px_128px_136px_1fr] items-center gap-4'
   return (
     <Card title="Nhật ký thao tác">
