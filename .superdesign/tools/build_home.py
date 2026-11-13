@@ -57,11 +57,12 @@ def kbd(keys):
                    for k in keys.split())
 
 
-def drawer(role):
+def drawer(role, active="home", open_tickets=7):
     me = PEOPLE[role]
     admin = role == "admin"
     items = [
-        ("home", "Trang chủ", "home-rounded", True, True, ""),
+        ("home", "Trang chủ", "home-rounded", False, True, ""),
+        ("support", "Hỗ trợ", "support-agent-rounded", False, True, str(open_tickets)),
         ("accounts", "Tài khoản", "group-outline-rounded", False, True, ""),
         ("actions", "Nhật ký thao tác", "history-rounded", False, admin, ""),
         ("members", "Nhân viên", "badge-outline-rounded", False, admin, "1" if admin else ""),
@@ -69,6 +70,9 @@ def drawer(role):
     ]
     rows = []
     for key, label, ic, on, enabled, badge in items:
+        on = key == active
+        if on:
+            ic = ic.replace("-outline", "")
         if not enabled and key != "reports":
             continue
         if on:
@@ -80,6 +84,9 @@ def drawer(role):
         b = ""
         if badge == "Sắp có":
             b = '<span class="rounded-full border border-outline-variant px-2 py-0.5 text-label-small">Sắp có</span>'
+        elif key == "support" and badge:
+            # M3's drawer badge: the count of open tickets as a plain label at the end.
+            b = f'<span class="text-label-large">{badge}</span>'
         elif badge:
             b = f'<span class="flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1.5 text-label-small text-on-error">{badge}</span>'
         rows.append(f'<a id="nav-{key}" href="#{key}" class="state flex h-14 items-center gap-3 rounded-full px-4 {cls}">{icon(ic, 24)}'
@@ -107,9 +114,9 @@ def drawer(role):
 </nav>"""
 
 
-def topbar(role):
+def topbar(role, title="Trang chủ"):
     return f"""<header class="flex h-16 shrink-0 items-center gap-4 px-8">
-  <h1 class="text-title-large">Trang chủ</h1>
+  <h1 class="text-title-large">{title}</h1>
   <span class="flex-1"></span>
   <span class="inline-flex items-center gap-2 rounded-full bg-surface-container-low px-3 py-1.5 text-label-medium text-on-surface-variant">{icon("timer-outline-rounded", 16)}Phiên còn 6 giờ 12 phút</span>
   <a id="theme" href="#theme" title="Giao diện" class="state flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant">{icon("contrast-rounded", 22)}</a>

@@ -27,7 +27,9 @@ DRAFTS = {
     "dashboard-opening": "6ee970d2-cbd6-4259-949f-cb2d897394f7",
     "dashboard-forbidden": "ab2622a8-f6ba-4bfd-81d5-cb0bc37ac4bb",
     "home-admin": "153193af-37f9-48d3-90a6-7ca9a6cb6fab",
-    "home-moderator": "3cfdd3b6-1824-4d7b-95f6-433b9c88bf46"
+    "home-moderator": "3cfdd3b6-1824-4d7b-95f6-433b9c88bf46",
+    "support-open": "4a2df821-ad82-46e9-9885-153397da18d1",
+    "support-resolved": "2674c6cb-7da3-407f-99d2-bdc18dcd9086",
 }
 
 LIGHT = {

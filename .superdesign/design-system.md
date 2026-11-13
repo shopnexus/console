@@ -2,7 +2,7 @@
 
 The console at `console.<domain>`. People at ShopNexus handle reported
 banned goods and fakes, organised fraud, and lawful requests from the
-authorities, and manage console members. It is a desk tool used for hours on a
+authorities, answer support tickets, and manage console members. It is a desk tool used for hours on a
 large screen. Members are moderators ("Kiểm duyệt viên") or admins ("Quản trị
 viên").
 
@@ -51,6 +51,30 @@ Desktop 1440 × 900. No app shell on these screens.
   on `primaryContainer`, then the records: for admins the audit log and the
   members that need a hand, for moderators the accounts they opened last;
   the tools and the keyboard shortcuts beside them. No greeting.
+
+## Hỗ trợ (2026-11-13)
+
+Desktop 1440 × 900, in the console shell. The drawer lists Hỗ trợ under
+Trang chủ with the count of open tickets as a plain label at its end.
+
+- Every ticket is its own chat between a person and ShopNexus. Members
+  answer in it as ShopNexus; the person sees only "ShopNexus", and the
+  member's name shows here under each reply ("Lan · 09:05") and in the
+  audit log.
+- The queue is a 360 px panel: Đang mở and Đã xử lý as a segmented
+  button, kind chips, then rows with the kind's icon, the person's name and
+  id, the kind, the last line, and "Chờ trả lời" in `primary` when the
+  person wrote last. `j` and `k` move through it.
+- The ticket opens beside the queue. The header holds the kind, its status
+  chip, who opened it and when, then "Đã xử lý" (filled) or "Mở lại"
+  (outlined). Under it is the chat, in `bodyMedium`, with the person on the
+  start side and ShopNexus on the end side. The composer reads "Trả lời
+  <name>", over "Người dùng thấy tên ShopNexus". A 272 px column holds the
+  person, the order with the carrier's reports, the request's carrier and
+  how many sellers asked for it, and the person's other tickets. Facts there
+  put the label over the value.
+- Closing a carrier request sends "Đã ghi nhận hãng <name>." in the chat,
+  marked "Tự gửi khi đóng".
 
 ## Copy
 
