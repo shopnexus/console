@@ -1,0 +1,153 @@
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ApiError, api, type Page, post } from './api'
+
+// The support API's shapes: api/schemas/support.yaml and console.yaml on the server.
+
+export type TicketKind = 'not_received' | 'carrier_request' | 'other'
+export type TicketStatus = 'open' | 'resolved'
+
+export interface Ticket {
+  id: string
+  kind: TicketKind
+  status: TicketStatus
+  conversation_id: string
+  first_message_id?: string
+  order?: { id: string; title: string; photo_url?: string; carrier?: string; tracking_code?: string }
+  carrier_name?: string
+  opened_at: string
+  events: { kind: 'opened' | 'resolved' | 'reopened'; at: string }[]
+}
+
+export interface Person {
+  id: string
+  display_name: string
+  avatar_url?: string
+  deleted: boolean
+  official?: boolean
+}
+
+export interface ConsoleTicket {
+  ticket: Ticket
+  person: Person
+  last_text?: string
+  last_from: 'person' | 'shopnexus'
+  last_message_at: string
+}
+
+export interface Message {
+  id: string
+  sender_id: string
+  text: string
+  photos: { upload_id: string; url?: string; thumb_url?: string }[]
+  reply_to?: { id: string; sender_id: string; text: string; photos: number }
+  status: 'processing' | 'sent' | 'failed'
+  created_at: string
+}
+
+export interface ConsoleMessage {
+  message: Message
+  member?: string
+  automatic: boolean
+}
+
+export interface ConsoleTicketDetail {
+  ticket: ConsoleTicket
+  person_status: 'active' | 'suspended' | 'deleted'
+  joined_at: string
+  order?: {
+    id: string
+    title: string
+    price: number
+    status: string
+    seller: Person
+    carrier?: string
+    tracking_code?: string
+    shipment_status?: string
+    shipped_at?: string
+    delivered_at?: string
+  }
+  same_carrier_30d?: number
+  others: Ticket[]
+  messages: Page<ConsoleMessage>
+}
+
+export const kindLabel: Record<TicketKind, string> = {
+  not_received: 'Báo chưa nhận hàng',
+  carrier_request: 'Xin thêm hãng',
+  other: 'Yêu cầu khác',
+}
+
+/** The queue's kind chips: "Khác" is short enough for a chip. */
+export const kindChip: Record<TicketKind, string> = {
+  not_received: 'Chưa nhận hàng',
+  carrier_request: 'Xin thêm hãng',
+  other: 'Khác',
+}
+
+export const shopNexusId = '0193e000-0000-7000-8000-000000000001'
+
+/** The queue, 50 tickets a page; "Xem thêm" reads the next. */
+export function useQueue(status: TicketStatus, kind: TicketKind | null) {
+  const query = useInfiniteQuery({
+    queryKey: ['support', 'queue', status, kind],
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => {
+      const q = new URLSearchParams({ status, limit: '50', ...(kind ? { kind } : {}), ...(pageParam ? { cursor: pageParam } : {}) })
+      return api<Page<ConsoleTicket>>(`/console/support/tickets?${q}`)
+    },
+    getNextPageParam: (last) => last.next_cursor,
+    refetchOnWindowFocus: true,
+  })
+  return { ...query, items: query.data?.pages.flatMap((p) => p.items) }
+}
+
+/** A page of a ticket's chat older than cursor, newest first. */
+export function olderMessages(id: string, cursor: string) {
+  return api<Page<ConsoleMessage>>(`/console/support/tickets/${id}/messages?${new URLSearchParams({ cursor })}`)
+}
+
+/** What a member reads when a command on a ticket fails. */
+export function failureText(e: unknown): string {
+  if (e instanceof ApiError) {
+    if (e.code === 'ticket_not_allowed') return 'Ticket đã đổi trạng thái. Đã tải lại.'
+    if (e.code === 'account_deleted') return 'Người dùng đã xoá tài khoản, tin không gửi được.'
+    if (e.code === 'invalid_message') return 'Tin trả lời chưa hợp lệ.'
+  }
+  return 'Chưa làm được. Thử lại.'
+}
+
+export function useTicket(id: string | undefined) {
+  return useQuery({
+    queryKey: ['support', 'ticket', id],
+    enabled: !!id,
+    queryFn: () => api<ConsoleTicketDetail>(`/console/support/tickets/${id}`),
+    refetchOnWindowFocus: true,
+  })
+}
+
+export function useOpenCount() {
+  return useQuery({
+    queryKey: ['support', 'summary'],
+    queryFn: () => api<{ open: number }>('/console/support/summary'),
+    refetchOnWindowFocus: true,
+  })
+}
+
+export function useTicketCommands(id: string) {
+  const client = useQueryClient()
+  // A failure reads again too: a 409 means another member moved the ticket.
+  const done = () => client.invalidateQueries({ queryKey: ['support'] })
+  return {
+    reply: useMutation({
+      mutationFn: (body: string) =>
+        api<ConsoleMessage>(`/console/support/tickets/${id}/replies`, {
+          method: 'POST',
+          body: JSON.stringify({ body }),
+          headers: { 'idempotency-key': crypto.randomUUID() },
+        }),
+      onSettled: done,
+    }),
+    resolve: useMutation({ mutationFn: () => post<ConsoleTicket>(`/console/support/tickets/${id}/resolve`), onSettled: done }),
+    reopen: useMutation({ mutationFn: () => post<ConsoleTicket>(`/console/support/tickets/${id}/reopen`), onSettled: done }),
+  }
+}
