@@ -5,6 +5,7 @@ import IconLock from '~icons/material-symbols/lock-outline-rounded'
 import IconLogout from '~icons/material-symbols/logout-rounded'
 import { post, roleName } from '../lib/api'
 import { useMembersToSee } from '../lib/members'
+import { useOpenCount } from '../lib/support'
 import { dashboards, mayOpen } from '../lib/dashboards'
 import { navigation } from '../lib/navigation'
 import { useForgetMe, useMe } from '../lib/session'
@@ -15,6 +16,7 @@ export function Shell({ title, children }: { title: string; children: ReactNode 
   const me = useMe()
   const admin = me.role === 'admin'
   const toSee = useMembersToSee(admin)
+  const openTickets = useOpenCount()
   const navigate = useNavigate()
   const forget = useForgetMe()
 
@@ -46,7 +48,7 @@ export function Shell({ title, children }: { title: string; children: ReactNode 
                 <NavLink
                   key={n.to}
                   to={n.to}
-                  end
+                  end={n.to !== '/support'}
                   className={({ isActive }) =>
                     `state-layer flex h-14 items-center gap-3 rounded-full px-4 ${
                       isActive ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant'
@@ -55,6 +57,9 @@ export function Shell({ title, children }: { title: string; children: ReactNode 
                 >
                   {n.icon}
                   <span className="flex-1 text-label-large">{n.label}</span>
+                  {n.to === '/support' && !!openTickets.data?.open && (
+                    <span className="text-label-large">{openTickets.data.open}</span>
+                  )}
                   {n.to === '/members' && toSee.data && toSee.data.length > 0 && (
                     <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1.5 text-label-small text-on-error">
                       {toSee.data.length}

@@ -1,9 +1,9 @@
 # Console design
 
-The console at `console.<domain>`. People at ShopNexus handle three
-things only: reported banned goods and fakes, organised fraud, and lawful
-requests from the authorities. The console is where they do it, and where
-console members are managed. It calls `/v1/console/*` on the API with the
+The console at `console.<domain>`. People at ShopNexus handle reported
+banned goods and fakes, organised fraud and lawful requests from the
+authorities, and answer support tickets. The console is where they do it,
+and where console members are managed. It calls `/v1/console/*` on the API with the
 `console_session` cookie.
 
 ## Source
@@ -36,8 +36,9 @@ layout but no design of its own.
 
 **Navigation.** An M3 navigation rail at the start (80 px, `surfaceContainer`)
 on expanded, and a standard navigation drawer (360 px) from large up. The
-drawer lists the work areas: Tài khoản, Nhật ký thao tác and Nhân viên, which
-the API serves today, and Báo cáo once reports have endpoints.
+drawer lists the work areas: Hỗ trợ with the count of open tickets,
+Tài khoản, Nhật ký thao tác and Nhân viên, which the API serves today, and
+Báo cáo once reports have endpoints.
 The top bar is 64 px on `surface` with the page title in `titleLarge`, a
 global search for an account or listing id, and the signed-in member.
 
