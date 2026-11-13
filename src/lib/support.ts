@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, type Page, post } from './api'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ApiError, api, type Page, post } from './api'
 
 // The support API's shapes: api/schemas/support.yaml and console.yaml on the server.
 
@@ -86,13 +86,34 @@ export const kindChip: Record<TicketKind, string> = {
 
 export const shopNexusId = '0193e000-0000-7000-8000-000000000001'
 
+/** The queue, 50 tickets a page; "Xem thêm" reads the next. */
 export function useQueue(status: TicketStatus, kind: TicketKind | null) {
-  const q = new URLSearchParams({ status, limit: '50', ...(kind ? { kind } : {}) })
-  return useQuery({
+  const query = useInfiniteQuery({
     queryKey: ['support', 'queue', status, kind],
-    queryFn: () => api<Page<ConsoleTicket>>(`/console/support/tickets?${q}`),
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => {
+      const q = new URLSearchParams({ status, limit: '50', ...(kind ? { kind } : {}), ...(pageParam ? { cursor: pageParam } : {}) })
+      return api<Page<ConsoleTicket>>(`/console/support/tickets?${q}`)
+    },
+    getNextPageParam: (last) => last.next_cursor,
     refetchOnWindowFocus: true,
   })
+  return { ...query, items: query.data?.pages.flatMap((p) => p.items) }
+}
+
+/** A page of a ticket's chat older than cursor, newest first. */
+export function olderMessages(id: string, cursor: string) {
+  return api<Page<ConsoleMessage>>(`/console/support/tickets/${id}/messages?${new URLSearchParams({ cursor })}`)
+}
+
+/** What a member reads when a command on a ticket fails. */
+export function failureText(e: unknown): string {
+  if (e instanceof ApiError) {
+    if (e.code === 'ticket_not_allowed') return 'Ticket đã đổi trạng thái. Đã tải lại.'
+    if (e.code === 'account_deleted') return 'Người dùng đã xoá tài khoản, tin không gửi được.'
+    if (e.code === 'invalid_message') return 'Tin trả lời chưa hợp lệ.'
+  }
+  return 'Chưa làm được. Thử lại.'
 }
 
 export function useTicket(id: string | undefined) {
@@ -114,6 +135,7 @@ export function useOpenCount() {
 
 export function useTicketCommands(id: string) {
   const client = useQueryClient()
+  // A failure reads again too: a 409 means another member moved the ticket.
   const done = () => client.invalidateQueries({ queryKey: ['support'] })
   return {
     reply: useMutation({
@@ -123,9 +145,9 @@ export function useTicketCommands(id: string) {
           body: JSON.stringify({ body }),
           headers: { 'idempotency-key': crypto.randomUUID() },
         }),
-      onSuccess: done,
+      onSettled: done,
     }),
-    resolve: useMutation({ mutationFn: () => post<ConsoleTicket>(`/console/support/tickets/${id}/resolve`), onSuccess: done }),
-    reopen: useMutation({ mutationFn: () => post<ConsoleTicket>(`/console/support/tickets/${id}/reopen`), onSuccess: done }),
+    resolve: useMutation({ mutationFn: () => post<ConsoleTicket>(`/console/support/tickets/${id}/resolve`), onSettled: done }),
+    reopen: useMutation({ mutationFn: () => post<ConsoleTicket>(`/console/support/tickets/${id}/reopen`), onSettled: done }),
   }
 }

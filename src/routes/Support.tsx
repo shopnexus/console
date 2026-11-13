@@ -14,17 +14,20 @@ import IconAgent from '~icons/material-symbols/support-agent-rounded'
 import IconTruck from '~icons/material-symbols/local-shipping-outline-rounded'
 import IconUndo from '~icons/material-symbols/undo-rounded'
 import { Shell } from '../components/Shell'
-import { Kbd } from '../components/ui'
+import { Kbd, Notice } from '../components/ui'
 import {
   type ConsoleMessage,
   type ConsoleTicket,
   type ConsoleTicketDetail,
+  failureText,
   kindChip,
   kindLabel,
   shopNexusId,
   type Ticket,
   type TicketKind,
   type TicketStatus,
+  olderMessages,
+  useOpenCount,
   useQueue,
   useTicket,
   useTicketCommands,
@@ -106,7 +109,7 @@ function Queue({
   onKind: (k: TicketKind | null) => void
 }) {
   const queue = useQueue(status, kind)
-  const open = useQueue('open', null)
+  const open = useOpenCount()
   const segment = (s: TicketStatus, label: string, n?: number) => (
     <button
       onClick={() => onStatus(s)}
@@ -135,7 +138,7 @@ function Queue({
     <section className="flex w-[360px] shrink-0 flex-col overflow-hidden rounded-xl bg-surface-container-lowest">
       <div className="space-y-3 p-4 pb-2">
         <div className="flex rounded-full border border-outline">
-          {segment('open', 'Đang mở', open.data?.items.length)}
+          {segment('open', 'Đang mở', open.data?.open)}
           {segment('resolved', 'Đã xử lý')}
         </div>
         <div className="flex flex-wrap gap-2">
@@ -144,9 +147,18 @@ function Queue({
         </div>
       </div>
       <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 pb-2">
-        {queue.data?.items.map((t) => <QueueRow key={t.ticket.id} t={t} on={t.ticket.id === active} status={status} />)}
-        {queue.data && queue.data.items.length === 0 && (
+        {queue.items?.map((t) => <QueueRow key={t.ticket.id} t={t} on={t.ticket.id === active} status={status} />)}
+        {queue.items && queue.items.length === 0 && (
           <p className="px-3 py-6 text-body-medium text-on-surface-variant">Không có ticket nào.</p>
+        )}
+        {queue.hasNextPage && (
+          <button
+            onClick={() => queue.fetchNextPage()}
+            disabled={queue.isFetchingNextPage}
+            className="state-layer h-10 w-full rounded-full text-label-large text-primary disabled:opacity-60"
+          >
+            Xem thêm
+          </button>
         )}
       </div>
       <p className="flex items-center gap-2 border-t border-outline-variant px-4 py-3 text-body-small text-on-surface-variant">
@@ -295,9 +307,25 @@ function Facts({ d }: { d: ConsoleTicketDetail }) {
 
 function Thread({ d }: { d: ConsoleTicketDetail }) {
   const t = d.ticket.ticket
+  // The detail carries the newest page; "Xem tin cũ hơn" reads the ones before it.
+  const [older, setOlder] = useState<{ items: ConsoleMessage[]; cursor?: string }>({ items: [], cursor: d.messages.next_cursor })
+  const [reading, setReading] = useState(false)
+  async function readOlder() {
+    if (!older.cursor || reading) return
+    setReading(true)
+    try {
+      const p = await olderMessages(t.id, older.cursor)
+      setOlder((o) => ({ items: [...o.items, ...p.items], cursor: p.next_cursor }))
+    } finally {
+      setReading(false)
+    }
+  }
+  // A reply moves the newest page; a message read twice shows once.
+  const seen = new Set(d.messages.items.map((m) => m.message.id))
+  const messages = [...d.messages.items, ...older.items.filter((m) => !seen.has(m.message.id))]
   // Oldest first, with the ticket's events between the messages.
   const items: ({ at: string } & ({ m: ConsoleMessage } | { e: Ticket['events'][number] }))[] = [
-    ...d.messages.items.map((m) => ({ at: m.message.created_at, m })),
+    ...messages.map((m) => ({ at: m.message.created_at, m })),
     ...t.events.filter((e) => e.kind !== 'opened').map((e) => ({ at: e.at, e })),
   ].sort((a, b) => a.at.localeCompare(b.at))
   // A day label sits above the first item of each day.
@@ -313,6 +341,15 @@ function Thread({ d }: { d: ConsoleTicketDetail }) {
   }, [newest])
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-5 py-4">
+      {older.cursor && (
+        <button
+          onClick={readOlder}
+          disabled={reading}
+          className="state-layer mx-auto h-8 rounded-full px-4 text-label-large text-primary disabled:opacity-60"
+        >
+          Xem tin cũ hơn
+        </button>
+      )}
       {items.map((it, i) => {
         const label = days[i] ? <p className="py-1 text-center text-label-medium text-on-surface-variant">{days[i]}</p> : null
         if ('e' in it) {
@@ -385,8 +422,13 @@ function Panel({ id }: { id: string }) {
   const commands = useTicketCommands(id)
   const [text, setText] = useState('')
   if (!detail.data) {
-    return <section className="flex-1 rounded-xl bg-surface-container-lowest" />
+    return (
+      <section className="flex flex-1 items-center justify-center rounded-xl bg-surface-container-lowest">
+        {detail.isError && <Notice>Không mở được ticket này.</Notice>}
+      </section>
+    )
   }
+  const failure = commands.reply.error ?? commands.resolve.error ?? commands.reopen.error
   const d = detail.data
   const t = d.ticket.ticket
   const name = d.ticket.person.display_name || 'Đã xoá'
@@ -440,6 +482,11 @@ function Panel({ id }: { id: string }) {
           <IconClose width={20} height={20} />
         </button>
       </header>
+      {failure && (
+        <div className="px-5 pt-3">
+          <Notice>{failureText(failure)}</Notice>
+        </div>
+      )}
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
           <Thread d={d} />
@@ -490,7 +537,7 @@ export function Support() {
     function onKey(e: KeyboardEvent) {
       const target = e.target as HTMLElement
       if (target.closest('input, textarea, [contenteditable]')) return
-      const items = queue.data?.items ?? []
+      const items = queue.items ?? []
       const at = items.findIndex((t) => t.ticket.id === id)
       if (e.key === 'j' || e.key === 'k') {
         const next = items[Math.min(items.length - 1, Math.max(0, at + (e.key === 'j' ? 1 : -1)))]
@@ -503,7 +550,7 @@ export function Support() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [queue.data, id, navigate])
+  }, [queue.items, id, navigate])
 
   return (
     <Shell title="Hỗ trợ">
