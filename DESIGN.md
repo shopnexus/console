@@ -34,20 +34,27 @@ most of its layout.
 wider) and stays usable on a tablet in landscape. Compact gets a working
 layout but no design of its own.
 
-**Navigation.** An M3 navigation rail at the start (80 px, `surfaceContainer`)
-on expanded, and a standard navigation drawer (360 px) from large up. The
-drawer lists the work areas: Hỗ trợ with the count of open tickets,
-Tài khoản, Nhật ký thao tác and Nhân viên, which the API serves today, and
-Báo cáo once reports have endpoints.
-The top bar is 64 px on `surface` with the page title in `titleLarge`, a
-global search for an account or listing id, and the signed-in member.
+**Navigation.** A 256 px navigation drawer on `surfaceContainerLow` lists
+the work areas: Hỗ trợ with the count of open tickets, Tài khoản,
+Nhật ký thao tác and Nhân viên, which the API serves today, and Báo cáo
+once reports have endpoints, then the ops dashboards under Công cụ. The
+button beside the name, or `[`, collapses it to a 64 px rail of icons, with
+each label as the icon's title and the counts as small badges on the icons.
+The browser keeps that choice. Hỗ trợ opens with the rail, since its queue,
+thread and facts need the width; expanding the drawer there lasts until the
+member leaves the page and does not change the saved choice.
+The top bar is 48 px on `surface` with the page title in `titleLarge` and
+the theme switch.
 
-**Density.** Pages are lists of records, not feeds. Tables use `bodyMedium`
-cells and `labelLarge` headers, 52 px rows by default and 40 px in a compact
-mode, `outlineVariant` dividers, and `surfaceContainerLow` on the hovered
-row. Opaque ids (`acc_3r61q6fbvt9b8`) use `font-mono`. Detail opens in a side
-panel beside the list so a member can move through a queue without losing
-their place.
+**Density.** Pages are lists of records. Rows are 40 px, list
+avatars and icon badges 32 px, buttons in a page 36 px, and cards on a page
+use the `lg` corner with 12 to 16 px of padding and 8 to 16 px between them.
+Tables use `bodyMedium` cells and `labelMedium` headers, `outlineVariant`
+dividers, and `surfaceContainerLow` on the hovered row; a reason that does
+not fit its row is cut short and shows in full as the row's title. Opaque
+ids (`acc_3r61q6fbvt9b8`) use `font-mono`. Detail opens in a side panel
+beside the list so a member can move through a queue without losing their
+place.
 
 **Roles in this context.** `primary` is still the one main action per view.
 Actions that take a right away from someone (suspend an account, disable a

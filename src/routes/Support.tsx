@@ -113,40 +113,41 @@ function Queue({
   const segment = (s: TicketStatus, label: string, n?: number) => (
     <button
       onClick={() => onStatus(s)}
-      className={`state-layer flex h-10 flex-1 items-center justify-center gap-2 text-label-large first:rounded-l-full last:rounded-r-full last:border-l last:border-outline ${
+      className={`state-layer flex h-9 flex-1 items-center justify-center gap-1.5 text-label-large first:rounded-l-full last:rounded-r-full last:border-l last:border-outline ${
         s === status ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'
       }`}
     >
-      {s === status && <IconCheck width={18} height={18} />}
+      {s === status && <IconCheck width={16} height={16} />}
       {label}
       {n !== undefined && ` · ${n}`}
     </button>
   )
-  const chip = (k: TicketKind | null, label: string) => (
+  // A filter chip: a second press on the chosen kind shows every kind again.
+  const chip = (k: TicketKind, label: string) => (
     <button
-      key={k ?? 'all'}
-      onClick={() => onKind(k)}
-      className={`state-layer inline-flex h-8 items-center gap-1 rounded-sm px-3 text-label-large ${
+      key={k}
+      aria-pressed={k === kind}
+      onClick={() => onKind(k === kind ? null : k)}
+      className={`state-layer inline-flex h-7 items-center gap-1 rounded-sm px-2.5 text-label-medium ${
         k === kind ? 'bg-secondary-container text-on-secondary-container' : 'border border-outline-variant text-on-surface-variant'
       }`}
     >
-      {k === kind && <IconCheck width={18} height={18} />}
+      {k === kind && <IconCheck width={14} height={14} />}
       {label}
     </button>
   )
   return (
-    <section className="flex w-[360px] shrink-0 flex-col overflow-hidden rounded-xl bg-surface-container-lowest">
-      <div className="space-y-3 p-4 pb-2">
+    <section className="flex w-80 shrink-0 flex-col overflow-hidden rounded-lg bg-surface-container-lowest">
+      <div className="space-y-2 p-2 pb-1.5">
         <div className="flex rounded-full border border-outline">
           {segment('open', 'Đang mở', open.data?.open)}
           {segment('resolved', 'Đã xử lý')}
         </div>
-        <div className="flex flex-wrap gap-2">
-          {chip(null, 'Tất cả')}
+        <div className="flex flex-wrap gap-1">
           {(Object.keys(kindChip) as TicketKind[]).map((k) => chip(k, kindChip[k]))}
         </div>
       </div>
-      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 pb-2">
+      <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-1.5 pb-1.5">
         {queue.items?.map((t) => <QueueRow key={t.ticket.id} t={t} on={t.ticket.id === active} status={status} />)}
         {queue.items && queue.items.length === 0 && (
           <p className="px-3 py-6 text-body-medium text-on-surface-variant">Không có ticket nào.</p>
@@ -155,13 +156,13 @@ function Queue({
           <button
             onClick={() => queue.fetchNextPage()}
             disabled={queue.isFetchingNextPage}
-            className="state-layer h-10 w-full rounded-full text-label-large text-primary disabled:opacity-60"
+            className="state-layer h-9 w-full rounded-full text-label-large text-primary disabled:opacity-60"
           >
             Xem thêm
           </button>
         )}
       </div>
-      <p className="flex items-center gap-2 border-t border-outline-variant px-4 py-3 text-body-small text-on-surface-variant">
+      <p className="flex items-center gap-2 border-t border-outline-variant px-3 py-2 text-body-small text-on-surface-variant">
         <Kbd>j</Kbd>
         <Kbd>k</Kbd>
         Ticket trước, sau
@@ -177,27 +178,29 @@ function QueueRow({ t, on, status }: { t: ConsoleTicket; on: boolean; status: Ti
     <button
       data-ticket={t.ticket.id}
       onClick={() => navigate(`/support/${t.ticket.id}`)}
-      className={`state-layer flex w-full gap-3 rounded-lg px-3 py-3 text-left ${on ? 'bg-secondary-container' : ''}`}
+      className={`state-layer flex w-full gap-2.5 rounded-md px-2 py-2 text-left ${on ? 'bg-secondary-container' : ''}`}
     >
-      <KindBadge kind={t.ticket.kind} />
+      <KindBadge kind={t.ticket.kind} size={32} />
       <span className="min-w-0 flex-1">
         <span className="flex items-baseline gap-2">
-          <span className="min-w-0 flex-1 truncate text-title-small">{t.person.display_name}</span>
+          <span className="min-w-0 flex-1 truncate text-label-large">{t.person.display_name}</span>
           <span className="shrink-0 text-body-small text-on-surface-variant">{when(t.last_message_at)}</span>
         </span>
-        <span className="block text-body-small text-on-surface-variant">
-          {kindLabel[t.ticket.kind]} · <span className="font-mono">{t.person.id.slice(0, 8)}</span>
-        </span>
-        <span className={`mt-0.5 block truncate text-body-medium ${waiting ? 'text-on-surface' : 'text-on-surface-variant'}`}>
+        <span className={`block truncate text-body-medium ${waiting ? 'text-on-surface' : 'text-on-surface-variant'}`}>
           {t.ticket.carrier_name ? `${t.ticket.carrier_name} · ` : ''}
           {t.last_text}
         </span>
-        {waiting && (
-          <span className="mt-1 inline-flex items-center gap-1 text-label-medium text-primary">
-            <IconReply width={16} height={16} />
-            Chờ trả lời
+        <span className="flex items-center gap-1 text-body-small text-on-surface-variant">
+          <span className="min-w-0 truncate">
+            {kindLabel[t.ticket.kind]} · <span className="font-mono">{t.person.id.slice(0, 8)}</span>
           </span>
-        )}
+          {waiting && (
+            <span className="ml-auto inline-flex shrink-0 items-center gap-0.5 text-label-medium text-primary">
+              <IconReply width={14} height={14} />
+              Chờ trả lời
+            </span>
+          )}
+        </span>
       </span>
     </button>
   )
@@ -205,17 +208,17 @@ function QueueRow({ t, on, status }: { t: ConsoleTicket; on: boolean; status: Ti
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="py-1">
+    <div className="grid grid-cols-[80px_1fr] items-baseline gap-2 py-0.5">
       <p className="text-body-small text-on-surface-variant">{label}</p>
-      <div className="text-body-medium">{children}</div>
+      <div className="min-w-0 text-body-medium">{children}</div>
     </div>
   )
 }
 
 function SideCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-lg bg-surface-container-low p-4">
-      <h3 className="mb-1 text-title-small text-on-surface-variant">{title}</h3>
+    <section className="rounded-md bg-surface-container-low px-3 py-2.5">
+      <h3 className="mb-1 text-label-large text-on-surface-variant">{title}</h3>
       {children}
     </section>
   )
@@ -233,14 +236,14 @@ function Facts({ d }: { d: ConsoleTicketDetail }) {
   const navigate = useNavigate()
   const p = d.ticket.person
   return (
-    <aside className="w-[272px] shrink-0 space-y-3 overflow-y-auto border-l border-outline-variant p-3">
+    <aside className="w-64 shrink-0 space-y-2 overflow-y-auto border-l border-outline-variant p-2">
       <SideCard title="Người gửi">
-        <div className="mb-1 flex items-center gap-3 py-1.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-container-high text-title-small text-on-surface-variant">
+        <div className="mb-1 flex items-center gap-2.5 py-1">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-container-high text-label-large text-on-surface-variant">
             {p.display_name.trim()[0] ?? '?'}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-title-small">{p.display_name || 'Đã xoá'}</span>
+            <span className="block truncate text-label-large">{p.display_name || 'Đã xoá'}</span>
             <span className="block font-mono text-body-small text-on-surface-variant">{p.id.slice(0, 8)}</span>
           </span>
         </div>
@@ -253,7 +256,7 @@ function Facts({ d }: { d: ConsoleTicketDetail }) {
       </SideCard>
       {d.order && (
         <SideCard title="Đơn liên quan">
-          <p className="text-title-small">{d.order.title}</p>
+          <p className="text-label-large">{d.order.title}</p>
           <Fact label="Giá chốt">
             <span className="text-tertiary">{money.format(d.order.price)} ₫</span>
           </Fact>
@@ -286,9 +289,9 @@ function Facts({ d }: { d: ConsoleTicketDetail }) {
             <button
               key={o.id}
               onClick={() => navigate(`/support/${o.id}`)}
-              className="state-layer -mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-md px-2 py-2 text-left"
+              className="state-layer -mx-2 flex w-[calc(100%+1rem)] items-center gap-2 rounded-md px-2 py-1.5 text-left"
             >
-              <KindBadge kind={o.kind} size={32} />
+              <KindBadge kind={o.kind} size={28} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-body-medium">{kindLabel[o.kind]}</span>
                 <span className="block text-body-small text-on-surface-variant">{when(o.opened_at)}</span>
@@ -340,7 +343,7 @@ function Thread({ d }: { d: ConsoleTicketDetail }) {
     end.current?.scrollIntoView({ block: 'end' })
   }, [newest])
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-5 py-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-4 py-3">
       {older.cursor && (
         <button
           onClick={readOlder}
@@ -369,27 +372,27 @@ function Thread({ d }: { d: ConsoleTicketDetail }) {
         return (
           <div key={m.id}>
             {label}
-            <div className={`flex flex-col gap-1 ${mine ? 'items-end' : 'items-start'}`}>
+            <div className={`flex flex-col gap-0.5 ${mine ? 'items-end' : 'items-start'}`}>
               {card ? (
-                <article className="w-[90%] rounded-lg-plus rounded-bl-xs bg-surface-container p-4">
+                <article className="w-[90%] rounded-lg rounded-bl-xs bg-surface-container p-3">
                   <div className="flex items-center gap-2">
                     <span className="text-primary">{kindIcon[t.kind](20)}</span>
                     <span className="min-w-0 flex-1 truncate text-title-small">{kindLabel[t.kind]}</span>
                   </div>
                   {t.order && (
-                    <div className="mt-3 rounded-md bg-surface-container-lowest px-3 py-2">
+                    <div className="mt-2 rounded-md bg-surface-container-lowest px-3 py-1.5">
                       <p className="truncate text-title-small">{t.order.title}</p>
                       <p className="font-mono text-body-small text-on-surface-variant">
                         {t.order.carrier?.toUpperCase()} · {t.order.tracking_code}
                       </p>
                     </div>
                   )}
-                  {t.carrier_name && <p className="mt-3 text-title-medium">{t.carrier_name}</p>}
-                  {m.text && <p className="mt-2 text-body-medium">{m.text}</p>}
+                  {t.carrier_name && <p className="mt-2 text-title-small">{t.carrier_name}</p>}
+                  {m.text && <p className="mt-1.5 text-body-medium">{m.text}</p>}
                 </article>
               ) : (
                 <p
-                  className={`max-w-[80%] whitespace-pre-wrap rounded-lg-plus px-3 py-2 text-body-medium ${
+                  className={`max-w-[80%] whitespace-pre-wrap rounded-lg px-3 py-1.5 text-body-medium ${
                     mine ? 'bg-secondary-container text-on-surface' : 'bg-surface-container-high'
                   }`}
                 >
@@ -402,7 +405,7 @@ function Thread({ d }: { d: ConsoleTicketDetail }) {
                   {m.text}
                 </p>
               )}
-              <p className="flex items-center gap-1 px-2 text-body-small text-on-surface-variant">
+              <p className="flex items-center gap-1 px-1 text-body-small text-on-surface-variant">
                 {it.m.automatic && <IconBolt width={14} height={14} />}
                 {it.m.automatic ? 'Tự gửi khi đóng · ' : it.m.member ? `${it.m.member} · ` : ''}
                 {time.format(new Date(m.created_at))}
@@ -423,7 +426,7 @@ function Panel({ id }: { id: string }) {
   const [text, setText] = useState('')
   if (!detail.data) {
     return (
-      <section className="flex flex-1 items-center justify-center rounded-xl bg-surface-container-lowest">
+      <section className="flex flex-1 items-center justify-center rounded-lg bg-surface-container-lowest">
         {detail.isError && <Notice>Không mở được ticket này.</Notice>}
       </section>
     )
@@ -442,12 +445,12 @@ function Panel({ id }: { id: string }) {
   }
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-surface-container-lowest">
-      <header className="flex items-center gap-3 border-b border-outline-variant px-5 py-3">
-        <KindBadge kind={t.kind} />
+    <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-surface-container-lowest">
+      <header className="flex items-center gap-2.5 border-b border-outline-variant px-3 py-2">
+        <KindBadge kind={t.kind} size={32} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h2 className="truncate text-title-medium">{kindLabel[t.kind]}</h2>
+            <h2 className="truncate text-title-small">{kindLabel[t.kind]}</h2>
             <StatusChip status={t.status} />
           </div>
           <p className="text-body-small text-on-surface-variant">
@@ -459,39 +462,39 @@ function Panel({ id }: { id: string }) {
           <button
             onClick={() => commands.resolve.mutate()}
             disabled={commands.resolve.isPending}
-            className="state-layer inline-flex h-10 items-center gap-2 rounded-full bg-primary px-5 text-label-large text-on-primary disabled:opacity-60"
+            className="state-layer inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-label-large text-on-primary disabled:opacity-60"
           >
-            <IconCheck width={20} height={20} />
+            <IconCheck width={18} height={18} />
             Đã xử lý
           </button>
         ) : (
           <button
             onClick={() => commands.reopen.mutate()}
             disabled={commands.reopen.isPending}
-            className="state-layer inline-flex h-10 items-center gap-2 rounded-full border border-outline px-5 text-label-large text-primary"
+            className="state-layer inline-flex h-9 items-center gap-1.5 rounded-full border border-outline px-4 text-label-large text-primary"
           >
-            <IconUndo width={20} height={20} />
+            <IconUndo width={18} height={18} />
             Mở lại
           </button>
         )}
         <button
           title="Đóng (Esc)"
           onClick={() => navigate('/support')}
-          className="state-layer flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant"
+          className="state-layer flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant"
         >
           <IconClose width={20} height={20} />
         </button>
       </header>
       {failure && (
-        <div className="px-5 pt-3">
+        <div className="px-3 pt-2">
           <Notice>{failureText(failure)}</Notice>
         </div>
       )}
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
           <Thread d={d} />
-          <form onSubmit={send} className="border-t border-outline-variant p-3">
-            <div className="flex items-end gap-2 rounded-xl bg-surface-container-high py-2 pl-4 pr-2">
+          <form onSubmit={send} className="border-t border-outline-variant p-2">
+            <div className="flex items-end gap-2 rounded-lg bg-surface-container-high py-1 pl-3 pr-1">
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
@@ -501,19 +504,19 @@ function Panel({ id }: { id: string }) {
                 rows={1}
                 maxLength={1000}
                 placeholder={`Trả lời ${name}`}
-                className="min-h-10 flex-1 resize-none bg-transparent py-2 text-body-medium outline-none placeholder:text-on-surface-variant"
+                className="min-h-9 flex-1 resize-none bg-transparent py-2 text-body-medium outline-none placeholder:text-on-surface-variant"
               />
               <button
                 type="submit"
                 title="Gửi (Ctrl+Enter)"
                 disabled={!text.trim() || commands.reply.isPending}
-                className="state-layer flex h-10 w-10 items-center justify-center rounded-full bg-primary text-on-primary disabled:opacity-60"
+                className="state-layer flex h-9 w-9 items-center justify-center rounded-full bg-primary text-on-primary disabled:opacity-60"
               >
-                <IconSend width={20} height={20} />
+                <IconSend width={18} height={18} />
               </button>
             </div>
-            <p className="mt-2 flex items-center gap-1.5 px-1 text-body-small text-on-surface-variant">
-              <IconAgent width={16} height={16} />
+            <p className="mt-1 flex items-center gap-1.5 px-1 text-body-small text-on-surface-variant">
+              <IconAgent width={14} height={14} />
               Người dùng thấy tên ShopNexus
             </p>
           </form>
@@ -553,10 +556,10 @@ export function Support() {
   }, [queue.items, id, navigate])
 
   return (
-    <Shell title="Hỗ trợ">
-      <div className="flex h-[calc(100dvh-6rem)] min-h-[560px] gap-4">
+    <Shell title="Hỗ trợ" railFirst>
+      <div className="flex min-h-[560px] flex-1 gap-2">
         <Queue status={status} kind={kind} active={id} onStatus={setStatus} onKind={setKind} />
-        {id ? <Panel key={id} id={id} /> : <section className="flex-1 rounded-xl bg-surface-container-lowest" />}
+        {id ? <Panel key={id} id={id} /> : <section className="flex-1 rounded-lg bg-surface-container-lowest" />}
       </div>
     </Shell>
   )
