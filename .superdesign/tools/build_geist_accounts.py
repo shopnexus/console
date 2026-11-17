@@ -178,7 +178,7 @@ def active(popover=""):
              + fact("star-outline-rounded", "Đánh giá người bán", "4,8 · 19 lượt")
              + fact("location-on-outline-rounded", "Khu vực", "Quận 10, TP.HCM"))
     ids = (fact("call-outline-rounded", "Số điện thoại", phone("0903 456 812"))
-           + fact("logos:google-icon", "Google", "bao.pham.store@gmail.com"))
+           + fact("mail-outline-rounded", "Email", "bao.pham.store@gmail.com"))
     d = detail(BAO, band="band", status=status_pill(False),
                chips=chip("storefront-outline-rounded", "Người bán") + chip("verified-outline-rounded", "SĐT đã xác minh", "text-primary") + chip("history-rounded", "Từng bị khoá 1 lần"),
                actions=ask_agent() + suspend_button(bool(popover)), figures=figures, past=past, facts=facts, ids=ids, popover=popover)

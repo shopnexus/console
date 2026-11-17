@@ -135,11 +135,26 @@ tools and proposes; the member acts. Most work happens in a chat with it.
 
 ## Báo cáo
 
-Reports are grouped by the reported account into cases. The queue's rows
-carry the count of reports, the reasons and the agent's proposal. The middle
-pane is the case's chat: the agent's case read (evidence, then the
-proposal), then the member's questions. A 300 px column holds the account,
-the people who reported with their notes, and the reported listing.
+Direction B since 2026-11-17 (`tools/build_geist_reports_b.py`); the
+agent-chat drafts stay on the canvas. Reports are grouped by the reported
+account into cases, and a case reads as a file with the decision first.
+
+- The 320 px queue: Chờ xử lý (its count in an `error` badge) and Đã xử
+  lý; rows with the case's initial and report count, the listing, the
+  reasons as dots and the age, red past 24 hours. A resolved row shows who
+  and when, and the outcome.
+- The case: a hero band with the account, its reasons as pills with their
+  counts, and the most reported listing beside it; the evidence as a 2 × 2
+  grid of cards that show their proof once the agent finds it; then the
+  people who reported, with their notes.
+- A decision bar is pinned to the bottom: a tick per listing to hide,
+  Tạm khoá with its term, the reason the person sees, Không vi phạm, and the
+  action in `error` named by what is ticked ("Ẩn tin và khoá 7 ngày"). When
+  the agent proposes, the ticks start from its proposal and the bar carries
+  its version.
+- A resolved case's bar lists what was done, who and when, and Hoàn tác.
+- The agent's chat opens as a 400 px drawer on the end side and folds the
+  queue to a strip of initials.
 
 ## Records
 
@@ -187,7 +202,7 @@ hold on every page: Trang chủ, Hỗ trợ, Báo cáo, Agent and Tài khoản.
 - The account: the hero band with the chips (seller or buyer, verified
   phone, earlier suspensions), four figures (orders bought, orders sold,
   the refusal rate, reports), Lịch sử beside a 272 px column with Thông
-  tin and Định danh (the phone with its verified mark, Google).
+  tin and Định danh (the phone and the email, each with its verified mark).
 - Actions: Hỏi agent (opens Agent with the account attached) and Tạm khoá
   in an `error` outline. Tạm khoá opens a popover: the terms 1 ngày, 7 ngày,
   30 ngày and Không hạn as cards with their end dates, the reason with

@@ -44,6 +44,12 @@ DRAFTS = {
     "reports-ask": "264ec538-be26-4fb2-959d-7ce3973dfc4c",
     "proposal-review": "aa9ab713-6bf3-4335-b566-5aa53687e9c4",
     "ring-graph": "a1f4d401-9a99-4a75-aa69-56f008c60d05",
+    "accounts-active": "478c3981-ab41-430a-847b-3251256319fb",
+    "accounts-suspend": "e17ac344-0b18-486f-a2f1-d92b2a34d558",
+    "accounts-suspended": "3079afbb-516d-4fcd-9529-fbbe9c087b6c",
+    "reports-b-open": "49a853df-ef75-4ee8-bedc-3bfb316a3c38",
+    "reports-b-ask": "0556f170-f4cf-49ff-a7f9-bbc0700a1296",
+    "reports-b-done": "7c685b01-5f9d-4e9c-a13f-7bc573fb8e60",
 }
 
 LIGHT = {
