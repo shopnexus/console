@@ -1,8 +1,8 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import IconCheck from '~icons/material-symbols/check-rounded'
-import IconComputer from '~icons/material-symbols/computer-outline-rounded'
-import IconDark from '~icons/material-symbols/dark-mode-outline-rounded'
-import IconLight from '~icons/material-symbols/light-mode-outline-rounded'
+import IconComputer from '~icons/material-symbols-light/computer-outline-rounded'
+import IconDark from '~icons/material-symbols-light/dark-mode-outline-rounded'
+import IconLight from '~icons/material-symbols-light/light-mode-outline-rounded'
 import { type ShapeName, shapes } from '../lib/shapes'
 import { type ThemeChoice, useTheme } from '../lib/theme'
 
@@ -38,16 +38,16 @@ export function Shape({ name, size, className = '' }: { name: ShapeName; size: n
 }
 
 const themes: [ThemeChoice, string, ReactNode][] = [
-  ['system', 'Theo hệ thống', <IconComputer key="s" width={18} height={18} />],
-  ['light', 'Sáng', <IconLight key="l" width={18} height={18} />],
-  ['dark', 'Tối', <IconDark key="d" width={18} height={18} />],
+  ['system', 'Theo hệ thống', <IconComputer key="s" width={16} height={16} />],
+  ['light', 'Sáng', <IconLight key="l" width={16} height={16} />],
+  ['dark', 'Tối', <IconDark key="d" width={16} height={16} />],
 ]
 
-/** System, light or dark, as in the app's Tôi. */
+/** System, light or dark, as in the app's Tôi: a segmented control. */
 export function ThemeSwitch() {
   const [choice, setChoice] = useTheme()
   return (
-    <div role="radiogroup" aria-label="Giao diện" className="flex items-center gap-1 rounded-full border border-outline-variant p-1">
+    <div role="radiogroup" aria-label="Giao diện" className="flex h-8 rounded-sm bg-surface-container p-0.5">
       {themes.map(([value, label, icon]) => (
         <button
           key={value}
@@ -55,8 +55,8 @@ export function ThemeSwitch() {
           aria-checked={choice === value}
           title={label}
           onClick={() => setChoice(value)}
-          className={`state-layer flex h-8 w-10 items-center justify-center rounded-full ${
-            choice === value ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant'
+          className={`flex flex-1 items-center justify-center rounded-xs px-2.5 ${
+            choice === value ? 'bg-surface-container-lowest text-on-surface shadow-lift' : 'text-on-surface-variant hover:text-on-surface'
           }`}
         >
           {icon}
@@ -87,7 +87,7 @@ export function Steps({ active }: { active: 1 | 2 }) {
   return (
     <div className="flex items-center gap-3">
       {step(1, 'Đặt mật khẩu mới')}
-      <span className="h-px flex-1 bg-outline-variant" />
+      <span className="h-px flex-1 bg-hairline" />
       {step(2, 'Bật xác thực hai bước')}
     </div>
   )
@@ -95,7 +95,7 @@ export function Steps({ active }: { active: 1 | 2 }) {
 
 export function Kbd({ children }: { children: ReactNode }) {
   return (
-    <kbd className="inline-flex h-6 min-w-6 items-center justify-center rounded-xs border border-outline-variant bg-surface-container-lowest px-1.5 font-mono text-label-small text-on-surface-variant">
+    <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded-xs border border-hairline bg-surface-container-lowest px-1 font-mono text-label-small text-on-surface-variant">
       {children}
     </kbd>
   )
@@ -104,7 +104,7 @@ export function Kbd({ children }: { children: ReactNode }) {
 /** A refusal or a lock, in the error colours. */
 export function Notice({ children }: { children: ReactNode }) {
   return (
-    <p role="alert" className="rounded-sm bg-error-container px-4 py-3 text-body-medium text-error">
+    <p role="alert" className="rounded-lg bg-error-container px-3 py-2.5 text-body-medium text-error">
       {children}
     </p>
   )

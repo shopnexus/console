@@ -1,20 +1,19 @@
 /*
- * ShopNexus design tokens for the web.
+ * ShopNexus design tokens for the console.
  *
- * Source of truth: app/.superdesign/design-system.md (the Android app). The
- * values below are copied from it: the M3 colour roles generated from #066A61
- * and #924628, the M3 type scale in Be Vietnam Pro, the M3 Expressive corner
- * scale, and the motion springs. website/ and console/ carry the same file;
- * change the app's design system first, then both copies.
- *
- * Web-only additions are marked "web:". Material You is left out: a browser has
- * no wallpaper to build a scheme from.
+ * Colour comes from the Android app's design system,
+ * app/.superdesign/design-system.md: the M3 roles generated from #066A61 and
+ * #924628, and the motion springs. The rest is the console's Geist look,
+ * console/.superdesign/design-system.md ("Tokens"): Geist and Geist Mono,
+ * hairline borders, the `lift` ring, and 5 to 14 px corners. The website keeps
+ * the app's M3 type and corners in its own copy of this file.
  */
 
-@import "@fontsource/be-vietnam-pro/400.css";
-@import "@fontsource/be-vietnam-pro/500.css";
-@import "@fontsource/be-vietnam-pro/600.css";
-@import "@fontsource/be-vietnam-pro/700.css";
+@import "@fontsource/geist/400.css";
+@import "@fontsource/geist/500.css";
+@import "@fontsource/geist/600.css";
+@import "@fontsource/geist-mono/400.css";
+@import "@fontsource/geist-mono/500.css";
 
 /* ---------------------------------------------------------------- colour --
  * Light by default, dark when the system asks, and data-theme on <html>
@@ -52,6 +51,10 @@
   --md-inverse-surface: #2d3130;
   --md-inverse-on-surface: #eef1ef;
   --md-inverse-primary: #85d5c9;
+  /* Geist: hairlines are outlineVariant mixed 70 % with the card colour
+     (white in light), and the lift ring is a faint dark line. */
+  --md-hairline: color-mix(in srgb, var(--md-outline-variant) 70%, var(--md-surface-container-lowest));
+  --md-lift-ring: rgb(16 24 22 / 0.06);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -81,6 +84,7 @@
     --md-inverse-surface: #e0e3e1;
     --md-inverse-on-surface: #2d3130;
     --md-inverse-primary: #066a61;
+    --md-lift-ring: rgb(255 255 255 / 0.07);
   }
 }
 
@@ -110,12 +114,14 @@
   --md-inverse-surface: #e0e3e1;
   --md-inverse-on-surface: #2d3130;
   --md-inverse-primary: #066a61;
+  --md-lift-ring: rgb(255 255 255 / 0.07);
 }
 
 /*
  * Tailwind gets only these colours: the default palette is switched off so a
  * colour outside the system cannot slip in. `bg-primary`, `text-on-surface-variant`,
- * `bg-surface-container-high`, `bg-black/60` (the photo scrim) and so on.
+ * `bg-surface-container-high`, `border-hairline`, `bg-black/60` (the photo scrim)
+ * and so on.
  */
 @theme inline {
   --color-*: initial;
@@ -154,6 +160,8 @@
   --color-inverse-surface: var(--md-inverse-surface);
   --color-inverse-on-surface: var(--md-inverse-on-surface);
   --color-inverse-primary: var(--md-inverse-primary);
+  /* Geist: border-hairline, divide-hairline, bg-hairline. */
+  --color-hairline: var(--md-hairline);
 }
 
 @theme {
@@ -167,74 +175,86 @@
   --breakpoint-2xl: 1600px; /* extra-large */
 
   /* ------------------------------------------------------------ type -- */
-  /* One family, drawn for Vietnamese diacritics. No style goes tighter than
-     its line height: Vietnamese stacks marks above and below (ặ, ỗ, ữ). */
-  --font-sans: "Be Vietnam Pro", system-ui, sans-serif;
-  /* web: opaque ids and keys in the console are read character by character. */
-  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, Consolas, monospace;
+  /* Geist, with Geist Mono for ids, codes, keys and version tags. Text runs
+     at -0.012em (set on html below), titles at -0.022em. Vietnamese stacks
+     marks above and below (ặ, ỗ, ữ), so no step goes under 1.2 line height.
+     The M3 role names stay so a page reads the same; the sizes are Geist's. */
+  --font-sans: "Geist", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 
-  /* Tailwind's own steps are off; use the M3 names: text-body-medium, ... */
   --text-*: initial;
-  /* web: the two display steps the app leaves out, for page headlines. */
-  --text-display-large: 3.5625rem;
-  --text-display-large--line-height: 4rem;
-  --text-display-large--font-weight: 400;
-  --text-display-large--letter-spacing: -0.015625rem;
-  --text-display-medium: 2.8125rem;
-  --text-display-medium--line-height: 3.25rem;
-  --text-display-medium--font-weight: 400;
-  --text-display-small: 2.25rem;
-  --text-display-small--line-height: 2.75rem;
-  --text-display-small--font-weight: 400;
-  --text-headline-medium: 1.75rem;
-  --text-headline-medium--line-height: 2.25rem;
-  --text-headline-medium--font-weight: 400;
-  --text-headline-small: 1.5rem;
-  --text-headline-small--line-height: 2rem;
-  --text-headline-small--font-weight: 400;
-  --text-title-large: 1.375rem;
-  --text-title-large--line-height: 1.75rem;
-  --text-title-large--font-weight: 400;
-  --text-title-medium: 1rem;
-  --text-title-medium--line-height: 1.5rem;
-  --text-title-medium--font-weight: 500;
-  --text-title-small: 0.875rem;
+  /* Figures on tiles and the sign-in side panel. */
+  --text-display-large: 2rem;
+  --text-display-large--line-height: 2.5rem;
+  --text-display-large--font-weight: 600;
+  --text-display-large--letter-spacing: -0.022em;
+  --text-display-medium: 1.75rem;
+  --text-display-medium--line-height: 2.25rem;
+  --text-display-medium--font-weight: 600;
+  --text-display-medium--letter-spacing: -0.022em;
+  --text-display-small: 1.375rem;
+  --text-display-small--line-height: 1.75rem;
+  --text-display-small--font-weight: 600;
+  --text-display-small--letter-spacing: -0.022em;
+  /* Sign-in titles. */
+  --text-headline-medium: 1.25rem;
+  --text-headline-medium--line-height: 1.75rem;
+  --text-headline-medium--font-weight: 600;
+  --text-headline-medium--letter-spacing: -0.022em;
+  --text-headline-small: 1.0625rem;
+  --text-headline-small--line-height: 1.5rem;
+  --text-headline-small--font-weight: 600;
+  --text-headline-small--letter-spacing: -0.022em;
+  /* Page, card and record titles. */
+  --text-title-large: 0.9375rem;
+  --text-title-large--line-height: 1.25rem;
+  --text-title-large--font-weight: 600;
+  --text-title-large--letter-spacing: -0.022em;
+  --text-title-medium: 0.875rem;
+  --text-title-medium--line-height: 1.25rem;
+  --text-title-medium--font-weight: 600;
+  --text-title-medium--letter-spacing: -0.022em;
+  --text-title-small: 0.84375rem;
   --text-title-small--line-height: 1.25rem;
-  --text-title-small--font-weight: 500;
-  --text-body-large: 1rem;
-  --text-body-large--line-height: 1.5rem;
+  --text-title-small--font-weight: 600;
+  /* Body: 14 px for reading (chat, inputs), 13 px for rows, 12 px for
+     secondary lines. */
+  --text-body-large: 0.875rem;
+  --text-body-large--line-height: 1.3125rem;
   --text-body-large--font-weight: 400;
-  --text-body-medium: 0.875rem;
-  --text-body-medium--line-height: 1.25rem;
+  --text-body-medium: 0.8125rem;
+  --text-body-medium--line-height: 1.125rem;
   --text-body-medium--font-weight: 400;
   --text-body-small: 0.75rem;
   --text-body-small--line-height: 1rem;
   --text-body-small--font-weight: 400;
-  --text-label-large: 0.875rem;
-  --text-label-large--line-height: 1.25rem;
+  /* Labels: nav rows and buttons, small controls, group heads and keys. */
+  --text-label-large: 0.84375rem;
+  --text-label-large--line-height: 1.125rem;
   --text-label-large--font-weight: 500;
-  --text-label-medium: 0.75rem;
+  --text-label-medium: 0.78125rem;
   --text-label-medium--line-height: 1rem;
   --text-label-medium--font-weight: 500;
-  --text-label-small: 0.6875rem;
-  --text-label-small--line-height: 1rem;
+  --text-label-small: 0.71875rem;
+  --text-label-small--line-height: 0.875rem;
   --text-label-small--font-weight: 500;
 
   /* ----------------------------------------------------------- shape -- */
-  /* M3 Expressive corner scale. rounded-full is Tailwind's own. */
+  /* Geist corners. rounded-full is Tailwind's own. */
   --radius-*: initial;
-  --radius-xs: 4px; /* extraSmall */
-  --radius-sm: 8px; /* small */
-  --radius-md: 12px; /* medium */
-  --radius-lg: 16px; /* large */
-  --radius-lg-plus: 20px; /* largeIncreased */
-  --radius-xl: 28px; /* extraLarge */
-  --radius-xl-plus: 32px; /* extraLargeIncreased */
+  --radius-xs: 5px; /* keys, version tags */
+  --radius-sm: 6px; /* controls, chips, nav rows */
+  --radius-md: 8px; /* tiles, avatars of records */
+  --radius-lg: 10px; /* blocks, notices */
+  --radius-xl: 12px; /* cards, the work card, the ask box */
+  --radius-2xl: 14px; /* the sign-in card, chat bubbles */
 
   /* ------------------------------------------------------- elevation -- */
-  /* Depth is tonal. Only floating elements get a shadow, at M3 level 3. */
+  /* Depth is a 1 px ring and a 1 to 2 px shadow (lift); a menu or dialog
+     floats on a soft 12/32 px shadow. */
   --shadow-*: initial;
-  --shadow-float: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 4px 8px 3px rgb(0 0 0 / 0.15);
+  --shadow-lift: 0 1px 2px 0 rgb(16 24 22 / 0.06), 0 0 0 1px var(--md-lift-ring);
+  --shadow-float: 0 12px 32px 0 rgb(16 24 22 / 0.14), 0 0 0 1px var(--md-lift-ring);
 
   /* ---------------------------------------------------------- motion -- */
   /* The app animates with springs only. CSS has no spring, so each one is
@@ -274,7 +294,15 @@
     background: var(--md-surface);
     color: var(--md-on-surface);
     font-family: var(--font-sans);
+    letter-spacing: -0.012em;
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* Mono is read character by character: no tightening. */
+  .font-mono,
+  kbd,
+  code {
+    letter-spacing: 0;
   }
 
   /* web: keyboard focus is visible everywhere, in the action colour. */

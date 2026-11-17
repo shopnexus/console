@@ -64,25 +64,25 @@ export function DashboardOpen() {
         </Link>
       </header>
       <main className="relative flex flex-1 items-center justify-center px-6 pb-10">
-        <section className="w-full max-w-[600px] rounded-xl-plus bg-surface-container-lowest px-8 py-10 md:px-12 md:py-12">
+        <section className="w-full max-w-[600px] rounded-2xl bg-surface-container-lowest px-8 py-10 md:px-12 md:py-12">
           <div className="flex items-center gap-4">
-            <img src="/favicon.svg" alt="" className="h-16 w-16 rounded-lg-plus" />
+            <img src="/favicon.svg" alt="" className="h-16 w-16 rounded-xl" />
             {forbidden || failed ? (
               <div className="flex h-10 flex-1 items-center">
-                <div className="h-0 flex-1 border-t-2 border-dashed border-outline-variant" />
+                <div className="h-0 flex-1 border-t-2 border-dashed border-hairline" />
                 <span className="mx-2 flex h-10 w-10 items-center justify-center rounded-full bg-error-container text-error">
                   <IconLock width={20} height={20} />
                 </span>
-                <div className="h-0 flex-1 border-t-2 border-dashed border-outline-variant" />
+                <div className="h-0 flex-1 border-t-2 border-dashed border-hairline" />
               </div>
             ) : (
               <div className="relative h-2.5 flex-1">
-                <div className="absolute inset-x-0 top-1/2 border-t-2 border-dashed border-outline-variant" />
+                <div className="absolute inset-x-0 top-1/2 border-t-2 border-dashed border-hairline" />
                 <span className="absolute top-0 h-2.5 w-2.5 animate-[travel_1.6s_var(--ease-spatial)_infinite] rounded-full bg-primary" />
               </div>
             )}
             <div
-              className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-lg-plus [&>svg]:h-8 [&>svg]:w-8 ${
+              className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-xl [&>svg]:h-8 [&>svg]:w-8 ${
                 allowed && !failed ? 'bg-secondary-container text-on-secondary-container' : 'bg-surface-container-high text-outline'
               }`}
             >

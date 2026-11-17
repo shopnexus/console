@@ -1,66 +1,74 @@
-import { type ReactNode, useEffect } from 'react'
+import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router'
-import IconCollapse from '~icons/material-symbols/left-panel-close-outline-rounded'
-import IconExpand from '~icons/material-symbols/left-panel-open-outline-rounded'
-import IconOpen from '~icons/material-symbols/open-in-new-rounded'
-import IconLock from '~icons/material-symbols/lock-outline-rounded'
-import IconLogout from '~icons/material-symbols/logout-rounded'
+import IconCollapse from '~icons/material-symbols-light/left-panel-close-outline-rounded'
+import IconExpand from '~icons/material-symbols-light/left-panel-open-outline-rounded'
+import IconLock from '~icons/material-symbols-light/lock-outline'
+import IconLogout from '~icons/material-symbols-light/logout-rounded'
+import IconOpen from '~icons/material-symbols-light/north-east-rounded'
+import IconSearch from '~icons/material-symbols-light/search-rounded'
+import IconUnfold from '~icons/material-symbols-light/unfold-more-rounded'
 import { post, roleName } from '../lib/api'
-import { useMembersToSee } from '../lib/members'
-import { useOpenCount } from '../lib/support'
+import { rememberAccount } from '../lib/accounts'
 import { dashboards, mayOpen } from '../lib/dashboards'
 import { navigation, useNavCollapsed } from '../lib/navigation'
 import { useForgetMe, useMe } from '../lib/session'
-import { ThemeSwitch } from './ui'
+import { useOpenCount } from '../lib/support'
+import { AccountSearch } from './AccountSearch'
+import { typing, useDismiss } from '../lib/dom'
+import { Kbd, ThemeSwitch } from './ui'
 
 /**
- * The console's shell: the navigation drawer and the top bar. The drawer
- * collapses to a 64 px rail with the button beside the name or with "[".
- * railFirst starts it collapsed on a page that has panes of its own.
+ * The console's shell: a 232 px nav on the page colour and the work area as
+ * one white card. The nav collapses to a 64 px rail with the button beside
+ * the name or with "["; railFirst starts it collapsed on a page with panes
+ * of its own. A title puts a 52 px header in the card; without one the page
+ * fills the card itself. flush drops the card's padding for pages of panes.
  */
-export function Shell({ title, railFirst = false, children }: { title: string; railFirst?: boolean; children: ReactNode }) {
+export function Shell({
+  title,
+  actions,
+  flush = false,
+  railFirst = false,
+  children,
+}: {
+  title?: string
+  actions?: ReactNode
+  flush?: boolean
+  railFirst?: boolean
+  children: ReactNode
+}) {
   const me = useMe()
-  const admin = me.role === 'admin'
-  const toSee = useMembersToSee(admin)
   const openTickets = useOpenCount()
-  const navigate = useNavigate()
-  const forget = useForgetMe()
   const [rail, toggle] = useNavCollapsed(railFirst)
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key !== '[' || (e.target as HTMLElement).closest('input, textarea, [contenteditable]')) return
+      if (e.key !== '[' || typing(e)) return
       toggle()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [toggle])
 
-  async function signOut() {
-    await post('/console/logout').catch(() => undefined)
-    forget()
-    navigate('/signin', { replace: true })
-  }
-
-  // One row shape for every entry: a 40 px pill with the label, or a 40 px
-  // square with the label as its title on the rail.
-  const row = `flex h-10 items-center gap-2.5 rounded-full ${rail ? 'w-10 justify-center' : 'px-3'}`
-  const label = (text: string) => (rail ? null : <span className="flex-1 truncate text-label-large">{text}</span>)
+  // One row shape for every entry: 32 px with the label, or a 32 px square
+  // with the label as its title on the rail.
+  const row = `flex h-8 items-center gap-2.5 rounded-sm text-label-large ${rail ? 'w-8 justify-center' : 'px-2'}`
+  const label = (text: string) => (rail ? null : <span className="min-w-0 flex-1 truncate">{text}</span>)
 
   return (
-    <div className="flex h-dvh bg-surface text-on-surface">
+    <div className="flex h-dvh bg-surface-container text-on-surface">
       <nav
-        className={`flex shrink-0 flex-col overflow-y-auto overflow-x-hidden bg-surface-container-low py-3 transition-[width] duration-(--duration-spatial-default) ease-spatial ${
-          rail ? 'w-16 items-center px-3' : 'w-64 px-3'
+        className={`flex shrink-0 flex-col overflow-y-auto overflow-x-hidden p-3 transition-[width] duration-(--duration-spatial-default) ease-spatial ${
+          rail ? 'w-16 items-center' : 'w-[232px]'
         }`}
       >
-        <div className={`flex items-center pb-3 ${rail ? 'flex-col gap-2' : 'gap-2 pl-2'}`}>
-          <NavLink to="/" className="flex min-w-0 flex-1 items-center gap-2.5">
-            <img src="/favicon.svg" alt="ShopNexus" className="h-8 w-8 shrink-0 rounded-md" />
+        <div className={`flex items-center ${rail ? 'flex-col gap-2' : 'h-9 gap-2 pl-2'}`}>
+          <NavLink to="/" className="flex min-w-0 flex-1 items-center gap-2">
+            <img src="/favicon.svg" alt="ShopNexus" className="h-6 w-6 shrink-0 rounded-sm" />
             {!rail && (
               <>
-                <span className="text-title-small">ShopNexus</span>
-                <span className="rounded-full bg-secondary-container px-2 text-label-small text-on-secondary-container">Console</span>
+                <span className="text-title-medium">ShopNexus</span>
+                <span className="text-body-medium text-on-surface-variant">Console</span>
               </>
             )}
           </NavLink>
@@ -68,63 +76,56 @@ export function Shell({ title, railFirst = false, children }: { title: string; r
             title={rail ? 'Mở rộng ([)' : 'Thu gọn ([)'}
             aria-label={rail ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
             onClick={toggle}
-            className="state-layer flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-on-surface-variant"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-on-surface-variant hover:bg-surface-container-low"
           >
-            {rail ? <IconExpand width={20} height={20} /> : <IconCollapse width={20} height={20} />}
+            {rail ? <IconExpand width={18} height={18} /> : <IconCollapse width={18} height={18} />}
           </button>
         </div>
-        <div className="space-y-0.5">
-          {navigation
-            .filter((n) => admin || !n.adminOnly)
-            .map((n) => {
-              const count =
-                n.to === '/support' ? openTickets.data?.open || 0 : n.to === '/members' ? (toSee.data?.length ?? 0) : 0
-              const urgent = n.to === '/members'
-              if (n.soon) {
-                return (
-                  <span key={n.to} title={rail ? `${n.label} · Sắp có` : undefined} className={`${row} text-on-surface-variant opacity-60`}>
-                    {n.icon}
-                    {label(n.label)}
-                    {!rail && <span className="shrink-0 rounded-full border border-outline-variant px-1.5 text-label-small">Sắp có</span>}
-                  </span>
-                )
-              }
+        <NavSearch rail={rail} />
+        <div className="mt-4 space-y-0.5">
+          {navigation.map((n) => {
+            if (n.soon) {
               return (
-                <NavLink
-                  key={n.to}
-                  to={n.to}
-                  end={n.to !== '/support'}
-                  title={rail ? n.label : undefined}
-                  className={({ isActive }) =>
-                    `state-layer relative ${row} ${isActive ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant'}`
-                  }
-                >
+                <span key={n.to} title={`${n.label} · Sắp có`} className={`${row} text-outline`}>
                   {n.icon}
                   {label(n.label)}
-                  {count > 0 &&
-                    (rail ? (
-                      <span
-                        className={`absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-label-small ${
-                          urgent ? 'bg-error text-on-error' : 'bg-primary text-on-primary'
-                        }`}
-                      >
-                        {count}
-                      </span>
-                    ) : urgent ? (
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1.5 text-label-small text-on-error">
-                        {count}
-                      </span>
-                    ) : (
-                      <span className="text-label-large">{count}</span>
-                    ))}
-                </NavLink>
+                  {!rail && <span className="text-label-small">Sắp có</span>}
+                </span>
               )
-            })}
+            }
+            const count = n.to === '/support' ? openTickets.data?.open || 0 : 0
+            return (
+              <NavLink
+                key={n.to}
+                to={n.to}
+                end={n.to === '/'}
+                title={rail ? n.label : undefined}
+                className={({ isActive }) =>
+                  `relative ${row} ${
+                    isActive
+                      ? 'bg-surface-container-lowest text-on-surface shadow-lift [&>svg]:text-primary'
+                      : 'text-on-surface-variant hover:bg-surface-container-low'
+                  }`
+                }
+              >
+                {n.icon}
+                {label(n.label)}
+                {count > 0 &&
+                  (rail ? (
+                    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-label-small tabular-nums text-on-primary">
+                      {count}
+                    </span>
+                  ) : (
+                    <span className="text-body-small tabular-nums text-on-surface-variant">{count}</span>
+                  ))}
+              </NavLink>
+            )
+          })}
         </div>
         {rail ? (
-          <span className="my-3 h-px w-6 shrink-0 bg-outline-variant" />
+          <span className="my-3 h-px w-6 shrink-0 bg-hairline" />
         ) : (
-          <p className="mt-4 px-3 pb-1 text-label-medium text-on-surface-variant">Công cụ</p>
+          <p className="mb-1 mt-6 px-2 text-label-medium text-on-surface-variant">Công cụ</p>
         )}
         <div className="space-y-0.5">
           {dashboards.map((d) =>
@@ -135,54 +136,134 @@ export function Shell({ title, railFirst = false, children }: { title: string; r
                 target="_blank"
                 rel="noreferrer"
                 title={rail ? d.name : undefined}
-                className={`state-layer ${row} text-on-surface-variant`}
+                className={`${row} font-normal text-on-surface-variant hover:bg-surface-container-low`}
               >
                 {d.icon}
                 {label(d.name)}
-                {!rail && <IconOpen width={16} height={16} className="text-outline" />}
+                {!rail && <IconOpen width={14} height={14} className="text-outline" />}
               </a>
             ) : (
               <span
                 key={d.app}
                 title={rail ? `${d.name} · Cần quyền ${roleName.admin}` : `Cần quyền ${roleName.admin}`}
-                className={`${row} text-on-surface-variant opacity-60`}
+                className={`${row} font-normal text-outline`}
               >
                 {d.icon}
                 {label(d.name)}
-                {!rail && <IconLock width={16} height={16} className="text-outline" />}
+                {!rail && <IconLock width={14} height={14} />}
               </span>
             ),
           )}
         </div>
-        <div className={`mt-auto flex items-center pt-3 ${rail ? 'flex-col gap-1' : 'gap-2 rounded-lg bg-surface-container py-1.5 pl-1.5 pr-1'}`}>
-          <span
-            title={rail ? `${me.display_name} · ${roleName[me.role]}` : undefined}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-title-small uppercase text-on-primary"
-          >
-            {me.display_name.trim()[0]}
-          </span>
-          {!rail && (
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-label-large">{me.display_name}</p>
-              <p className="text-body-small text-on-surface-variant">{roleName[me.role]}</p>
-            </div>
-          )}
+        <span className="flex-1" />
+        <MemberMenu rail={rail} />
+      </nav>
+      <div className="my-2 mr-2 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-surface-container-lowest shadow-lift">
+        {title && (
+          <header className="flex h-[52px] shrink-0 items-center gap-3 border-b border-hairline px-5">
+            <h1 className="min-w-0 flex-1 truncate text-title-medium">{title}</h1>
+            {actions}
+          </header>
+        )}
+        <main className={`flex min-h-0 flex-1 ${flush ? '' : 'flex-col overflow-y-auto p-5'}`}>{children}</main>
+      </div>
+    </div>
+  )
+}
+
+/** "Tìm tài khoản" with "/": the account search in a popover. */
+function NavSearch({ rail }: { rail: boolean }) {
+  const [open, setOpen] = useState(false)
+  const close = useCallback(() => setOpen(false), [])
+  const ref = useDismiss<HTMLDivElement>(open, close)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === '/' && !typing(e)) {
+        e.preventDefault()
+        setOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+  return (
+    <div ref={ref} className="relative mt-3">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        title={rail ? 'Tìm tài khoản (/)' : undefined}
+        className={`flex h-8 items-center gap-2 rounded-sm border border-hairline bg-surface-container-lowest text-body-medium text-on-surface-variant ${
+          rail ? 'w-8 justify-center' : 'w-full px-2'
+        }`}
+      >
+        <IconSearch width={16} height={16} />
+        {!rail && (
+          <>
+            <span className="flex-1 text-left">Tìm tài khoản</span>
+            <Kbd>/</Kbd>
+          </>
+        )}
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-30 mt-1 w-[340px] rounded-xl bg-surface-container-lowest p-1.5 shadow-float">
+          <AccountSearch
+            onPick={(a) => {
+              rememberAccount(a)
+              close()
+            }}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** The member at the bottom of the nav, with the theme and sign-out in a menu. */
+function MemberMenu({ rail }: { rail: boolean }) {
+  const me = useMe()
+  const navigate = useNavigate()
+  const forget = useForgetMe()
+  const [open, setOpen] = useState(false)
+  const close = useCallback(() => setOpen(false), [])
+  const ref = useDismiss<HTMLDivElement>(open, close)
+
+  async function signOut() {
+    await post('/console/logout').catch(() => undefined)
+    forget()
+    navigate('/signin', { replace: true })
+  }
+
+  return (
+    <div ref={ref} className="relative mt-3">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        title={rail ? `${me.display_name} · ${roleName[me.role]}` : undefined}
+        className={`flex h-10 items-center gap-2.5 rounded-sm text-left hover:bg-surface-container-low ${rail ? 'w-10 justify-center' : 'w-full px-2'}`}
+      >
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-label-medium uppercase text-on-primary">
+          {me.display_name.trim()[0]}
+        </span>
+        {!rail && (
+          <>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-label-large">{me.display_name}</span>
+              <span className="block text-label-small font-normal text-on-surface-variant">{roleName[me.role]}</span>
+            </span>
+            <IconUnfold width={16} height={16} className="text-on-surface-variant" />
+          </>
+        )}
+      </button>
+      {open && (
+        <div className="absolute bottom-full left-0 z-30 mb-1 w-[208px] rounded-xl bg-surface-container-lowest p-1.5 shadow-float">
+          <ThemeSwitch />
           <button
-            title="Đăng xuất"
             onClick={signOut}
-            className="state-layer flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-on-surface-variant"
+            className="mt-1 flex h-8 w-full items-center gap-2 rounded-sm px-2 text-label-large text-on-surface-variant hover:bg-surface-container-low"
           >
-            <IconLogout width={20} height={20} />
+            <IconLogout width={18} height={18} />
+            Đăng xuất
           </button>
         </div>
-      </nav>
-      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <header className="flex h-12 shrink-0 items-center gap-4 px-5">
-          <h1 className="flex-1 text-title-large">{title}</h1>
-          <ThemeSwitch />
-        </header>
-        <main className="flex min-h-0 flex-1 flex-col px-5 pb-5">{children}</main>
-      </div>
+      )}
     </div>
   )
 }

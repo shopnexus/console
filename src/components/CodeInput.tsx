@@ -26,7 +26,7 @@ export function CodeInput({ value, onChange, onComplete, error, autoFocus, label
         ? 'border-2 border-primary bg-surface-container-lowest'
         : digit
           ? 'border border-outline bg-surface-container-lowest'
-          : 'border border-outline-variant bg-surface-container-low'
+          : 'border border-hairline bg-surface-container-low'
     return (
       <div key={i} className={`flex h-16 w-14 items-center justify-center rounded-md ${border}`}>
         {digit ? (
@@ -41,7 +41,7 @@ export function CodeInput({ value, onChange, onComplete, error, autoFocus, label
     <div className="relative w-fit" onClick={() => input.current?.focus()}>
       <div className="flex items-center gap-2" aria-hidden>
         {boxes.slice(0, 3)}
-        <span className="mx-1 h-0.5 w-3 rounded-full bg-outline-variant" />
+        <span className="mx-1 h-0.5 w-3 rounded-full bg-hairline" />
         {boxes.slice(3)}
       </div>
       <input

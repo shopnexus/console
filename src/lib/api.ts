@@ -100,3 +100,6 @@ export interface Page<T> {
 }
 
 export const roleName: Record<Role, string> = { moderator: 'Kiểm duyệt viên', admin: 'Quản trị viên' }
+
+/** The first 8 characters of an opaque id, for a row ("7b1c22e0"). */
+export const shortId = (id: string) => id.slice(0, 8)

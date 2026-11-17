@@ -129,7 +129,7 @@ function Queue({
       aria-pressed={k === kind}
       onClick={() => onKind(k === kind ? null : k)}
       className={`state-layer inline-flex h-7 items-center gap-1 rounded-sm px-2.5 text-label-medium ${
-        k === kind ? 'bg-secondary-container text-on-secondary-container' : 'border border-outline-variant text-on-surface-variant'
+        k === kind ? 'bg-secondary-container text-on-secondary-container' : 'border border-hairline text-on-surface-variant'
       }`}
     >
       {k === kind && <IconCheck width={14} height={14} />}
@@ -137,7 +137,7 @@ function Queue({
     </button>
   )
   return (
-    <section className="flex w-80 shrink-0 flex-col overflow-hidden rounded-lg bg-surface-container-lowest">
+    <section className="flex w-80 shrink-0 flex-col overflow-hidden border-r border-hairline">
       <div className="space-y-2 p-2 pb-1.5">
         <div className="flex rounded-full border border-outline">
           {segment('open', 'Đang mở', open.data?.open)}
@@ -162,7 +162,7 @@ function Queue({
           </button>
         )}
       </div>
-      <p className="flex items-center gap-2 border-t border-outline-variant px-3 py-2 text-body-small text-on-surface-variant">
+      <p className="flex items-center gap-2 border-t border-hairline px-3 py-2 text-body-small text-on-surface-variant">
         <Kbd>j</Kbd>
         <Kbd>k</Kbd>
         Ticket trước, sau
@@ -236,7 +236,7 @@ function Facts({ d }: { d: ConsoleTicketDetail }) {
   const navigate = useNavigate()
   const p = d.ticket.person
   return (
-    <aside className="w-64 shrink-0 space-y-2 overflow-y-auto border-l border-outline-variant p-2">
+    <aside className="w-64 shrink-0 space-y-2 overflow-y-auto border-l border-hairline p-2">
       <SideCard title="Người gửi">
         <div className="mb-1 flex items-center gap-2.5 py-1">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-container-high text-label-large text-on-surface-variant">
@@ -426,7 +426,7 @@ function Panel({ id }: { id: string }) {
   const [text, setText] = useState('')
   if (!detail.data) {
     return (
-      <section className="flex flex-1 items-center justify-center rounded-lg bg-surface-container-lowest">
+      <section className="flex flex-1 items-center justify-center">
         {detail.isError && <Notice>Không mở được ticket này.</Notice>}
       </section>
     )
@@ -445,8 +445,8 @@ function Panel({ id }: { id: string }) {
   }
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-surface-container-lowest">
-      <header className="flex items-center gap-2.5 border-b border-outline-variant px-3 py-2">
+    <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <header className="flex items-center gap-2.5 border-b border-hairline px-3 py-2">
         <KindBadge kind={t.kind} size={32} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -493,7 +493,7 @@ function Panel({ id }: { id: string }) {
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
           <Thread d={d} />
-          <form onSubmit={send} className="border-t border-outline-variant p-2">
+          <form onSubmit={send} className="border-t border-hairline p-2">
             <div className="flex items-end gap-2 rounded-lg bg-surface-container-high py-1 pl-3 pr-1">
               <textarea
                 value={text}
@@ -556,10 +556,10 @@ export function Support() {
   }, [queue.items, id, navigate])
 
   return (
-    <Shell title="Hỗ trợ" railFirst>
-      <div className="flex min-h-[560px] flex-1 gap-2">
+    <Shell title="Hỗ trợ" railFirst flush>
+      <div className="flex min-h-[560px] min-w-0 flex-1">
         <Queue status={status} kind={kind} active={id} onStatus={setStatus} onKind={setKind} />
-        {id ? <Panel key={id} id={id} /> : <section className="flex-1 rounded-lg bg-surface-container-lowest" />}
+        {id ? <Panel key={id} id={id} /> : <section className="flex-1" />}
       </div>
     </Shell>
   )

@@ -1,29 +1,30 @@
 import { useCallback, useState } from 'react'
 import type { ReactNode } from 'react'
-import IconActions from '~icons/material-symbols/history-rounded'
-import IconAccounts from '~icons/material-symbols/group-outline-rounded'
-import IconHome from '~icons/material-symbols/home-rounded'
-import IconMembers from '~icons/material-symbols/badge-outline-rounded'
-import IconReports from '~icons/material-symbols/flag-outline-rounded'
-import IconSupport from '~icons/material-symbols/support-agent-rounded'
+import IconAgent from '~icons/material-symbols/auto-awesome-outline-rounded'
+import IconAccounts from '~icons/material-symbols-light/group-outline-rounded'
+import IconHome from '~icons/material-symbols-light/home-outline-rounded'
+import IconReports from '~icons/material-symbols-light/flag-outline-rounded'
+import IconSupport from '~icons/material-symbols-light/support-agent-outline'
 
 export interface NavItem {
   to: string
   label: string
   icon: ReactNode
-  adminOnly?: boolean
-  /** No screen yet: shown, not followed. */
+  /** No screen yet: shown greyed with "Sắp có", not followed. */
   soon?: boolean
 }
 
-/** The work areas. The audit log and the members are admins' (GET /v1/console/actions and /members); Hỗ trợ is everyone's. */
+/**
+ * The work areas. Báo cáo waits for the report cases (Phase 3) and Tài khoản
+ * for its page. Nhật ký thao tác and Nhân viên join, for admins, once they
+ * have pages; Trang chủ shows both meanwhile.
+ */
 export const navigation: NavItem[] = [
-  { to: '/', label: 'Trang chủ', icon: <IconHome width={20} height={20} /> },
-  { to: '/support', label: 'Hỗ trợ', icon: <IconSupport width={20} height={20} /> },
-  { to: '/accounts', label: 'Tài khoản', icon: <IconAccounts width={20} height={20} />, soon: true },
-  { to: '/actions', label: 'Nhật ký thao tác', icon: <IconActions width={20} height={20} />, adminOnly: true, soon: true },
-  { to: '/members', label: 'Nhân viên', icon: <IconMembers width={20} height={20} />, adminOnly: true, soon: true },
-  { to: '/reports', label: 'Báo cáo', icon: <IconReports width={20} height={20} />, soon: true },
+  { to: '/', label: 'Trang chủ', icon: <IconHome width={18} height={18} /> },
+  { to: '/support', label: 'Hỗ trợ', icon: <IconSupport width={18} height={18} /> },
+  { to: '/reports', label: 'Báo cáo', icon: <IconReports width={18} height={18} />, soon: true },
+  { to: '/agent', label: 'Agent', icon: <IconAgent width={18} height={18} /> },
+  { to: '/accounts', label: 'Tài khoản', icon: <IconAccounts width={18} height={18} />, soon: true },
 ]
 
 const collapsedKey = 'console-nav-collapsed'

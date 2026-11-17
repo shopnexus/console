@@ -174,7 +174,7 @@ export function SignIn() {
 /** The start half: the mark, the mascot and the name, from expanded up. */
 function BrandPanel() {
   return (
-    <aside className="relative hidden w-[40%] max-w-[576px] shrink-0 flex-col overflow-hidden rounded-r-xl-plus bg-primary-container px-14 py-12 lg:flex">
+    <aside className="relative hidden w-[40%] max-w-[576px] shrink-0 flex-col overflow-hidden rounded-r-2xl bg-primary-container px-14 py-12 lg:flex">
       <Shape name="Cookie9Sided" size={520} className="absolute -right-40 top-28 text-inverse-primary opacity-[.16]" />
       <Shape name="Clover4Leaf" size={120} className="absolute right-16 top-12 text-on-primary-container opacity-30" />
       <Shape name="Sunny" size={76} className="absolute left-[300px] top-[300px] text-tertiary-fixed opacity-50" />
@@ -221,7 +221,7 @@ function PasswordField(props: {
 
 function EmailChip({ email, onChange }: { email: string; onChange: () => void }) {
   return (
-    <div className="inline-flex h-10 items-center gap-2 rounded-full border border-outline-variant bg-surface-container-lowest pl-1 pr-1">
+    <div className="inline-flex h-10 items-center gap-2 rounded-full border border-hairline bg-surface-container-lowest pl-1 pr-1">
       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary-container text-title-small uppercase text-on-secondary-container">
         {email.trim()[0] ?? ''}
       </span>
@@ -237,13 +237,13 @@ function EnrollCard({ email, enrollment }: { email: string; enrollment: Enrollme
   const [copied, setCopied] = useState(false)
   const grouped = enrollment.secret.match(/.{1,4}/g)?.join(' ') ?? enrollment.secret
   return (
-    <div className="mt-5 rounded-xl border border-outline-variant bg-surface-container-lowest p-5">
+    <div className="mt-5 rounded-xl border border-hairline bg-surface-container-lowest p-5">
       <div className="flex justify-center">
         <div className="rounded-lg bg-white p-2.5">
           <QrCode value={enrollment.otpauth_uri} size={156} />
         </div>
       </div>
-      <div className="mt-4 border-t border-outline-variant pt-3">
+      <div className="mt-4 border-t border-hairline pt-3">
         <div className="flex items-center gap-2 rounded-sm bg-surface-container py-1.5 pl-3 pr-1">
           <span className="flex-1 break-all font-mono text-body-large tracking-wide">{grouped}</span>
           <button
