@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import Icons from 'unplugin-icons/vite'
@@ -9,4 +10,6 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), Icons({ compiler: 'jsx', jsx: 'react' })],
   // The server's .env.example allows CORS from http://localhost:5173 only.
   server: { port: 5173, strictPort: true },
+  // Tests run in node; api.ts finds the API from VITE_API_URL there.
+  test: { env: { VITE_API_URL: 'http://api.test/v1' } },
 })
