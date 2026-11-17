@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 tailwind.config = { theme: { extend: {
@@ -36,28 +36,34 @@ tailwind.config = { theme: { extend: {
 
   html, body { background: var(--md-surface-container); }
   body, body * { font-family: "Geist", system-ui, sans-serif; letter-spacing: -0.012em; }
-  body .mono, body .mono * { font-family: "Geist Mono", ui-monospace, monospace; letter-spacing: 0; }
+  body .mono, body .mono * { font-variant-numeric: tabular-nums; }
   .tnum { font-variant-numeric: tabular-nums; }
   .tight { letter-spacing: -0.022em !important; }
   .hair { border-color: color-mix(in srgb, var(--md-outline-variant) 70%, white); }
   .lift { box-shadow: 0 1px 2px rgba(16, 24, 22, .06), 0 0 0 1px rgba(16, 24, 22, .06); }
   .hov:hover { background: var(--md-surface-container-low); }
+  .band { background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--md-primary) 9%, transparent), transparent 60%),
+    radial-gradient(80% 120% at 100% 0%, color-mix(in srgb, var(--md-tertiary-fixed) 45%, transparent), transparent 55%); }
+  .band-error { background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--md-error) 10%, transparent), transparent 60%),
+    radial-gradient(80% 120% at 100% 0%, color-mix(in srgb, var(--md-error-container) 70%, transparent), transparent 55%); }
+  .dots { background-image: radial-gradient(circle, rgba(16,24,22,.07) 1px, transparent 1px); background-size: 16px 16px;
+    mask-image: linear-gradient(to bottom, black, transparent); }
 
 </style>
 </head>
 <body>
 <div class="relative flex h-[900px] w-[1440px] flex-col bg-surface text-on-surface bg-[radial-gradient(circle,rgba(16,24,22,.08)_1px,transparent_1px)] [background-size:20px_20px]">
   <header class="flex h-16 items-center px-8"><a id="brand" href="#console" class="flex items-center gap-2"><img src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/d0e7dcea-fa3d-477d-9b2a-e072f17a3ee7/brand-assets/console-logo/favicon.svg" alt="ShopNexus" class="h-6 w-6 rounded-[6px]">
-    <span class="tight text-[14px] font-semibold">ShopNexus</span><span class="text-[13px] text-on-surface-variant">Console</span></a><span class="flex-1"></span>
+    <span class="tight text-[16px] font-semibold">ShopNexus</span><span class="text-[15px] text-on-surface-variant">Console</span></a><span class="flex-1"></span>
     <div class="flex h-8 rounded-md border hair bg-surface-container-lowest p-0.5"><a id="theme-0" href="#theme-0" class="flex w-8 items-center justify-center rounded-[5px] bg-surface-container"><iconify-icon icon="material-symbols-light:computer-outline" width="16" height="16" class="block shrink-0 "></iconify-icon></a><a id="theme-1" href="#theme-1" class="flex w-8 items-center justify-center rounded-[5px] text-on-surface-variant"><iconify-icon icon="material-symbols-light:light-mode-outline" width="16" height="16" class="block shrink-0 "></iconify-icon></a><a id="theme-2" href="#theme-2" class="flex w-8 items-center justify-center rounded-[5px] text-on-surface-variant"><iconify-icon icon="material-symbols-light:dark-mode-outline" width="16" height="16" class="block shrink-0 "></iconify-icon></a></div></header>
   <main class="flex flex-1 items-center justify-center pb-16">
-    <section class="rounded-[14px] border hair bg-surface-container-lowest p-7 shadow-[0_1px_2px_rgba(16,24,22,.06),0_12px_32px_rgba(16,24,22,.06)]" style="width:380px"><div class="flex h-10 items-center gap-2.5 rounded-md border hair bg-surface-container-low pl-1.5 pr-1"><span class="flex shrink-0 items-center justify-center rounded-full font-semibold bg-primary text-on-primary" style="width:26px;height:26px;font-size:11px">L</span>
-  <span class="min-w-0 flex-1 truncate text-[13px]">lan.nguyen@shopnexus.id.vn</span>
-  <a id="change-email" href="#change-email" class="hov rounded-md px-2 py-1 text-[12.5px] font-medium text-primary">Đổi</a></div><h1 class="tight mt-6 text-[20px] font-semibold">Mã xác thực</h1>
-<div class="mt-5"><div class="flex items-center gap-1.5"><span class="mono flex h-12 w-11 items-center justify-center rounded-md border hair bg-surface-container-lowest text-[20px]">4</span><span class="mono flex h-12 w-11 items-center justify-center rounded-md border hair bg-surface-container-lowest text-[20px]">8</span><span class="mono flex h-12 w-11 items-center justify-center rounded-md border hair bg-surface-container-lowest text-[20px]">2</span><span class="mx-0.5 h-px w-2.5 bg-outline-variant"></span><span class="mono flex h-12 w-11 items-center justify-center rounded-md border border-primary ring-[3px] ring-primary/15 bg-surface-container-lowest text-[20px]"><span class='h-5 w-px animate-pulse bg-on-surface'></span></span><span class="mono flex h-12 w-11 items-center justify-center rounded-md border hair bg-surface-container-lowest text-[20px]"></span><span class="mono flex h-12 w-11 items-center justify-center rounded-md border hair bg-surface-container-lowest text-[20px]"></span></div></div>
-<p class="mt-3 flex items-center gap-1.5 text-[12.5px] text-on-surface-variant"><iconify-icon icon="material-symbols-light:timer-outline" width="15" height="15" class="block shrink-0 "></iconify-icon>Mã đổi sau <span class="tnum">18</span> giây</p>
-<div class="mt-6"><a id="sign-in" href="#sign-in" class="flex h-10 w-full items-center justify-center gap-1.5 rounded-md bg-on-surface text-[14px] font-medium text-surface">Đăng nhập</a></div></section></main>
-  <footer class="mono pb-6 text-center text-[11.5px] text-on-surface-variant">console.shopnexus.id.vn</footer>
+    <section class="rounded-[14px] border hair bg-surface-container-lowest p-7 shadow-[0_1px_2px_rgba(16,24,22,.06),0_12px_32px_rgba(16,24,22,.06)]" style="width:380px"><div class="flex h-10 items-center gap-2.5 rounded-md border hair bg-surface-container-low pl-1.5 pr-1"><span class="relative inline-flex shrink-0"><span class="flex items-center justify-center rounded-full font-semibold bg-primary text-on-primary" style="width:26px;height:26px;font-size:11px">L</span></span>
+  <span class="min-w-0 flex-1 truncate text-[15px]">lan.nguyen@shopnexus.id.vn</span>
+  <a id="change-email" href="#change-email" class="hov rounded-md px-2 py-1 text-[14px] font-medium text-primary">Đổi</a></div><h1 class="tight mt-6 text-[22px] font-semibold">Mã xác thực</h1>
+<div class="mt-5"><div class="flex items-center gap-1.5"><span class="mono flex h-12 w-11 items-center justify-center rounded-md border hair bg-surface-container-lowest text-[22px]">4</span><span class="mono flex h-12 w-11 items-center justify-center rounded-md border hair bg-surface-container-lowest text-[22px]">8</span><span class="mono flex h-12 w-11 items-center justify-center rounded-md border hair bg-surface-container-lowest text-[22px]">2</span><span class="mx-0.5 h-px w-2.5 bg-outline-variant"></span><span class="mono flex h-12 w-11 items-center justify-center rounded-md border border-primary ring-[3px] ring-primary/15 bg-surface-container-lowest text-[22px]"><span class='h-5 w-px animate-pulse bg-on-surface'></span></span><span class="mono flex h-12 w-11 items-center justify-center rounded-md border hair bg-surface-container-lowest text-[22px]"></span><span class="mono flex h-12 w-11 items-center justify-center rounded-md border hair bg-surface-container-lowest text-[22px]"></span></div></div>
+<p class="mt-3 flex items-center gap-1.5 text-[14px] text-on-surface-variant"><iconify-icon icon="material-symbols-light:timer-outline" width="15" height="15" class="block shrink-0 "></iconify-icon>Mã đổi sau <span class="tnum">18</span> giây</p>
+<div class="mt-6"><a id="sign-in" href="#sign-in" class="flex h-10 w-full items-center justify-center gap-1.5 rounded-md bg-on-surface text-[16px] font-medium text-surface">Đăng nhập</a></div></section></main>
+  <footer class="mono pb-6 text-center text-[13px] text-on-surface-variant">console.shopnexus.id.vn</footer>
 </div>
 </body>
 </html>

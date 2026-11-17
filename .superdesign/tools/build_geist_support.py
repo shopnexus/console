@@ -16,7 +16,7 @@ import sys
 from html import escape
 from pathlib import Path
 
-from build_geist import CSS, FONTS, REPLY_1, agent_chat, avatar, block, dot, gi, kbd, mine, page, pill, reply, row, src, tools
+from build_geist import CSS, FONTS, REPLY_1, agent_chat, avatar, bigger, block, dot, gi, kbd, mine, page, picked, picked_bar, pill, reply, row, src, tools
 from common import DASHBOARDS, LOGO, MEMBER, head
 
 OUT = Path(__file__).resolve().parent.parent / "mockups"
@@ -87,11 +87,11 @@ TONE = {"Chưa nhận hàng": "bg-primary", "Xin thêm hãng": "bg-tertiary", "K
 
 
 def resolved_queue():
-    rows = "".join(f"""<a id="q-{tid}" href="#q-{tid}" class="{"bg-surface-container" if tid == "r1" else "hov"} flex gap-3 rounded-[8px] px-3 py-2.5">{avatar(ch)}
+    rows = "".join(f"""<a id="q-{tid}" href="#q-{tid}" class="{picked(tid == "r1")} flex gap-3 rounded-[10px] px-3 py-2.5">{picked_bar(tid == "r1")}{avatar(ch, 34, key=n)}
   <span class="min-w-0 flex-1"><span class="flex items-center gap-2"><span class="min-w-0 flex-1 truncate text-[13.5px] font-semibold">{escape(n)}</span><span class="tnum text-[12px] text-on-surface-variant">{w}</span></span>
   <span class="mt-0.5 block truncate text-[12.5px] text-on-surface-variant">{escape(line)}</span>
   <span class="mt-1 flex items-center gap-1.5 text-[11.5px] text-on-surface-variant">{dot(TONE[k])}{k}</span></span></a>""" for tid, ch, n, line, w, k in RESOLVED)
-    return f"""<section class="flex w-[300px] shrink-0 flex-col border-r hair">
+    return f"""<section class="flex w-[320px] shrink-0 flex-col border-r hair">
   <div class="flex items-center gap-2 p-3"><div class="flex h-8 flex-1 rounded-md bg-surface-container p-0.5 text-[12.5px] font-medium">
     <a id="tab-open" href="#tab-open" class="flex flex-1 items-center justify-center gap-1.5 px-2 text-on-surface-variant">Đang mở <span class="tnum">7</span></a>
     <a id="tab-resolved" href="#tab-resolved" class="flex flex-1 items-center justify-center rounded-[6px] bg-surface-container-lowest px-2 lift">Đã xử lý</a></div>
@@ -159,11 +159,11 @@ def handoff(title, current, body, role="moderator"):
     <aside class="w-[240px] rounded-[14px] border hair bg-surface-container-lowest p-2"><p class="px-2 pb-1 pt-1.5 text-[12px] font-medium text-on-surface-variant">Công cụ</p>{others}</aside>
   </main>
 </div>"""
-    return f"""{head(title + " · Console", CSS + HANDOFF_CSS).replace('<script src="https://cdn.tailwindcss.com">', FONTS + '\n<script src="https://cdn.tailwindcss.com">', 1)}<body>
+    return bigger(f"""{head(title + " · Console", CSS + HANDOFF_CSS).replace('<script src="https://cdn.tailwindcss.com">', FONTS + '\n<script src="https://cdn.tailwindcss.com">', 1)}<body>
 {html}
 </body>
 </html>
-"""
+""")
 
 
 HANDOFF_CSS = """

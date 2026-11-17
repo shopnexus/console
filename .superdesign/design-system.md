@@ -8,10 +8,10 @@ viên").
 
 The colour roles come from the Android app's system,
 `app/.superdesign/design-system.md`. The look is the console's own: Geist
-since 2026-11-16, replacing the M3 look the earlier drafts used (their
-versions stay on the canvas). `console/DESIGN.md` and `src/styles/tokens.css`
-still describe the M3 look and change when the Geist screens are built.
-`tools/build_geist.py` holds the Geist pieces for the mockups.
+since 2026-11-16, with the larger type and the Records rules below since
+2026-11-17 (earlier versions stay on the canvas). `tools/build_geist.py`
+holds the shared pieces for the mockups: the nav, `avatar` with its tints,
+`figure`, `chip`, `side_record`, `picked`, and `bigger()` for the type scale.
 
 ## Tokens
 
@@ -20,10 +20,11 @@ still describe the M3 look and change when the Geist screens are built.
   a right away from someone; `tertiary` appears only for a listing's price.
   The page is `surfaceContainer`; the work area is one `surfaceContainerLowest`
   card with 12 px corners and a hairline ring.
-- Type: Geist, Geist Mono for ids, codes, keys and version tags, tabular
-  figures for times and counts. Letter spacing −0.012em, −0.022em on titles.
-  Body 13–14 px, secondary lines 12 px, page and card titles 14–15 px
-  semibold, sign-in titles 20 px, figures on tiles 28 px.
+- Type: Geist for all text, ids, codes, keys and version tags included, with
+  tabular figures for them and for times and counts. No monospace face.
+  Letter spacing −0.012em, −0.022em on titles. Body 15–16 px, secondary
+  lines 13 px, page and card titles 16–17 px semibold, sign-in titles 22 px,
+  figures on tiles 32 px.
 - Borders: hairlines in `outlineVariant` mixed 70 % with white. Depth is a
   1 px ring and a 1–2 px shadow (`lift`); a menu adds a soft 12/32 px shadow.
 - Corners: 5–6 px for controls, chips and keys, 8 px for tiles and avatars of
@@ -46,18 +47,18 @@ member sits at the bottom. Each page's header is 52 px inside the work card.
 ## Sign-in and dashboard handoff
 
 - One centred card on `surface` with a dotted grid, the mark at the top start,
-  the theme switch at the top end, the host in mono at the bottom. No app
+  the theme switch at the top end, the host at the bottom. No app
   shell.
 - Steps: password, code; the first sign-in adds a new password and TOTP
   enrolment, shown as a two-step indicator. The member's email stays visible
   as a row with "Đổi" once typed.
-- The TOTP code is six 44 × 48 boxes in Geist Mono, in two groups of three.
+- The TOTP code is six 44 × 48 boxes in Geist with tabular figures, in two groups of three.
   Enrolment shows the QR and the key with a copy button side by side.
 - Refusals say only that the sign-in was refused, with no detail about which
   part was wrong; a lock says when to try again.
 - The dashboard handoff is a centred card on the same dotted surface with the
   console mark, a moving path and the dashboard's icon, its name and its
-  host in monospace. A refusal for role adds "Cần quyền Quản trị viên".
+  host. A refusal for role adds "Cần quyền Quản trị viên".
 
 ## Trang chủ
 
@@ -82,7 +83,7 @@ tools and proposes; the member acts. Most work happens in a chat with it.
 - A record opens on the agent's chat: a ticket on its read and the reply it
   wrote, a report on its case read. Each answer starts with the sources it
   read as 24 px chips, then one or two plain sentences, then blocks.
-- Blocks are 12 px cards with a header (icon, title, `v1` in mono), a body
+- Blocks are 12 px cards with a header (icon, title, `v1` with tabular figures), a body
   and a footer of actions on `surfaceContainerLow`:
   - evidence: an icon tile, the finding as title, the proof (photos with the
     match score, the price against the guide, a quoted message), "Mở ↗";
@@ -118,7 +119,7 @@ tools and proposes; the member acts. Most work happens in a chat with it.
   answer in it as ShopNexus; the person sees only "ShopNexus", and the
   member's name shows here under each reply ("Lan · 09:05") and in the
   audit log.
-- Three panes in the work card: the 300 px queue (Đang mở and Đã xử lý as a
+- Three panes in the work card: the 320 px queue (Đang mở and Đã xử lý as a
   segmented control, a kind filter, rows with the person, the last line, the
   kind and "Soạn sẵn" when a reply is ready; `j` and `k` move), the agent's
   chat in the middle, and a 340 px column with two tabs.
@@ -139,6 +140,62 @@ carry the count of reports, the reasons and the agent's proposal. The middle
 pane is the case's chat: the agent's case read (evidence, then the
 proposal), then the member's questions. A 300 px column holds the account,
 the people who reported with their notes, and the reported listing.
+
+## Records
+
+Since 2026-11-17 the pages carry more depth than lists of facts. The rules
+hold on every page: Trang chủ, Hỗ trợ, Báo cáo, Agent and Tài khoản.
+
+- Initials: a record's initial takes one of four tints from the brand roles
+  (`primary` at 10 %, `secondaryContainer`, `tertiaryFixed`,
+  `inversePrimary` at 40 %), picked from its id, so it keeps its colour on
+  every screen. A dot at the bottom end gives the status: `primary` active,
+  `error` suspended. Members' initials are filled `primary`.
+- Lists and queues: 34–36 px initials, the date at the end of the first
+  line. The picked row is `primary` at 6 % with a 3 px `primary` bar at the
+  start, in every list (queues, Việc tiếp theo, the agent's chats). A report
+  case's initial carries its report count as a badge, `error` from three. A
+  row in Việc tiếp theo carries its kind as a small badge on the initial.
+- Side columns open on the person as a small hero band (`side_record`): the
+  44 px initial with its status dot, name, id, chips and three figures.
+- Trang chủ's tiles are figure cards with the last 12 days as bars.
+- A record opens on a hero band: two soft radial washes (`primary` and
+  `tertiaryFixed`, or `error` and `errorContainer` for a suspended account)
+  under a dotted grid that fades down. The band holds the 72 px initial, the
+  name with a status pill, the id with a copy button, a row of chips, and
+  the actions at the end. The header above it is a breadcrumb with up and
+  down for `k` and `j`.
+- Figures are cards: a 28 px tinted icon tile, the label, the number at
+  28 px and 12 bars for the last 90 days. A figure that counts against the
+  person is in `error`.
+- Lịch sử is a timeline: a 28 px badge per kind (`errorContainer` lock for a
+  suspension, `primary` lock-open for its end, neutral for the account's
+  creation), the member's initial, what was done, the time, and the reason
+  as a quote with a coloured start border.
+- Popovers: 14 px corners, a tinted icon tile beside the title, choices as
+  small cards that carry their result (a term with its end date), and the
+  actions on a `surfaceContainerLow` footer.
+
+## Tài khoản
+
+- Two panes in the work card: the 340 px list and the account beside it.
+  The list has Tất cả (newest first) and Đang khoá (the term that ends first
+  first, with the days left, its count in an `error` badge) as a segmented
+  control, and the search by id or phone number. On this page `/` and the
+  nav's "Tìm tài khoản" focus that search; elsewhere `/` opens the nav's
+  popover.
+- The account: the hero band with the chips (seller or buyer, verified
+  phone, earlier suspensions), four figures (orders bought, orders sold,
+  the refusal rate, reports), Lịch sử beside a 272 px column with Thông
+  tin and Định danh (the phone with its verified mark, Google).
+- Actions: Hỏi agent (opens Agent with the account attached) and Tạm khoá
+  in an `error` outline. Tạm khoá opens a popover: the terms 1 ngày, 7 ngày,
+  30 ngày and Không hạn as cards with their end dates, the reason with
+  "<name> thấy lý do này" and a count to 280, then Huỷ and "Tạm khoá 7 ngày"
+  filled `error`.
+- A suspended account: the `error` band, then a card with the end, the days
+  left in `error`, a bar for the time served, the start and who suspended
+  it for how long. Mở khoá is the filled `primary` action.
 
 ## Copy
 

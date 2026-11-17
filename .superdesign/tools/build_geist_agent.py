@@ -13,7 +13,7 @@ from html import escape
 from pathlib import Path
 
 from agent import ACCOUNTS, THREADS
-from build_geist import CSS, FONTS, avatar, dot, gi, kbd, mine, nav, pill, src, tools
+from build_geist import CSS, FONTS, avatar, bigger, chip, dot, gi, kbd, mine, nav, picked, picked_bar, pill, side_record, src, tools
 from build_reports import CASES, PHOTO, REASONS
 from common import head
 
@@ -23,14 +23,14 @@ SPARK_O = "material-symbols:auto-awesome-outline-rounded"
 
 
 def shell(title, active, inner):
-    return f"""{head(title + " · Console", CSS).replace('<script src="https://cdn.tailwindcss.com">', FONTS + '\n<script src="https://cdn.tailwindcss.com">', 1)}<body>
+    return bigger(f"""{head(title + " · Console", CSS).replace('<script src="https://cdn.tailwindcss.com">', FONTS + '\n<script src="https://cdn.tailwindcss.com">', 1)}<body>
 <div class="flex h-[900px] w-[1440px] bg-surface-container text-on-surface">
   {nav(active)}
   <div class="my-2 mr-2 flex min-w-0 flex-1 overflow-hidden rounded-[12px] bg-surface-container-lowest lift">{inner}</div>
 </div>
 </body>
 </html>
-"""
+""")
 
 
 def check(state, size=16):
@@ -121,7 +121,7 @@ def threads(active="g1"):
     groups = []
     for day, rows in THREADS:
         items = "".join(
-            f'<a id="thread-{tid}" href="#thread-{tid}" class="{"bg-surface-container" if tid == active else "hov"} flex h-8 items-center gap-2 rounded-md px-2 text-[13px]">'
+            f'<a id="thread-{tid}" href="#thread-{tid}" class="{picked(tid == active)} flex h-8 items-center gap-2 rounded-md px-2 text-[13px]">{picked_bar(tid == active).replace("inset-y-2.5", "inset-y-1.5")}'
             f'<span class="text-on-surface-variant">{gi(ic.replace("-rounded", "") if "outline" in ic else ic, 16)}</span><span class="min-w-0 flex-1 truncate">{escape(t)}</span></a>'
             for tid, t, ic, _ in rows)
         groups.append(f'<p class="px-2 pb-1 pt-4 text-[11.5px] font-medium text-on-surface-variant">{day}</p>{items}')
@@ -288,14 +288,16 @@ def report_queue(active="c1"):
         chips = " · ".join(f'{REASONS[k][0]}{f" {n}" if n > 1 else ""}' for k, n in reasons.items())
         prop = (f'<span class="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap {"text-error" if tone == "error" else "text-on-surface-variant"}">{gi(SPARK_O, 13)}{proposal}</span>'
                 if proposal else '<span class="ml-auto block h-1 w-14 overflow-hidden rounded-full bg-surface-container"><span class="block h-full w-1/3 animate-pulse rounded-full bg-primary"></span></span>')
-        rows.append(f"""<a id="case-{cid}" href="#case-{cid}" class="{"bg-surface-container" if cid == active else "hov"} flex gap-3 rounded-[8px] px-3 py-2.5">
-  <span class="tnum flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-container-high text-[13px] font-semibold text-on-surface-variant">{sum(reasons.values())}</span>
+        n = sum(reasons.values())
+        rows.append(f"""<a id="case-{cid}" href="#case-{cid}" class="{picked(cid == active)} flex gap-3 rounded-[10px] px-3 py-2.5">{picked_bar(cid == active)}
+  <span class="relative inline-flex shrink-0">{avatar(name.strip()[0], 34, key=name)}
+    <span class="tnum absolute -bottom-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10.5px] font-semibold ring-2 ring-surface-container-lowest {"bg-error text-on-error" if n > 2 else "bg-surface-container-highest text-on-surface"}">{n}</span></span>
   <span class="min-w-0 flex-1">
     <span class="flex items-center gap-2"><span class="min-w-0 flex-1 truncate text-[13.5px] font-semibold">{escape(name)}</span><span class="tnum text-[12px] text-on-surface-variant">{when}</span></span>
     <span class="mt-0.5 block truncate text-[12.5px]">{escape(what)}</span>
     <span class="mt-1 flex items-center gap-1.5 text-[11.5px] text-on-surface-variant">{dot("bg-error" if "scam" in reasons else "bg-tertiary")}<span class="min-w-0 truncate">{chips}</span>{prop}</span>
   </span></a>""")
-    return f"""<section class="flex w-[300px] shrink-0 flex-col border-r hair">
+    return f"""<section class="flex w-[320px] shrink-0 flex-col border-r hair">
   <div class="flex items-center gap-2 p-3"><div class="flex h-8 flex-1 rounded-md bg-surface-container p-0.5 text-[12.5px] font-medium">
     <a id="tab-open" href="#tab-open" class="flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-[6px] bg-surface-container-lowest px-2 lift">Chờ xử lý <span class="tnum text-on-surface-variant">12</span></a>
     <a id="tab-done" href="#tab-done" class="flex flex-1 items-center justify-center px-2 text-on-surface-variant">Đã xử lý</a></div>
@@ -307,7 +309,7 @@ def report_queue(active="c1"):
 
 def evidence(ic, title, body, link):
     return f"""<article class="flex gap-3 rounded-[10px] border hair px-3 py-2.5">
-  <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-surface-container text-on-surface-variant">{gi(ic, 18)}</span>
+  <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-primary/10 text-primary">{gi(ic, 18)}</span>
   <div class="min-w-0 flex-1"><div class="flex items-start gap-2"><h3 class="min-w-0 flex-1 text-[13.5px] font-medium">{title}</h3>
     <a id="open-{link}" href="#{link}" class="hov -my-0.5 inline-flex h-6 items-center gap-0.5 rounded-md px-1.5 text-[12px] font-medium text-primary">Mở{gi("north-east-rounded", 13)}</a></div>{body}</div>
 </article>"""
@@ -344,11 +346,9 @@ def report_info():
                  f'<p class="text-[12px] text-on-surface-variant">{REASONS[k][0]}{f" · {escape(note)}" if note else ""}</p></li>' for n, k, note, w in reporters)
     sec = lambda t, b: f'<section class="border-b hair px-4 py-3.5"><h3 class="mb-2 text-[12px] font-medium text-on-surface-variant">{t}</h3>{b}</section>'
     row = lambda l, v: f'<div class="flex items-baseline justify-between gap-4 py-1 text-[13px]"><span class="text-on-surface-variant">{l}</span><span class="text-right">{v}</span></div>'
-    seller = f"""<section class="border-b hair px-4 py-4"><div class="flex items-center gap-3">{avatar("T", 40)}
-  <div class="min-w-0 flex-1 leading-tight"><p class="tight text-[14px] font-semibold">Trần Đức Anh</p><p class="mono text-[11.5px] text-on-surface-variant">8e2f41a9</p></div>
-  <a id="open-account" href="#account" class="hov flex h-8 w-8 items-center justify-center rounded-md text-on-surface-variant">{gi("open-in-new-rounded", 16)}</a></div>
-  <div class="mt-3 flex flex-wrap gap-1.5">{pill("Hoạt động")}{pill("Tạo 13/11", "bg-tertiary")}{pill("SĐT mới", "bg-outline")}</div>
-  <div class="mt-3 grid grid-cols-3 gap-1.5">{"".join(f'<div class="rounded-[8px] border hair px-2.5 py-2"><p class="tnum text-[16px] font-semibold leading-5">{n}</p><p class="text-[11.5px] text-on-surface-variant">{l}</p></div>' for n, l in [("3", "tin bán"), ("0", "đơn"), ("5", "bị báo cáo")])}</div></section>"""
+    seller = side_record("T", "Trần Đức Anh", "8e2f41a9",
+                         chip("calendar-today-outline-rounded", "Tạo 13/11", "text-tertiary") + chip("sim-card-outline", "SĐT mới"),
+                         [("3", "tin bán", False), ("0", "đơn", False), ("5", "bị báo cáo", True)])
     listing = sec("Tin bị báo", f"""<div class="flex items-center gap-3 rounded-[10px] border hair p-2"><img src="{PHOTO}" alt="" class="h-12 w-12 rounded-[8px] object-cover">
   <div class="min-w-0 flex-1 leading-tight"><p class="truncate text-[13.5px] font-medium">iPhone 14 Pro Max 256GB tím</p><p class="tnum text-[13px] text-tertiary">6.500.000 ₫</p></div></div>
   <div class="mt-2">{row("Trạng thái", pill("Đang bán"))}{row("Đăng", "14/11 · Quận 7")}{row("Lượt xem", "312 · 9 cuộc chat")}</div>""")

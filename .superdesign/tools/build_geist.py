@@ -26,14 +26,34 @@ OUT = Path(__file__).resolve().parent.parent / "mockups"
 CSS = """
   html, body { background: var(--md-surface-container); }
   body, body * { font-family: "Geist", system-ui, sans-serif; letter-spacing: -0.012em; }
-  body .mono, body .mono * { font-family: "Geist Mono", ui-monospace, monospace; letter-spacing: 0; }
+  body .mono, body .mono * { font-variant-numeric: tabular-nums; }
   .tnum { font-variant-numeric: tabular-nums; }
   .tight { letter-spacing: -0.022em !important; }
   .hair { border-color: color-mix(in srgb, var(--md-outline-variant) 70%, white); }
   .lift { box-shadow: 0 1px 2px rgba(16, 24, 22, .06), 0 0 0 1px rgba(16, 24, 22, .06); }
   .hov:hover { background: var(--md-surface-container-low); }
+  .band { background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--md-primary) 9%, transparent), transparent 60%),
+    radial-gradient(80% 120% at 100% 0%, color-mix(in srgb, var(--md-tertiary-fixed) 45%, transparent), transparent 55%); }
+  .band-error { background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--md-error) 10%, transparent), transparent 60%),
+    radial-gradient(80% 120% at 100% 0%, color-mix(in srgb, var(--md-error-container) 70%, transparent), transparent 55%); }
+  .dots { background-image: radial-gradient(circle, rgba(16,24,22,.07) 1px, transparent 1px); background-size: 16px 16px;
+    mask-image: linear-gradient(to bottom, black, transparent); }
 """
-FONTS = ('<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">')
+FONTS = ('<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">')
+
+# The console's type since 2026-11-17 (src/styles/tokens.css): every step one
+# to two pixels larger, and ids in Geist with tabular figures (the .mono
+# class above). The builders write the old pixel sizes; bigger() maps them.
+BIGGER = {"10.5": "11.5", "11": "12", "11.5": "13", "12": "13", "12.5": "14", "13": "15", "13.5": "15",
+          "14": "16", "15": "17", "16": "18", "20": "22", "28": "32"}
+LEADING = {"20": "22", "21": "24"}
+
+
+def bigger(html):
+    """A Geist mockup in the console's current type scale."""
+    import re
+    html = re.sub(r"text-\[(\d+(?:\.\d+)?)px\]", lambda m: f"text-[{BIGGER.get(m[1], m[1])}px]", html)
+    return re.sub(r"leading-\[(\d+)px\]", lambda m: f"leading-[{LEADING.get(m[1], m[1])}px]", html)
 
 
 def gi(name, size=18, cls=""):
@@ -46,9 +66,84 @@ def kbd(k):
     return f'<kbd class="mono inline-flex h-5 min-w-5 items-center justify-center rounded-[5px] border hair bg-surface-container-lowest px-1 text-[11px] text-on-surface-variant">{k}</kbd>'
 
 
-def avatar(ch, size=32, tone="bg-surface-container-high text-on-surface-variant"):
-    return (f'<span class="flex shrink-0 items-center justify-center rounded-full font-semibold {tone}" '
-            f'style="width:{size}px;height:{size}px;font-size:{round(size * .44)}px">{ch}</span>')
+# The records look (design-system.md, "Records"). A record's initial takes
+# one of four tints from the brand roles, picked from its id or name, so it
+# keeps its colour on every screen; red stays for `error`.
+TINTS = ["bg-primary/10 text-primary", "bg-secondary-container text-on-secondary-container",
+         "bg-tertiary-fixed text-on-tertiary-fixed-variant", "bg-inverse-primary/40 text-primary-container"]
+
+
+def tint(key):
+    return TINTS[sum(ord(c) for c in key) % len(TINTS)]
+
+
+def avatar(ch, size=32, tone=None, status=None, key=None):
+    """A record's initial in its tint (tone overrides it, as for members);
+    status adds the dot at the bottom end: "active" or "suspended"."""
+    tone = tone or tint(key or ch)
+    d = ""
+    if status:
+        s = max(8, round(size * .26))
+        d = (f'<span class="absolute bottom-0 right-0 rounded-full ring-2 ring-surface-container-lowest {"bg-error" if status == "suspended" else "bg-primary"}" '
+             f'style="width:{s}px;height:{s}px"></span>')
+    return (f'<span class="relative inline-flex shrink-0"><span class="flex items-center justify-center rounded-full font-semibold {tone}" '
+            f'style="width:{size}px;height:{size}px;font-size:{round(size * .42)}px">{ch}</span>{d}</span>')
+
+
+def member_initial(ch, size=20):
+    return avatar(ch, size, "bg-primary text-on-primary")
+
+
+def picked(on):
+    """A list row's state: the picked row is primary at 6 % with a 3 px bar at the start."""
+    return "relative bg-primary/[.06]" if on else "relative hov"
+
+
+def picked_bar(on):
+    return '<span class="absolute inset-y-2.5 left-0 w-[3px] rounded-full bg-primary"></span>' if on else ""
+
+
+def bars(values, tone="bg-primary/70", height=28):
+    top = max(values) or 1
+    return (f'<div class="flex items-end gap-[3px]" style="height:{height}px">' + "".join(
+        f'<span class="w-[5px] rounded-[2px] {tone if v else "bg-surface-container-high"}" style="height:{max(3, round(v / top * height))}px"></span>'
+        for v in values) + '</div>')
+
+
+def figure(ic, n, label, values=None, *, sub="", sub_tone="", error=False):
+    """A figure card: tinted icon tile, label, the number, the last 90 days as bars."""
+    tone, tile, bar = ("text-error", "bg-error-container", "bg-error/70") if error else ("text-primary", "bg-primary/10", "bg-primary/70")
+    return f"""<div class="rounded-[12px] border hair bg-surface-container-lowest p-3.5 lift">
+  <div class="flex items-center gap-2"><span class="flex h-7 w-7 items-center justify-center rounded-[8px] {tile} {tone}">{gi(ic, 16)}</span>
+    <span class="text-[12px] text-on-surface-variant">{label}</span></div>
+  <div class="mt-2.5 flex items-end justify-between gap-2"><p class="tnum tight text-[28px] font-semibold leading-8 {tone if error else ""}">{n}</p>{bars(values, bar) if values else ""}</div>
+  {f'<p class="mt-1.5 flex items-center gap-1 text-[12px] {sub_tone or "text-on-surface-variant"}">{sub}</p>' if sub else ""}
+</div>"""
+
+
+def chip(ic, text, tone="text-on-surface-variant"):
+    return (f'<span class="inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-full border hair bg-surface-container-lowest/80 px-2 text-[12px] {tone}">'
+            f'{gi(ic, 14)}{text}</span>')
+
+
+def status_pill(locked):
+    if locked:
+        return f'<span class="inline-flex h-6 items-center gap-1 rounded-full bg-error px-2 text-[12px] font-medium text-on-error">{gi("lock-outline", 13)}Tạm khoá</span>'
+    return '<span class="inline-flex h-6 items-center gap-1.5 rounded-full bg-primary/10 px-2 text-[12px] font-medium text-primary"><span class="h-1.5 w-1.5 rounded-full bg-primary"></span>Hoạt động</span>'
+
+
+def side_record(ch, name, sid, chips, stats, link="open-account", locked=False):
+    """A person at the top of a side column: a small hero band with the
+    tinted initial, the name, the id, chips and three small figures."""
+    figs = "".join(f'<div class="rounded-[8px] border hair bg-surface-container-lowest/90 px-2.5 py-2"><p class="tnum text-[16px] font-semibold leading-5 {"text-error" if bad else ""}">{n}</p>'
+                   f'<p class="text-[11.5px] text-on-surface-variant">{label}</p></div>' for n, label, bad in stats)
+    return f"""<section class="{"band-error" if locked else "band"} relative border-b hair px-4 pb-4 pt-4"><div class="dots pointer-events-none absolute inset-0"></div>
+  <div class="relative flex items-center gap-3">{avatar(ch, 44, status="suspended" if locked else "active", key=name)}
+    <div class="min-w-0 flex-1 leading-tight"><p class="tight truncate text-[14px] font-semibold">{escape(name)}</p><p class="tnum mt-0.5 text-[11.5px] text-on-surface-variant">{sid}</p></div>
+    <a id="{link}" href="#account" title="Mở tài khoản" class="hov flex h-8 w-8 items-center justify-center rounded-md text-on-surface-variant">{gi("open-in-new-rounded", 16)}</a></div>
+  <div class="relative mt-3 flex flex-wrap gap-1.5">{chips}</div>
+  <div class="relative mt-3 grid grid-cols-3 gap-1.5">{figs}</div>
+</section>"""
 
 
 def dot(tone="bg-primary"):
@@ -60,8 +155,10 @@ def pill(text, tone="bg-primary"):
             f'{dot(tone)}{text}</span>')
 
 
-def nav(active="support", role="moderator"):
-    """role: an admin also sees the audit log and the members, and opens every tool."""
+def nav(active="support", role="moderator", search_key=True):
+    """role: an admin also sees the audit log and the members, and opens every tool.
+    search_key=False drops the "/" key from the search on a page whose own
+    search takes "/" (Tài khoản)."""
     admin = role == "admin"
     items = [("home", "Trang chủ", "home-outline-rounded", ""), ("support", "Hỗ trợ", "support-agent-outline", "7"),
              ("reports", "Báo cáo", "flag-outline-rounded", "12"), ("agent", "Agent", "material-symbols:auto-awesome-outline-rounded", ""),
@@ -84,7 +181,7 @@ def nav(active="support", role="moderator"):
   <a id="brand" href="#home" class="flex h-9 items-center gap-2 px-2"><img src="{LOGO}" alt="ShopNexus" class="h-6 w-6 rounded-[6px]">
     <span class="tight text-[14px] font-semibold">ShopNexus</span><span class="text-[13px] text-on-surface-variant">Console</span></a>
   <a id="search" href="#search" class="mt-3 flex h-8 items-center gap-2 rounded-md border hair bg-surface-container-lowest px-2 text-[13px] text-on-surface-variant">
-    {gi("search-rounded", 16)}<span class="flex-1">Tìm tài khoản</span>{kbd("/")}</a>
+    {gi("search-rounded", 16)}<span class="flex-1">Tìm tài khoản</span>{kbd("/") if search_key else ""}</a>
   <div class="mt-4 space-y-0.5">{rows}</div>
   <p class="mb-1 mt-6 px-2 text-[12px] font-medium text-on-surface-variant">Công cụ</p>
   <div class="space-y-0.5">{tools}</div>
@@ -108,8 +205,8 @@ KIND_TONE = {"Chưa nhận hàng": "bg-primary", "Xin thêm hãng": "bg-tertiary
 
 
 def queue():
-    rows = "".join(f"""<a id="q-{tid}" href="#q-{tid}" class="{"bg-surface-container" if tid == "t1" else "hov"} flex gap-3 rounded-[8px] px-3 py-2.5">
-  {avatar(ch)}
+    rows = "".join(f"""<a id="q-{tid}" href="#q-{tid}" class="{picked(tid == "t1")} flex gap-3 rounded-[10px] px-3 py-2.5">
+  {picked_bar(tid == "t1")}{avatar(ch, 34, key=name)}
   <span class="min-w-0 flex-1">
     <span class="flex items-center gap-2"><span class="min-w-0 flex-1 truncate text-[13.5px] font-semibold">{escape(name)}</span><span class="tnum text-[12px] text-on-surface-variant">{when}</span></span>
     <span class="mt-0.5 block truncate text-[12.5px]">{escape(line)}</span>
@@ -117,7 +214,7 @@ def queue():
       {f'<span class="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-primary">{gi("material-symbols:auto-awesome-outline-rounded", 13)}Soạn sẵn</span>' if ready else ""}</span>
   </span>
 </a>""" for tid, ch, name, line, when, kind, ready in QUEUE)
-    return f"""<section class="flex w-[300px] shrink-0 flex-col border-r hair">
+    return f"""<section class="flex w-[320px] shrink-0 flex-col border-r hair">
   <div class="flex items-center gap-2 p-3"><div class="flex h-8 flex-1 rounded-md bg-surface-container p-0.5 text-[12.5px] font-medium">
     <a id="tab-open" href="#tab-open" class="flex flex-1 items-center justify-center gap-1.5 rounded-[6px] bg-surface-container-lowest px-2 lift">Đang mở <span class="tnum text-on-surface-variant">7</span></a>
     <a id="tab-resolved" href="#tab-resolved" class="flex flex-1 items-center justify-center px-2 text-on-surface-variant">Đã xử lý</a></div>
@@ -234,13 +331,9 @@ def stat(n, label):
 
 
 def info():
-    person = f"""<section class="border-b hair px-4 py-4">
-  <div class="flex items-center gap-3">{avatar("K", 40)}
-    <div class="min-w-0 flex-1 leading-tight"><p class="tight text-[14px] font-semibold">Khánh Linh</p><p class="mono text-[11.5px] text-on-surface-variant">7b1c22e0</p></div>
-    <a id="open-account" href="#account" class="hov flex h-8 w-8 items-center justify-center rounded-md text-on-surface-variant">{gi("open-in-new-rounded", 16)}</a></div>
-  <div class="mt-3 flex flex-wrap gap-1.5">{pill("Hoạt động")}{pill("SĐT đã xác minh", "bg-secondary")}{pill("Từ 03/2025", "bg-outline")}</div>
-  <div class="mt-3 grid grid-cols-3 gap-1.5">{stat("4", "đơn mua")}{stat("4/4", "giao xong")}{stat("0", "bị báo cáo")}</div>
-</section>"""
+    person = side_record("K", "Khánh Linh", "7b1c22e0",
+                         chip("verified-outline-rounded", "SĐT đã xác minh", "text-primary") + chip("calendar-today-outline-rounded", "Từ 03/2025"),
+                         [("4", "đơn mua", False), ("4/4", "giao xong", False), ("0", "bị báo cáo", False)])
     events = [("Đã giao hàng", "Hôm qua 14:20", "Giao lễ tân toà B · ký: Hằng", True),
               ("Đang giao hàng", "Hôm qua 08:05", "Bưu cục Bình Thạnh", False),
               ("Đã lấy hàng", "T2 16:40", "Từ Hoàng Nam, Quận 3", False)]
@@ -295,7 +388,7 @@ def customer_chat():
 def page(tab, center=None, left=None, side=None):
     """tab: the end column's open tab; center, left and side replace the default panes."""
     side = side or (info() if tab == "info" else customer_chat())
-    return f"""{head("Hỗ trợ · Console", CSS).replace('<script src="https://cdn.tailwindcss.com">', FONTS + '\n<script src="https://cdn.tailwindcss.com">', 1)}<body>
+    return bigger(f"""{head("Hỗ trợ · Console", CSS).replace('<script src="https://cdn.tailwindcss.com">', FONTS + '\n<script src="https://cdn.tailwindcss.com">', 1)}<body>
 <div class="flex h-[900px] w-[1440px] bg-surface-container text-on-surface">
   {nav()}
   <div class="my-2 mr-2 flex min-w-0 flex-1 overflow-hidden rounded-[12px] bg-surface-container-lowest lift">
@@ -306,7 +399,7 @@ def page(tab, center=None, left=None, side=None):
 </div>
 </body>
 </html>
-"""
+""")
 
 
 SCREENS = {"geist-ticket-info": ("Hỗ trợ · Geist · Agent và Thông tin", lambda: page("info")),

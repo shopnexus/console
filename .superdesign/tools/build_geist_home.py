@@ -18,7 +18,7 @@ import sys
 from html import escape
 from pathlib import Path
 
-from build_geist import CSS, FONTS, avatar, dot, gi, kbd, nav, pill
+from build_geist import CSS, FONTS, avatar, bigger, dot, figure, gi, kbd, member_initial, nav, picked, picked_bar, pill
 from common import LOGO, MEMBER, head
 
 OUT = Path(__file__).resolve().parent.parent / "mockups"
@@ -30,21 +30,17 @@ SPARK_O = "material-symbols:auto-awesome-outline-rounded"
 
 
 def page(title, body):
-    return f"""{head(title + " · Console", CSS).replace('<script src="https://cdn.tailwindcss.com">', FONTS + '\n<script src="https://cdn.tailwindcss.com">', 1)}<body>
+    return bigger(f"""{head(title + " · Console", CSS).replace('<script src="https://cdn.tailwindcss.com">', FONTS + '\n<script src="https://cdn.tailwindcss.com">', 1)}<body>
 {body}
 </body>
 </html>
-"""
+""")
 
 
 # --- Trang chủ ---
 
-def tile(ic, label, n, sub, tone=""):
-    return f"""<div class="rounded-[12px] border hair bg-surface-container-lowest px-4 py-3.5">
-  <p class="flex items-center gap-1.5 text-[12.5px] text-on-surface-variant">{gi(ic, 16)}{label}</p>
-  <p class="tnum tight mt-1.5 text-[28px] font-semibold leading-8">{n}</p>
-  <p class="mt-0.5 flex items-center gap-1 text-[12px] {tone or "text-on-surface-variant"}">{sub}</p>
-</div>"""
+def tile(ic, label, n, sub, tone="", values=None, error=False):
+    return figure(ic, n, label, values, sub=sub, sub_tone=tone, error=error)
 
 
 def panel(title, body, more="", count=""):
@@ -75,8 +71,9 @@ def next_list():
         color = {"error": "text-error", "primary": "text-primary", "neutral": "text-on-surface-variant"}.get(tone, "")
         tag = (f'<span class="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-[6px] border hair px-1.5 py-0.5 text-[12px] {color}">{gi(SPARK_O, 13)}{says}</span>' if says
                else '<span class="block h-1 w-14 overflow-hidden rounded-full bg-surface-container"><span class="block h-full w-1/3 animate-pulse rounded-full bg-primary"></span></span>')
-        rows.append(f"""<a id="next-{i}" href="#next-{i}" class="{"bg-surface-container-low" if i == 0 else "hov"} flex h-[52px] items-center gap-3 border-b hair px-4 last:border-b-0">
-  <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-surface-container text-on-surface-variant">{gi(ic, 17)}</span>
+        rows.append(f"""<a id="next-{i}" href="#next-{i}" class="{picked(i == 0)} flex h-[56px] items-center gap-3 border-b hair px-4 last:border-b-0">{picked_bar(i == 0).replace("left-0", "left-1")}
+  <span class="relative inline-flex shrink-0">{avatar(t.strip()[0], 34, key=t)}
+    <span class="absolute -bottom-1 -right-1 flex h-[18px] w-[18px] items-center justify-center rounded-full ring-2 ring-surface-container-lowest {"bg-error-container text-error" if kind == "Báo cáo" else "bg-primary/15 text-primary"}">{gi(ic, 11)}</span></span>
   <span class="min-w-0 flex-1 leading-tight"><span class="block truncate text-[13.5px] font-medium">{escape(t)}</span><span class="block truncate text-[12px] text-on-surface-variant">{kind} · {escape(sub)}</span></span>
   {tag}<span class="tnum w-11 shrink-0 text-right text-[12px] text-on-surface-variant">{when}</span>
 </a>""")
@@ -98,6 +95,11 @@ def shortcuts():
                    for ks, t in keys)
 
 
+# The tiles' last 12 days, oldest first.
+TICKETS = [5, 8, 6, 9, 7, 4, 3, 6, 10, 8, 6, 7]
+REPORTS = [9, 11, 8, 14, 10, 7, 6, 12, 15, 13, 11, 12]
+LOCKS = [31, 32, 32, 33, 34, 34, 34, 35, 36, 36, 37, 38]
+
 ACTION_TONE = {"error": "bg-error", "primary": "bg-primary", "secondary": "bg-outline"}
 FROM_PROPOSAL = {0, 3, 5}
 
@@ -105,7 +107,7 @@ FROM_PROPOSAL = {0, 3, 5}
 def actions_table():
     rows = "".join(f"""<tr class="h-10 border-t hair">
   <td class="tnum pl-4 text-[12.5px] text-on-surface-variant">{when}</td>
-  <td class="text-[13px]"><span class="flex items-center gap-2">{avatar(who.split()[-1][0], 20)}{who}</span></td>
+  <td class="whitespace-nowrap pr-3 text-[13px]"><span class="flex items-center gap-2">{member_initial(who.split()[-1][0])}{who}</span></td>
   <td>{pill(KIND[kind][0], ACTION_TONE[KIND[kind][2]])}</td>
   <td class="text-[13px]"><span class="font-medium">{escape(target)}</span> <span class="mono text-[11.5px] text-on-surface-variant">{tid[:6]}</span></td>
   <td class="max-w-[260px] truncate pr-2 text-[12.5px] text-on-surface-variant">{escape(why)}</td>
@@ -118,7 +120,7 @@ def actions_table():
 
 def attention():
     tone = {"error": "text-error", "tertiary": "text-tertiary", "neutral": "text-on-surface-variant"}
-    return "".join(f"""<a id="member-{i}" href="#member-{i}" class="hov flex items-center gap-3 border-b hair px-4 py-2.5 last:border-b-0">{avatar(n.split()[-1][0], 28)}
+    return "".join(f"""<a id="member-{i}" href="#member-{i}" class="hov flex items-center gap-3 border-b hair px-4 py-2.5 last:border-b-0">{member_initial(n.split()[-1][0], 28)}
   <span class="min-w-0 flex-1 leading-tight"><span class="block truncate text-[13px] font-medium">{n}</span><span class="flex items-center gap-1 text-[12px] {tone[t]}">{gi(ic.replace("-rounded", "") if "outline" in ic else ic, 13)}{what}</span></span>
   {gi("chevron-right-rounded", 16, "text-outline")}</a>""" for i, (n, role, ic, what, t) in enumerate(ATTENTION))
 
@@ -140,17 +142,17 @@ def home(role):
   <h1 class="tight flex-1 text-[15px] font-semibold">Trang chủ</h1><span class="text-[12.5px] text-on-surface-variant">Thứ Hai, 16/11</span>
   <a id="theme" href="#theme" class="hov flex h-8 w-8 items-center justify-center rounded-md text-on-surface-variant">{gi("contrast", 18)}</a></header>"""
     if admin:
-        tiles = (tile("support-agent-outline", "Ticket đang mở", "7", "5 có trả lời soạn sẵn")
-                 + tile("flag-outline-rounded", "Báo cáo chờ xử lý", "12", "9 có đề xuất")
-                 + tile("badge-outline", "Nhân viên cần xem", "3", "1 bị khoá đăng nhập", "text-error")
-                 + tile("block", "Tài khoản đang khoá", "38", "4 khoá trong tuần này"))
+        tiles = (tile("support-agent-outline", "Ticket đang mở", "7", "5 có trả lời soạn sẵn", values=TICKETS)
+                 + tile("flag-outline-rounded", "Báo cáo chờ xử lý", "12", "9 có đề xuất", values=REPORTS)
+                 + tile("badge-outline", "Nhân viên cần xem", "3", "1 bị khoá đăng nhập", "text-error", error=True)
+                 + tile("block", "Tài khoản đang khoá", "38", "4 khoá trong tuần này", values=LOCKS))
         left = panel("Nhật ký thao tác", actions_table(), more("Xem tất cả", "all-actions"), "14 gần nhất")
         right = panel("Nhân viên cần xem", attention(), more("Nhân viên", "all-members"), "3") + panel("Agent · 7 ngày", agent_week())
     else:
-        tiles = (tile("support-agent-outline", "Ticket đang mở", "7", f'{gi(SPARK_O, 13)}5 có trả lời soạn sẵn', "text-primary")
-                 + tile("flag-outline-rounded", "Báo cáo chờ xử lý", "12", f'{gi(SPARK_O, 13)}9 có đề xuất', "text-primary")
-                 + tile("task-alt", "Bạn đã xử lý hôm nay", "6", "4 theo đề xuất, 2 đã đổi")
-                 + tile("block", "Tài khoản đang khoá", "38", "4 khoá trong tuần này"))
+        tiles = (tile("support-agent-outline", "Ticket đang mở", "7", f'{gi(SPARK_O, 13)}5 có trả lời soạn sẵn', "text-primary", TICKETS)
+                 + tile("flag-outline-rounded", "Báo cáo chờ xử lý", "12", f'{gi(SPARK_O, 13)}9 có đề xuất', "text-primary", REPORTS)
+                 + tile("task-alt", "Bạn đã xử lý hôm nay", "6", "4 theo đề xuất, 2 đã đổi", values=[3, 5, 4, 7, 6, 2, 0, 5, 8, 6, 4, 6])
+                 + tile("block", "Tài khoản đang khoá", "38", "4 khoá trong tuần này", values=LOCKS))
         left = panel("Việc tiếp theo", next_list(), more("Báo cáo", "all-reports"), "19")
         right = panel("Agent chạy nền", runs(), more("Agent", "agent"), "2") + panel("Phím tắt", shortcuts())
     body = f"""<div class="flex h-[900px] w-[1440px] bg-surface-container text-on-surface">
