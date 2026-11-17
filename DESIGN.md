@@ -84,6 +84,47 @@ is doing or can do.
 - The person at the top of a side column sits on a `band` (`band-error`
   when suspended) with a `dots` layer, both utilities in `tokens.css`.
 
+## Báo cáo
+
+- `/reports` and `/reports/:account_id`: the 320 px queue beside the case.
+  Chờ xử lý lists open cases by their latest report, with the open count
+  from the server's `total` in an `error` badge here and beside Báo cáo in
+  the nav; Đã xử lý lists resolved cases, newest first.
+- The case opens on a `band` with the account, its reasons as pills and
+  the most reported listing. Tin bị báo lists every reported listing with
+  its photo, price, status and report count; then each report with the
+  reporter, the reason and the note.
+- The decision bar is pinned to the bottom. The member ticks the listings
+  to hide and Tạm khoá with a term; Tạm khoá adds the reason the person
+  sees. The action button names what is ticked. It hides, then suspends,
+  then marks the case actioned (`carryOut` in `lib/reports.ts`); Không vi
+  phạm dismisses the case.
+- A resolved case's bar lists what was done, the member and the time.
+  Hoàn tác restores the hidden listings and the suspension, then reopens
+  the case (`undoCase`).
+- Hỏi agent opens the account's shared chat in Agent. The agent's evidence
+  and proposal come with the agent's blocks.
+
+## Tài khoản
+
+- `/accounts` and `/accounts/:id`: the 340 px list beside the account.
+  Tất cả lists every account newest first; Đang khoá lists the suspended
+  ones whose term ends first, with their count from the server's `total`
+  in an `error` badge. The search finds one account by id or phone number
+  on Enter. On this page `/` and the nav's "Tìm tài khoản" focus that
+  search; elsewhere a pick in the nav's popover opens the account here.
+- The account opens on a `band`: the 72 px initial, the name, the status,
+  the id with a copy button, chips for a verified phone and earlier
+  suspensions, Hỏi agent (the account's shared chat in Agent) and Tạm khoá
+  or Mở khoá. A suspended account adds a card with the end, the days left,
+  a bar for the time served and who suspended it for how long.
+- Lịch sử is the console's suspensions and their ends as a timeline that
+  ends on the account's creation. Thông tin and Định danh sit in a 272 px
+  column beside it.
+- Tạm khoá opens a popover: 1 ngày, 7 ngày, 30 ngày or Không hạn, each with
+  its end date, then the reason (up to 500 characters) that the person
+  sees, and "Tạm khoá 7 ngày" in `error`.
+
 ## Density and keyboard
 
 Pages are lists of records: 32 to 40 px rows, `hairline` dividers, opaque

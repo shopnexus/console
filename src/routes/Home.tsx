@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { type ReactNode, useState } from 'react'
+import { useNavigate } from 'react-router'
 import IconBlock from '~icons/material-symbols/block'
 import IconChevron from '~icons/material-symbols/chevron-right-rounded'
 import IconKey from '~icons/material-symbols/key-outline-rounded'
@@ -7,6 +8,10 @@ import IconPerson from '~icons/material-symbols/person-add-outline-rounded'
 import IconPersonOff from '~icons/material-symbols/person-off-outline-rounded'
 import IconPhoneLock from '~icons/material-symbols/phonelink-lock-outline-rounded'
 import IconUnlock from '~icons/material-symbols/lock-open-right-outline-rounded'
+import IconCheck from '~icons/material-symbols/check-rounded'
+import IconFlag from '~icons/material-symbols/flag-outline-rounded'
+import IconHide from '~icons/material-symbols/visibility-off-outline-rounded'
+import IconShow from '~icons/material-symbols/visibility-outline-rounded'
 import { Shell } from '../components/Shell'
 import { useMembersToSee } from '../lib/members'
 import { AccountRow } from '../components/AccountSearch'
@@ -24,6 +29,11 @@ const kinds: Record<ActionKind, [string, ReactNode, 'error' | 'primary' | 'neutr
   'member.reset_password': ['Đặt lại mật khẩu', <IconKey key="f" width={16} height={16} />, 'neutral'],
   'member.reset_totp': ['Đặt lại 2 bước', <IconPhoneLock key="g" width={16} height={16} />, 'neutral'],
   'member.unlock': ['Mở đăng nhập', <IconKey key="h" width={16} height={16} />, 'neutral'],
+  'report.dismiss': ['Không vi phạm', <IconCheck key="i" width={16} height={16} />, 'neutral'],
+  'report.resolve': ['Xử lý báo cáo', <IconFlag key="j" width={16} height={16} />, 'primary'],
+  'report.reopen': ['Mở lại báo cáo', <IconFlag key="k" width={16} height={16} />, 'neutral'],
+  'listing.hide': ['Ẩn tin', <IconHide key="l" width={16} height={16} />, 'error'],
+  'listing.unhide': ['Hiện lại tin', <IconShow key="m" width={16} height={16} />, 'primary'],
 }
 
 const tone = {
@@ -89,7 +99,7 @@ function ActionsCard() {
             </span>
             <span className="flex min-w-0 items-baseline gap-2">
               <span className="shrink-0">
-                {a.target.kind === 'account' ? 'Tài khoản' : 'Nhân viên'}{' '}
+                {a.target.kind === 'account' ? 'Tài khoản' : a.target.kind === 'listing' ? 'Tin' : 'Nhân viên'}{' '}
                 <span className="tabular-nums text-body-small text-on-surface-variant">{shortId(a.target.id)}</span>
               </span>
               {reason && <span className="min-w-0 truncate text-body-small text-on-surface-variant" title={reason}>{reason}</span>}
@@ -135,10 +145,11 @@ function MembersCard() {
 
 function RecentCard() {
   const recent = useRecentAccounts()
+  const navigate = useNavigate()
   return (
     <Card title="Vừa mở">
       {recent.map((a) => (
-        <AccountRow key={a.id} a={a} right={<span className="text-body-small tabular-nums text-on-surface-variant">{when(a.opened)}</span>} />
+        <AccountRow key={a.id} a={a} onClick={() => navigate(`/accounts/${a.id}`)} right={<span className="text-body-small tabular-nums text-on-surface-variant">{when(a.opened)}</span>} />
       ))}
       {recent.length === 0 && <p className="border-t border-hairline px-2 py-3 text-body-medium text-on-surface-variant">Chưa mở tài khoản nào.</p>}
     </Card>

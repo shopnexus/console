@@ -1,5 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
-import { NavLink, useNavigate } from 'react-router'
+import { NavLink, useLocation, useNavigate } from 'react-router'
 import IconCollapse from '~icons/material-symbols-light/left-panel-close-outline-rounded'
 import IconExpand from '~icons/material-symbols-light/left-panel-open-outline-rounded'
 import IconLock from '~icons/material-symbols-light/lock-outline'
@@ -12,6 +12,7 @@ import { rememberAccount } from '../lib/accounts'
 import { dashboards, mayOpen } from '../lib/dashboards'
 import { navigation, useNavCollapsed } from '../lib/navigation'
 import { useForgetMe, useMe } from '../lib/session'
+import { useCases } from '../lib/reports'
 import { useOpenCount } from '../lib/support'
 import { AccountSearch } from './AccountSearch'
 import { typing, useAnchor, useDismiss } from '../lib/dom'
@@ -39,6 +40,7 @@ export function Shell({
 }) {
   const me = useMe()
   const openTickets = useOpenCount()
+  const openCases = useCases('open')
   const [rail, toggle] = useNavCollapsed(railFirst)
 
   useEffect(() => {
@@ -93,7 +95,7 @@ export function Shell({
                 </span>
               )
             }
-            const count = n.to === '/support' ? openTickets.data?.open || 0 : 0
+            const count = n.to === '/support' ? openTickets.data?.open || 0 : n.to === '/reports' ? openCases.total || 0 : 0
             return (
               <NavLink
                 key={n.to}
@@ -171,26 +173,37 @@ export function Shell({
   )
 }
 
-/** "Tìm tài khoản" with "/": the account search in a popover. */
+/**
+ * "Tìm tài khoản" with "/": the account search in a popover, and a pick
+ * opens the account. On Tài khoản, whose list has its own search, "/" and
+ * the button focus that search instead.
+ */
 function NavSearch({ rail }: { rail: boolean }) {
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const ref = useDismiss<HTMLDivElement>(open, close)
   const at = useAnchor(ref, open, 'below')
+  const navigate = useNavigate()
+  const onAccounts = useLocation().pathname.startsWith('/accounts')
+  const start = useCallback(() => {
+    const own = onAccounts ? document.getElementById('account-find') : null
+    if (own) own.focus()
+    else setOpen((o) => !o)
+  }, [onAccounts])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === '/' && !typing(e)) {
         e.preventDefault()
-        setOpen(true)
+        start()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [start])
   return (
     <div ref={ref} className="relative mt-3">
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={start}
         title={rail ? 'Tìm tài khoản (/)' : undefined}
         className={`flex h-8 items-center gap-2 rounded-sm border border-hairline bg-surface-container-lowest text-body-medium text-on-surface-variant ${
           rail ? 'w-8 justify-center' : 'w-full px-2'
@@ -200,7 +213,7 @@ function NavSearch({ rail }: { rail: boolean }) {
         {!rail && (
           <>
             <span className="flex-1 text-left">Tìm tài khoản</span>
-            <Kbd>/</Kbd>
+            {!onAccounts && <Kbd>/</Kbd>}
           </>
         )}
       </button>
@@ -210,6 +223,7 @@ function NavSearch({ rail }: { rail: boolean }) {
             onPick={(a) => {
               rememberAccount(a)
               close()
+              navigate(`/accounts/${a.id}`)
             }}
           />
         </div>

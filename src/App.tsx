@@ -1,9 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router'
 import { RequireSession } from './components/RequireSession'
+import { Accounts } from './routes/Accounts'
 import { Agent } from './routes/Agent'
 import { DashboardOpen } from './routes/DashboardOpen'
 import { Home } from './routes/Home'
+import { Reports } from './routes/Reports'
 import { SignIn } from './routes/SignIn'
 import { Support } from './routes/Support'
 
@@ -24,6 +26,10 @@ const router = createBrowserRouter([
       { path: '/support/:id', element: <Support /> },
       { path: '/agent', element: <Agent /> },
       { path: '/agent/:id', element: <Agent /> },
+      { path: '/reports', element: <Reports /> },
+      { path: '/reports/:id', element: <Reports /> },
+      { path: '/accounts', element: <Accounts /> },
+      { path: '/accounts/:id', element: <Accounts /> },
     ],
   },
 ])

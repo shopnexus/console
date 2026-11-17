@@ -15,16 +15,15 @@ export interface NavItem {
 }
 
 /**
- * The work areas. Báo cáo waits for the report cases (Phase 3) and Tài khoản
- * for its page. Nhật ký thao tác and Nhân viên join, for admins, once they
+ * The work areas. Nhật ký thao tác and Nhân viên join, for admins, once they
  * have pages; Trang chủ shows both meanwhile.
  */
 export const navigation: NavItem[] = [
   { to: '/', label: 'Trang chủ', icon: <IconHome width={18} height={18} /> },
   { to: '/support', label: 'Hỗ trợ', icon: <IconSupport width={18} height={18} /> },
-  { to: '/reports', label: 'Báo cáo', icon: <IconReports width={18} height={18} />, soon: true },
+  { to: '/reports', label: 'Báo cáo', icon: <IconReports width={18} height={18} /> },
   { to: '/agent', label: 'Agent', icon: <IconAgent width={18} height={18} /> },
-  { to: '/accounts', label: 'Tài khoản', icon: <IconAccounts width={18} height={18} />, soon: true },
+  { to: '/accounts', label: 'Tài khoản', icon: <IconAccounts width={18} height={18} /> },
 ]
 
 const collapsedKey = 'console-nav-collapsed'

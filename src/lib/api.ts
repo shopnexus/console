@@ -84,19 +84,26 @@ export type ActionKind =
   | 'member.reset_password'
   | 'member.reset_totp'
   | 'member.unlock'
+  | 'report.dismiss'
+  | 'report.resolve'
+  | 'report.reopen'
+  | 'listing.hide'
+  | 'listing.unhide'
 
 export interface Action {
   id: string
   at: string
   actor: { kind: 'member' | 'cli'; member_id?: string; display_name?: string }
   action: ActionKind
-  target: { kind: 'account' | 'member'; id: string }
+  target: { kind: 'account' | 'member' | 'listing'; id: string }
   details?: Record<string, unknown>
 }
 
 export interface Page<T> {
   items: T[]
   next_cursor?: string
+  /** Only on lists that count, such as the suspended accounts. */
+  total?: number
 }
 
 export const roleName: Record<Role, string> = { moderator: 'Kiểm duyệt viên', admin: 'Quản trị viên' }
