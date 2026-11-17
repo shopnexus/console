@@ -30,6 +30,20 @@ DRAFTS = {
     "home-moderator": "3cfdd3b6-1824-4d7b-95f6-433b9c88bf46",
     "support-open": "4a2df821-ad82-46e9-9885-153397da18d1",
     "support-resolved": "2674c6cb-7da3-407f-99d2-bdc18dcd9086",
+    "support-draft": "ea30bae8-44b4-4df4-a97d-54ec1d2aa82d",
+    "reports-open": "676f6762-980b-45cc-8ba2-2f721820701f",
+    "support-ask": "379d1c51-41b8-4b0d-8d9f-9da4de81f5b3",
+    "agent-chat": "b7d8b39a-3fe2-4b88-88a2-63a63d8c1311",
+    "geist-ticket-info": "549b2e7f-0966-45bf-9bc4-5bab7f7bd1af",
+    "geist-ticket-chat": "1a9c6aa2-a0f5-4dbf-8c20-2920a0ad492d",
+    "proposal-done": "f869267a-3cea-4263-97b3-4cf7278c3d30",
+    "support-agent": "070bd8aa-d54c-49a5-8d05-46023e6c8f1e",
+    "agent-running": "026b0a54-9366-44c4-8b19-b67fade4e88e",
+    "agent-failed": "26426c40-8e0f-4a04-988c-4a576639e9d4",
+    "agent-new": "eb0736d2-b2f9-4af4-9fbf-e00296bd0c47",
+    "reports-ask": "264ec538-be26-4fb2-959d-7ce3973dfc4c",
+    "proposal-review": "aa9ab713-6bf3-4335-b566-5aa53687e9c4",
+    "ring-graph": "a1f4d401-9a99-4a75-aa69-56f008c60d05",
 }
 
 LIGHT = {

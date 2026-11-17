@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 tailwind.config = { theme: { extend: {
@@ -33,115 +34,90 @@ tailwind.config = { theme: { extend: {
   @keyframes drift { 0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)) } 50% { transform: translateY(-10px) rotate(calc(var(--r, 0deg) + 8deg)) } }
   .drift { animation: drift 9s var(--effects) infinite; }
 
+  html, body { background: var(--md-surface-container); }
+  body, body * { font-family: "Geist", system-ui, sans-serif; letter-spacing: -0.012em; }
+  body .mono, body .mono * { font-family: "Geist Mono", ui-monospace, monospace; letter-spacing: 0; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .tight { letter-spacing: -0.022em !important; }
+  .hair { border-color: color-mix(in srgb, var(--md-outline-variant) 70%, white); }
+  .lift { box-shadow: 0 1px 2px rgba(16, 24, 22, .06), 0 0 0 1px rgba(16, 24, 22, .06); }
+  .hov:hover { background: var(--md-surface-container-low); }
+
 </style>
 </head>
 <body>
-<div class="flex h-[900px] w-[1440px] bg-surface text-on-surface">
-  <nav class="flex w-[360px] shrink-0 flex-col bg-surface-container-low px-3 py-4">
-  <a id="brand" href="#home" class="flex items-center gap-3 px-4 pb-6 pt-1">
-    <img src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/d0e7dcea-fa3d-477d-9b2a-e072f17a3ee7/brand-assets/console-logo/favicon.svg" alt="ShopNexus" class="h-9 w-9 rounded-md">
-    <span class="text-title-medium">ShopNexus</span>
-    <span class="rounded-full bg-secondary-container px-2.5 py-0.5 text-label-medium text-on-secondary-container">Console</span>
-  </a>
-  <div class="space-y-1"><a id="nav-home" href="#home" class="state flex h-14 items-center gap-3 rounded-full px-4 text-on-surface-variant"><iconify-icon icon="material-symbols:home-rounded" width="24" height="24" class="block shrink-0 "></iconify-icon><span class="flex-1 text-label-large">Trang chủ</span></a><a id="nav-support" href="#support" class="state flex h-14 items-center gap-3 rounded-full px-4 bg-secondary-container text-on-secondary-container"><iconify-icon icon="material-symbols:support-agent-rounded" width="24" height="24" class="block shrink-0 "></iconify-icon><span class="flex-1 text-label-large">Hỗ trợ</span><span class="text-label-large">7</span></a><a id="nav-accounts" href="#accounts" class="state flex h-14 items-center gap-3 rounded-full px-4 text-on-surface-variant"><iconify-icon icon="material-symbols:group-outline-rounded" width="24" height="24" class="block shrink-0 "></iconify-icon><span class="flex-1 text-label-large">Tài khoản</span></a><a id="nav-reports" href="#reports" class="state flex h-14 items-center gap-3 rounded-full px-4 text-on-surface-variant opacity-60"><iconify-icon icon="material-symbols:flag-outline-rounded" width="24" height="24" class="block shrink-0 "></iconify-icon><span class="flex-1 text-label-large">Báo cáo</span><span class="rounded-full border border-outline-variant px-2 py-0.5 text-label-small">Sắp có</span></a></div>
-  <p class="mt-6 px-4 pb-2 text-title-small text-on-surface-variant">Công cụ</p>
-  <div><a id="drawer-tool-grafana" href="#tool-grafana" class="state flex h-11 items-center gap-3 rounded-full px-4 text-on-surface-variant "><iconify-icon icon="material-symbols:monitoring-rounded" width="20" height="20" class="block shrink-0 "></iconify-icon><span class="flex-1 text-label-large">Grafana</span><span class="text-outline"><iconify-icon icon="material-symbols:open-in-new-rounded" width="16" height="16" class="block shrink-0 "></iconify-icon></span></a><a id="drawer-tool-restate" href="#tool-restate" class="state flex h-11 items-center gap-3 rounded-full px-4 text-on-surface-variant opacity-60"><iconify-icon icon="material-symbols:account-tree-outline-rounded" width="20" height="20" class="block shrink-0 "></iconify-icon><span class="flex-1 text-label-large">Restate</span><span class="text-outline"><iconify-icon icon="material-symbols:lock-outline-rounded" width="16" height="16" class="block shrink-0 "></iconify-icon></span></a><a id="drawer-tool-litellm" href="#tool-litellm" class="state flex h-11 items-center gap-3 rounded-full px-4 text-on-surface-variant opacity-60"><iconify-icon icon="material-symbols:neurology-outline-rounded" width="20" height="20" class="block shrink-0 "></iconify-icon><span class="flex-1 text-label-large">LiteLLM</span><span class="text-outline"><iconify-icon icon="material-symbols:lock-outline-rounded" width="16" height="16" class="block shrink-0 "></iconify-icon></span></a><a id="drawer-tool-s3" href="#tool-s3" class="state flex h-11 items-center gap-3 rounded-full px-4 text-on-surface-variant opacity-60"><iconify-icon icon="material-symbols:folder-open-outline-rounded" width="20" height="20" class="block shrink-0 "></iconify-icon><span class="flex-1 text-label-large">RustFS</span><span class="text-outline"><iconify-icon icon="material-symbols:lock-outline-rounded" width="16" height="16" class="block shrink-0 "></iconify-icon></span></a><a id="drawer-tool-argocd" href="#tool-argocd" class="state flex h-11 items-center gap-3 rounded-full px-4 text-on-surface-variant opacity-60"><iconify-icon icon="material-symbols:deployed-code-outline-rounded" width="20" height="20" class="block shrink-0 "></iconify-icon><span class="flex-1 text-label-large">Argo CD</span><span class="text-outline"><iconify-icon icon="material-symbols:lock-outline-rounded" width="16" height="16" class="block shrink-0 "></iconify-icon></span></a></div>
-  <div class="mt-auto flex items-center gap-3 rounded-xl bg-surface-container px-3 py-3">
-    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-title-medium text-on-primary">L</span>
-    <div class="min-w-0 flex-1"><p class="truncate text-label-large">Nguyễn Thị Lan</p><p class="text-body-small text-on-surface-variant">Kiểm duyệt viên</p></div>
-    <a id="sign-out" href="#sign-out" title="Đăng xuất" class="state flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant"><iconify-icon icon="material-symbols:logout-rounded" width="20" height="20" class="block shrink-0 "></iconify-icon></a>
-  </div>
-</nav>
-  <div class="flex min-w-0 flex-1 flex-col">
-    <header class="flex h-16 shrink-0 items-center gap-4 px-8">
-  <h1 class="text-title-large">Hỗ trợ</h1>
+<div class="flex h-[900px] w-[1440px] bg-surface-container text-on-surface">
+  <nav class="flex w-[232px] shrink-0 flex-col px-3 pb-3 pt-3">
+  <a id="brand" href="#home" class="flex h-9 items-center gap-2 px-2"><img src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/d0e7dcea-fa3d-477d-9b2a-e072f17a3ee7/brand-assets/console-logo/favicon.svg" alt="ShopNexus" class="h-6 w-6 rounded-[6px]">
+    <span class="tight text-[14px] font-semibold">ShopNexus</span><span class="text-[13px] text-on-surface-variant">Console</span></a>
+  <a id="search" href="#search" class="mt-3 flex h-8 items-center gap-2 rounded-md border hair bg-surface-container-lowest px-2 text-[13px] text-on-surface-variant">
+    <iconify-icon icon="material-symbols-light:search-rounded" width="16" height="16" class="block shrink-0 "></iconify-icon><span class="flex-1">Tìm tài khoản</span><kbd class="mono inline-flex h-5 min-w-5 items-center justify-center rounded-[5px] border hair bg-surface-container-lowest px-1 text-[11px] text-on-surface-variant">/</kbd></a>
+  <div class="mt-4 space-y-0.5"><a id="nav-home" href="#home" class="flex h-8 items-center gap-2.5 rounded-md px-2 text-[13.5px] font-medium hov text-on-surface-variant"><iconify-icon icon="material-symbols-light:home-outline-rounded" width="18" height="18" class="block shrink-0 "></iconify-icon><span>Trang chủ</span></a><a id="nav-support" href="#support" class="flex h-8 items-center gap-2.5 rounded-md px-2 text-[13.5px] font-medium bg-surface-container-lowest lift text-on-surface"><iconify-icon icon="material-symbols-light:support-agent-outline" width="18" height="18" class="block shrink-0 text-primary"></iconify-icon><span>Hỗ trợ</span><span class='tnum ml-auto text-[12px] text-on-surface-variant'>7</span></a><a id="nav-reports" href="#reports" class="flex h-8 items-center gap-2.5 rounded-md px-2 text-[13.5px] font-medium hov text-on-surface-variant"><iconify-icon icon="material-symbols-light:flag-outline-rounded" width="18" height="18" class="block shrink-0 "></iconify-icon><span>Báo cáo</span><span class='tnum ml-auto text-[12px] text-on-surface-variant'>12</span></a><a id="nav-agent" href="#agent" class="flex h-8 items-center gap-2.5 rounded-md px-2 text-[13.5px] font-medium hov text-on-surface-variant"><iconify-icon icon="material-symbols:auto-awesome-outline-rounded" width="18" height="18" class="block shrink-0 "></iconify-icon><span>Agent</span></a><a id="nav-accounts" href="#accounts" class="flex h-8 items-center gap-2.5 rounded-md px-2 text-[13.5px] font-medium hov text-on-surface-variant"><iconify-icon icon="material-symbols-light:group-outline-rounded" width="18" height="18" class="block shrink-0 "></iconify-icon><span>Tài khoản</span></a></div>
+  <p class="mb-1 mt-6 px-2 text-[12px] font-medium text-on-surface-variant">Công cụ</p>
+  <div class="space-y-0.5"><a id="nav-tool-grafana" href="#tool-grafana" class="hov flex h-8 items-center gap-2.5 rounded-md px-2 text-[13.5px] text-on-surface-variant"><iconify-icon icon="material-symbols-light:monitoring" width="18" height="18" class="block shrink-0 "></iconify-icon><span>Grafana</span><span class="ml-auto text-outline"><iconify-icon icon="material-symbols-light:north-east-rounded" width="14" height="14" class="block shrink-0 "></iconify-icon></span></a><a id="nav-tool-restate" href="#tool-restate" class="hov flex h-8 items-center gap-2.5 rounded-md px-2 text-[13.5px] text-outline"><iconify-icon icon="material-symbols-light:account-tree-outline-rounded" width="18" height="18" class="block shrink-0 "></iconify-icon><span>Restate</span><span class="ml-auto text-outline"><iconify-icon icon="material-symbols-light:lock-outline" width="14" height="14" class="block shrink-0 "></iconify-icon></span></a><a id="nav-tool-litellm" href="#tool-litellm" class="hov flex h-8 items-center gap-2.5 rounded-md px-2 text-[13.5px] text-outline"><iconify-icon icon="material-symbols-light:neurology-outline-rounded" width="18" height="18" class="block shrink-0 "></iconify-icon><span>LiteLLM</span><span class="ml-auto text-outline"><iconify-icon icon="material-symbols-light:lock-outline" width="14" height="14" class="block shrink-0 "></iconify-icon></span></a><a id="nav-tool-s3" href="#tool-s3" class="hov flex h-8 items-center gap-2.5 rounded-md px-2 text-[13.5px] text-outline"><iconify-icon icon="material-symbols-light:folder-open-outline-rounded" width="18" height="18" class="block shrink-0 "></iconify-icon><span>RustFS</span><span class="ml-auto text-outline"><iconify-icon icon="material-symbols-light:lock-outline" width="14" height="14" class="block shrink-0 "></iconify-icon></span></a><a id="nav-tool-argocd" href="#tool-argocd" class="hov flex h-8 items-center gap-2.5 rounded-md px-2 text-[13.5px] text-outline"><iconify-icon icon="material-symbols-light:deployed-code-outline-rounded" width="18" height="18" class="block shrink-0 "></iconify-icon><span>Argo CD</span><span class="ml-auto text-outline"><iconify-icon icon="material-symbols-light:lock-outline" width="14" height="14" class="block shrink-0 "></iconify-icon></span></a></div>
   <span class="flex-1"></span>
-  <span class="inline-flex items-center gap-2 rounded-full bg-surface-container-low px-3 py-1.5 text-label-medium text-on-surface-variant"><iconify-icon icon="material-symbols:timer-outline-rounded" width="16" height="16" class="block shrink-0 "></iconify-icon>Phiên còn 6 giờ 12 phút</span>
-  <a id="theme" href="#theme" title="Giao diện" class="state flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant"><iconify-icon icon="material-symbols:contrast-rounded" width="22" height="22" class="block shrink-0 "></iconify-icon></a>
-</header>
-    <main class="flex min-h-0 flex-1 gap-4 px-6 pb-6">
-      <section class="flex w-[360px] shrink-0 flex-col rounded-xl bg-surface-container-lowest">
-  <div class="space-y-3 p-4 pb-2">
-    <div class="flex rounded-full border border-outline"><a id="status-open" href="#status-open" class="state flex h-10 flex-1 items-center justify-center gap-2 text-label-large text-on-surface rounded-l-full">Đang mở · 7</a><a id="status-resolved" href="#status-resolved" class="state flex h-10 flex-1 items-center justify-center gap-2 text-label-large bg-secondary-container text-on-secondary-container rounded-r-full border-l border-outline"><iconify-icon icon="material-symbols:check-rounded" width="18" height="18" class="block shrink-0 "></iconify-icon>Đã xử lý</a></div>
-    <div class="flex flex-wrap gap-2"><a id="kind-all" href="#kind-all" class="state inline-flex h-8 items-center gap-1 rounded-sm px-3 text-label-large bg-secondary-container text-on-secondary-container"><iconify-icon icon="material-symbols:check-rounded" width="18" height="18" class="block shrink-0 "></iconify-icon>Tất cả</a><a id="kind-not_received" href="#kind-not_received" class="state inline-flex h-8 items-center gap-1 rounded-sm px-3 text-label-large border border-outline-variant text-on-surface-variant">Chưa nhận hàng</a><a id="kind-carrier_request" href="#kind-carrier_request" class="state inline-flex h-8 items-center gap-1 rounded-sm px-3 text-label-large border border-outline-variant text-on-surface-variant">Xin thêm hãng</a><a id="kind-other" href="#kind-other" class="state inline-flex h-8 items-center gap-1 rounded-sm px-3 text-label-large border border-outline-variant text-on-surface-variant">Khác</a></div>
-  </div>
-  <div class="min-h-0 flex-1 space-y-1 overflow-hidden px-2 pb-2"><a id="ticket-r1" href="#ticket-r1" class="state flex gap-3 rounded-lg px-3 py-3 bg-secondary-container">
-  <span class="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full bg-surface-container-highest text-on-surface-variant"><iconify-icon icon="material-symbols:local-shipping-outline-rounded" width="20" height="20" class="block shrink-0 "></iconify-icon></span>
-  <span class="min-w-0 flex-1">
-    <span class="flex items-baseline gap-2"><span class="min-w-0 flex-1 truncate text-title-small">Khánh Linh</span><span class="shrink-0 text-body-small text-on-surface-variant">10:12</span></span>
-    <span class="block text-body-small text-on-surface-variant">Xin thêm hãng · <span class="font-mono">7b1c22e0</span></span>
-    <span class="mt-0.5 block truncate text-body-medium text-on-surface-variant">Ninja Van · Mình gửi Ninja Van vì gần nhà, phí rẻ hơn GHTK.</span>
-    
-  </span>
-</a><a id="ticket-r2" href="#ticket-r2" class="state flex gap-3 rounded-lg px-3 py-3 ">
-  <span class="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full bg-surface-container-high text-on-surface-variant"><iconify-icon icon="material-symbols:chat-outline-rounded" width="20" height="20" class="block shrink-0 "></iconify-icon></span>
-  <span class="min-w-0 flex-1">
-    <span class="flex items-baseline gap-2"><span class="min-w-0 flex-1 truncate text-title-small">Bùi Quang Huy</span><span class="shrink-0 text-body-small text-on-surface-variant">09:02</span></span>
-    <span class="block text-body-small text-on-surface-variant">Yêu cầu khác · <span class="font-mono">0f6e2d91</span></span>
-    <span class="mt-0.5 block truncate text-body-medium text-on-surface">Cảm ơn bạn, mình đăng được rồi.</span>
-    
-  </span>
-</a><a id="ticket-r3" href="#ticket-r3" class="state flex gap-3 rounded-lg px-3 py-3 ">
-  <span class="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full bg-secondary-container text-on-secondary-container"><iconify-icon icon="material-symbols:package-2-outline-rounded" width="20" height="20" class="block shrink-0 "></iconify-icon></span>
-  <span class="min-w-0 flex-1">
-    <span class="flex items-baseline gap-2"><span class="min-w-0 flex-1 truncate text-title-small">Phạm Thu Trang</span><span class="shrink-0 text-body-small text-on-surface-variant">Hôm qua</span></span>
-    <span class="block text-body-small text-on-surface-variant">Báo chưa nhận hàng · <span class="font-mono">6c3e7a10</span></span>
-    <span class="mt-0.5 block truncate text-body-medium text-on-surface">Mình nhận được rồi, shipper giao nhầm nhà bên.</span>
-    
-  </span>
-</a><a id="ticket-r4" href="#ticket-r4" class="state flex gap-3 rounded-lg px-3 py-3 ">
-  <span class="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full bg-surface-container-high text-on-surface-variant"><iconify-icon icon="material-symbols:chat-outline-rounded" width="20" height="20" class="block shrink-0 "></iconify-icon></span>
-  <span class="min-w-0 flex-1">
-    <span class="flex items-baseline gap-2"><span class="min-w-0 flex-1 truncate text-title-small">Hồ Ngọc Ánh</span><span class="shrink-0 text-body-small text-on-surface-variant">Thứ Hai</span></span>
-    <span class="block text-body-small text-on-surface-variant">Yêu cầu khác · <span class="font-mono">b47d09e2</span></span>
-    <span class="mt-0.5 block truncate text-body-medium text-on-surface-variant">Đã sửa, bạn cập nhật bản 2.4 nhé.</span>
-    
-  </span>
-</a></div>
-  <p class="flex items-center gap-2 border-t border-outline-variant px-4 py-3 text-body-small text-on-surface-variant">
-    <kbd class="rounded-xs border border-outline-variant px-1.5 font-mono text-label-small">j</kbd><kbd class="rounded-xs border border-outline-variant px-1.5 font-mono text-label-small">k</kbd>Ticket trước, sau</p>
+  <a id="me" href="#me" class="hov flex h-10 items-center gap-2.5 rounded-md px-2"><span class="flex shrink-0 items-center justify-center rounded-full font-semibold bg-primary text-on-primary" style="width:24px;height:24px;font-size:11px">L</span>
+    <span class="min-w-0 flex-1 leading-tight"><span class="block truncate text-[13px] font-medium">Nguyễn Thị Lan</span>
+    <span class="block text-[11.5px] text-on-surface-variant">Kiểm duyệt viên</span></span><iconify-icon icon="material-symbols-light:unfold-more-rounded" width="16" height="16" class="block shrink-0 text-on-surface-variant"></iconify-icon></a>
+</nav>
+  <div class="my-2 mr-2 flex min-w-0 flex-1 overflow-hidden rounded-[12px] bg-surface-container-lowest lift">
+    <section class="flex w-[300px] shrink-0 flex-col border-r hair">
+  <div class="flex items-center gap-2 p-3"><div class="flex h-8 flex-1 rounded-md bg-surface-container p-0.5 text-[12.5px] font-medium">
+    <a id="tab-open" href="#tab-open" class="flex flex-1 items-center justify-center gap-1.5 px-2 text-on-surface-variant">Đang mở <span class="tnum">7</span></a>
+    <a id="tab-resolved" href="#tab-resolved" class="flex flex-1 items-center justify-center rounded-[6px] bg-surface-container-lowest px-2 lift">Đã xử lý</a></div>
+    <a id="filter" href="#filter" class="hov flex h-8 items-center gap-1 rounded-md border hair px-2 text-[12.5px] text-on-surface-variant"><iconify-icon icon="material-symbols-light:filter-list-rounded" width="16" height="16" class="block shrink-0 "></iconify-icon>Mọi loại</a></div>
+  <div class="min-h-0 flex-1 space-y-0.5 overflow-hidden px-2"><a id="q-r1" href="#q-r1" class="bg-surface-container flex gap-3 rounded-[8px] px-3 py-2.5"><span class="flex shrink-0 items-center justify-center rounded-full font-semibold bg-surface-container-high text-on-surface-variant" style="width:32px;height:32px;font-size:14px">K</span>
+  <span class="min-w-0 flex-1"><span class="flex items-center gap-2"><span class="min-w-0 flex-1 truncate text-[13.5px] font-semibold">Khánh Linh</span><span class="tnum text-[12px] text-on-surface-variant">10:12</span></span>
+  <span class="mt-0.5 block truncate text-[12.5px] text-on-surface-variant">Ninja Van · Mình gửi Ninja Van vì gần nhà, phí rẻ hơn GHTK.</span>
+  <span class="mt-1 flex items-center gap-1.5 text-[11.5px] text-on-surface-variant"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-tertiary"></span>Xin thêm hãng</span></span></a><a id="q-r2" href="#q-r2" class="hov flex gap-3 rounded-[8px] px-3 py-2.5"><span class="flex shrink-0 items-center justify-center rounded-full font-semibold bg-surface-container-high text-on-surface-variant" style="width:32px;height:32px;font-size:14px">H</span>
+  <span class="min-w-0 flex-1"><span class="flex items-center gap-2"><span class="min-w-0 flex-1 truncate text-[13.5px] font-semibold">Bùi Quang Huy</span><span class="tnum text-[12px] text-on-surface-variant">09:02</span></span>
+  <span class="mt-0.5 block truncate text-[12.5px] text-on-surface-variant">Cảm ơn bạn, mình đăng được rồi.</span>
+  <span class="mt-1 flex items-center gap-1.5 text-[11.5px] text-on-surface-variant"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-outline"></span>Khác</span></span></a><a id="q-r3" href="#q-r3" class="hov flex gap-3 rounded-[8px] px-3 py-2.5"><span class="flex shrink-0 items-center justify-center rounded-full font-semibold bg-surface-container-high text-on-surface-variant" style="width:32px;height:32px;font-size:14px">T</span>
+  <span class="min-w-0 flex-1"><span class="flex items-center gap-2"><span class="min-w-0 flex-1 truncate text-[13.5px] font-semibold">Phạm Thu Trang</span><span class="tnum text-[12px] text-on-surface-variant">Hôm qua</span></span>
+  <span class="mt-0.5 block truncate text-[12.5px] text-on-surface-variant">Mình nhận được rồi, shipper giao nhầm nhà bên.</span>
+  <span class="mt-1 flex items-center gap-1.5 text-[11.5px] text-on-surface-variant"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-primary"></span>Chưa nhận hàng</span></span></a><a id="q-r4" href="#q-r4" class="hov flex gap-3 rounded-[8px] px-3 py-2.5"><span class="flex shrink-0 items-center justify-center rounded-full font-semibold bg-surface-container-high text-on-surface-variant" style="width:32px;height:32px;font-size:14px">A</span>
+  <span class="min-w-0 flex-1"><span class="flex items-center gap-2"><span class="min-w-0 flex-1 truncate text-[13.5px] font-semibold">Hồ Ngọc Ánh</span><span class="tnum text-[12px] text-on-surface-variant">Thứ Hai</span></span>
+  <span class="mt-0.5 block truncate text-[12.5px] text-on-surface-variant">Đã sửa, bạn cập nhật bản 2.4 nhé.</span>
+  <span class="mt-1 flex items-center gap-1.5 text-[11.5px] text-on-surface-variant"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-outline"></span>Khác</span></span></a></div>
+  <p class="flex items-center gap-1.5 border-t hair px-4 py-2.5 text-[12px] text-on-surface-variant"><kbd class="mono inline-flex h-5 min-w-5 items-center justify-center rounded-[5px] border hair bg-surface-container-lowest px-1 text-[11px] text-on-surface-variant">j</kbd><kbd class="mono inline-flex h-5 min-w-5 items-center justify-center rounded-[5px] border hair bg-surface-container-lowest px-1 text-[11px] text-on-surface-variant">k</kbd>Ticket trước, sau</p>
 </section>
-      <section class="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-surface-container-lowest">
-  <header class="flex items-center gap-3 border-b border-outline-variant px-5 py-3">
-    <span class="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full bg-surface-container-highest text-on-surface-variant"><iconify-icon icon="material-symbols:local-shipping-outline-rounded" width="20" height="20" class="block shrink-0 "></iconify-icon></span>
-    <div class="min-w-0 flex-1"><div class="flex items-center gap-2"><h2 class="truncate text-title-medium">Xin thêm hãng</h2><span class="inline-flex items-center gap-1 rounded-sm bg-surface-container-high px-2 py-0.5 text-label-medium text-primary"><iconify-icon icon="material-symbols:check-circle-outline-rounded" width="14" height="14" class="block shrink-0 "></iconify-icon>Đã xử lý</span></div>
-    <p class="text-body-small text-on-surface-variant">Khánh Linh · Đã xử lý 10:12 hôm nay · Lan</p></div>
-    <a id="reopen" href="#reopen" class="state inline-flex h-10 items-center gap-2 rounded-full border border-outline px-5 text-label-large text-primary"><iconify-icon icon="material-symbols:undo-rounded" width="20" height="20" class="block shrink-0 "></iconify-icon>Mở lại</a>
-    <a id="close-panel" href="#close-panel" title="Đóng (Esc)" class="state flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant"><iconify-icon icon="material-symbols:close-rounded" width="20" height="20" class="block shrink-0 "></iconify-icon></a>
+    <section class="flex min-w-0 flex-1 flex-col">
+  <header class="flex h-[52px] shrink-0 items-center gap-3 border-b hair px-5">
+    <span class="text-primary"><iconify-icon icon="material-symbols:auto-awesome-rounded" width="20" height="20" class="block shrink-0 "></iconify-icon></span>
+    <div class="min-w-0 flex-1 leading-tight"><p class="tight truncate text-[14px] font-semibold">Xin thêm hãng · Khánh Linh</p>
+      <p class="text-[12px] text-on-surface-variant">Đã xử lý 10:12 · Lan</p></div>
+    <a id="reopen" href="#reopen" class="hov inline-flex h-8 items-center gap-1.5 rounded-md border hair px-3 text-[13px] font-medium"><iconify-icon icon="material-symbols-light:undo-rounded" width="16" height="16" class="block shrink-0 "></iconify-icon>Mở lại</a>
+    <a id="more" href="#more" class="hov flex h-8 w-8 items-center justify-center rounded-md text-on-surface-variant"><iconify-icon icon="material-symbols-light:more-horiz" width="18" height="18" class="block shrink-0 "></iconify-icon></a>
   </header>
-  <div class="flex min-h-0 flex-1">
-    <div class="flex min-w-0 flex-1 flex-col">
-      <div class="flex min-h-0 flex-1 flex-col justify-end gap-2 overflow-hidden px-5 py-4 [mask-image:linear-gradient(to_bottom,transparent,black_56px)]"><p class="py-1 text-center text-label-medium text-on-surface-variant">Hôm nay</p><div class="flex flex-col items-start gap-1"><article class="w-[90%] rounded-lg-plus rounded-bl-xs bg-surface-container p-4">
-  <div class="flex items-center gap-2"><span class="text-primary"><iconify-icon icon="material-symbols:local-shipping-outline-rounded" width="20" height="20" class="block shrink-0 "></iconify-icon></span><span class="min-w-0 flex-1 truncate text-title-small">Xin thêm hãng</span></div>
-  <p class="mt-3 text-title-medium">Ninja Van</p>
-  <p class="mt-2 text-body-medium">Mình gửi Ninja Van vì gần nhà, phí rẻ hơn GHTK.</p>
-</article><p class="px-2 text-body-small text-on-surface-variant">09:30</p></div><div class="flex flex-col items-end gap-1"><p class="max-w-[80%] rounded-lg-plus bg-secondary-container px-3 py-2 text-body-medium text-on-surface">Cảm ơn bạn. Ninja Van chưa có API cho tài khoản người bán, nên ShopNexus chưa đọc được vận đơn. Khi có, bạn sẽ thấy Ninja Van trong Đơn vị giao.</p>
-<p class="flex items-center gap-1 px-2 text-body-small text-on-surface-variant">Lan · 10:10</p></div><div class="flex flex-col items-end gap-1"><p class="max-w-[80%] rounded-lg-plus bg-secondary-container px-3 py-2 text-body-medium text-on-surface">Đã ghi nhận hãng Ninja Van.</p>
-<p class="flex items-center gap-1 px-2 text-body-small text-on-surface-variant"><iconify-icon icon="material-symbols:bolt-rounded" width="14" height="14" class="block shrink-0 "></iconify-icon>Tự gửi khi đóng · 10:12</p></div><p class="flex items-center justify-center gap-1.5 py-1 text-label-medium text-on-surface-variant"><iconify-icon icon="material-symbols:check-circle-outline-rounded" width="16" height="16" class="block shrink-0 "></iconify-icon>Lan đánh dấu đã xử lý · Xin thêm hãng</p></div>
-      <div class="border-t border-outline-variant p-3">
-  <div class="flex items-end gap-2 rounded-xl bg-surface-container-high py-2 pl-4 pr-2">
-    <span class="min-h-10 flex-1 py-2 text-body-medium text-on-surface-variant">Nhắn tiếp không mở lại ticket</span>
-    <a id="reply-send" href="#reply-send" title="Gửi (Ctrl+Enter)" class="state flex h-10 w-10 items-center justify-center rounded-full bg-primary text-on-primary"><iconify-icon icon="material-symbols:send-rounded" width="20" height="20" class="block shrink-0 "></iconify-icon></a>
-  </div>
-  <p class="mt-2 flex items-center gap-1.5 px-1 text-body-small text-on-surface-variant"><iconify-icon icon="material-symbols:support-agent-rounded" width="16" height="16" class="block shrink-0 "></iconify-icon>Người dùng thấy tên ShopNexus</p>
+  <div class="flex min-h-0 flex-1 flex-col justify-end overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_40px)]">
+    <div class="mx-auto w-full max-w-[640px] space-y-4 px-6 py-5"><div class="space-y-2">
+  <div class="flex flex-wrap gap-1"><a href="#src" class="hov inline-flex h-6 items-center gap-1 rounded-[6px] border hair px-1.5 text-[12px] text-on-surface-variant"><iconify-icon icon="material-symbols-light:chat-outline-rounded" width="14" height="14" class="block shrink-0 "></iconify-icon>Ticket này</a><a href="#src" class="hov inline-flex h-6 items-center gap-1 rounded-[6px] border hair px-1.5 text-[12px] text-on-surface-variant"><iconify-icon icon="material-symbols-light:local-shipping-outline-rounded" width="14" height="14" class="block shrink-0 "></iconify-icon>Hãng được xin</a></div>
+  <p class="text-[14px] leading-[21px]">Ninja Van được 12 người bán xin trong 30 ngày. Hãng chưa có API cho tài khoản người bán.</p>
+  <section class="overflow-hidden rounded-[12px] border hair bg-surface-container-lowest">
+  <div class="flex items-center gap-2 border-b hair bg-surface-container-low px-3.5 py-2.5">
+    <span class="text-primary"><iconify-icon icon="material-symbols-light:check-circle-outline-rounded" width="16" height="16" class="block shrink-0 "></iconify-icon></span><p class="min-w-0 flex-1 text-[13.5px] font-semibold">Đã gửi cho Khánh Linh</p>
+    <span class="text-[12px] text-on-surface-variant">Lan · 10:10</span></div>
+  <p class="px-3.5 py-3 text-[14px] leading-[21px] text-on-surface-variant">Cảm ơn bạn. Ninja Van chưa có API cho tài khoản người bán, nên ShopNexus chưa đọc được vận đơn. Khi có, bạn sẽ thấy Ninja Van trong Đơn vị giao.</p>
+</section><div class="flex items-center gap-0.5 text-on-surface-variant"><a id="copy-r1" href="#copy" title="Chép" class="hov flex h-7 w-7 items-center justify-center rounded-md"><iconify-icon icon="material-symbols-light:content-copy-outline-rounded" width="15" height="15" class="block shrink-0 "></iconify-icon></a><a id="retry-r1" href="#retry" title="Hỏi lại" class="hov flex h-7 w-7 items-center justify-center rounded-md"><iconify-icon icon="material-symbols-light:refresh-rounded" width="15" height="15" class="block shrink-0 "></iconify-icon></a></div>
 </div>
+<p class="flex items-center justify-center gap-1.5 text-[12px] text-on-surface-variant"><iconify-icon icon="material-symbols-light:check-circle-outline-rounded" width="14" height="14" class="block shrink-0 "></iconify-icon>Lan đánh dấu đã xử lý · 10:12</p></div></div>
+  <div class="mx-auto w-full max-w-[640px] px-6 pb-5">
+    <div class="rounded-[12px] border hair bg-surface-container-lowest lift">
+      <p class="min-h-[52px] px-3.5 pt-3 text-[14px] text-on-surface-variant">Hỏi agent…</p>
+      <div class="flex items-center gap-2 px-2 pb-2">
+        <a id="attach" href="#attach" class="hov flex h-8 w-8 items-center justify-center rounded-md text-on-surface-variant"><iconify-icon icon="material-symbols-light:add-rounded" width="18" height="18" class="block shrink-0 "></iconify-icon></a>
+        <span class="inline-flex h-6 items-center gap-1 rounded-[6px] bg-surface-container px-1.5 text-[12px] text-on-surface-variant"><iconify-icon icon="material-symbols-light:package-2-outline" width="14" height="14" class="block shrink-0 "></iconify-icon>Ticket · Khánh Linh</span>
+        <span class="flex-1"></span>
+        <a id="ask-send" href="#ask-send" class="flex h-8 w-8 items-center justify-center rounded-md bg-on-surface text-surface"><iconify-icon icon="material-symbols-light:arrow-upward-rounded" width="18" height="18" class="block shrink-0 "></iconify-icon></a>
+      </div>
     </div>
-    <aside class="w-[272px] shrink-0 space-y-3 overflow-hidden border-l border-outline-variant p-3"><section class="rounded-lg bg-surface-container-low p-4"><h3 class="mb-1 text-title-small text-on-surface-variant">Người gửi</h3><a id="person" href="#account-7b1c22e0" class="state -mx-2 mb-1 flex items-center gap-3 rounded-md px-2 py-1.5">
-  <span class="flex h-10 w-10 items-center justify-center rounded-full bg-surface-container-high text-title-small text-on-surface-variant">K</span>
-  <span class="min-w-0 flex-1"><span class="block truncate text-title-small">Khánh Linh</span><span class="block font-mono text-body-small text-on-surface-variant">7b1c22e0</span></span>
-  <iconify-icon icon="material-symbols:chevron-right-rounded" width="20" height="20" class="block shrink-0 text-outline"></iconify-icon>
-</a>
-<div class="py-1"><p class="text-body-small text-on-surface-variant">Trạng thái</p><p class="text-body-medium "><span class="rounded-sm bg-secondary-container px-2 py-0.5 text-label-medium text-on-secondary-container">Hoạt động</span></p></div>
-<div class="py-1"><p class="text-body-small text-on-surface-variant">Tham gia</p><p class="text-body-medium ">03/2025</p></div>
-<div class="py-1"><p class="text-body-small text-on-surface-variant">90 ngày</p><p class="text-body-medium ">4 đơn · 0 giao không thành</p></div></section><section class="rounded-lg bg-surface-container-low p-4"><h3 class="mb-1 text-title-small text-on-surface-variant">Yêu cầu</h3><div class="py-1"><p class="text-body-small text-on-surface-variant">Hãng</p><p class="text-body-medium ">Ninja Van</p></div>
-<div class="py-1"><p class="text-body-small text-on-surface-variant">Cùng xin hãng này</p><p class="text-body-medium ">12 người bán trong 30 ngày</p></div></section><section class="rounded-lg bg-surface-container-low p-4"><h3 class="mb-1 text-title-small text-on-surface-variant">Ticket khác của người này</h3><a id="other-o1" href="#ticket-o1" class="state -mx-2 flex items-center gap-3 rounded-md px-2 py-2">
-  <span class="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full bg-surface-container-high text-on-surface-variant"><iconify-icon icon="material-symbols:chat-outline-rounded" width="16" height="16" class="block shrink-0 "></iconify-icon></span><span class="min-w-0 flex-1"><span class="block truncate text-body-medium">Yêu cầu khác · Lọc khu vực</span><span class="block text-body-small text-on-surface-variant">Thứ Hai</span></span>
-  <span class="text-label-medium text-primary">Đã xử lý</span></a><a id="other-o3" href="#ticket-o3" class="state -mx-2 flex items-center gap-3 rounded-md px-2 py-2">
-  <span class="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full bg-secondary-container text-on-secondary-container"><iconify-icon icon="material-symbols:package-2-outline-rounded" width="16" height="16" class="block shrink-0 "></iconify-icon></span><span class="min-w-0 flex-1"><span class="block truncate text-body-medium">Báo chưa nhận hàng · iPhone X</span><span class="block text-body-small text-on-surface-variant">Hôm nay</span></span>
-  <span class="text-label-medium text-on-surface-variant">Đang mở</span></a></section></aside>
   </div>
 </section>
-    </main>
+    <aside class="flex w-[340px] shrink-0 flex-col overflow-hidden border-l hair bg-surface"><div class="flex h-[52px] shrink-0 items-end gap-4 border-b hair px-4"><a id="tab-chat" href="#tab-chat" class="-mb-px flex h-10 items-center gap-1.5 border-b-2 text-[13px] font-medium border-on-surface text-on-surface">Chat khách</a><a id="tab-info" href="#tab-info" class="-mb-px flex h-10 items-center gap-1.5 border-b-2 text-[13px] font-medium border-transparent text-on-surface-variant">Thông tin</a></div><div class="flex min-h-0 flex-1 flex-col overflow-hidden"><div class="flex min-h-0 flex-1 flex-col">
+  <div class="flex min-h-0 flex-1 flex-col justify-end gap-2.5 overflow-hidden px-4 py-4"><p class="text-center text-[11.5px] text-on-surface-variant">Hôm nay</p><div class="max-w-[85%]"><p class="rounded-[14px] rounded-bl-[4px] bg-surface-container px-3 py-2 text-[13.5px] leading-[20px]">Mình gửi Ninja Van vì gần nhà, phí rẻ hơn GHTK. Mong ShopNexus thêm Ninja Van.</p><p class="tnum mt-1 px-1 text-[11px] text-on-surface-variant">09:30</p></div><div class="ml-auto max-w-[85%]"><p class="rounded-[14px] rounded-br-[4px] bg-secondary-container px-3 py-2 text-[13.5px] leading-[20px]">Cảm ơn bạn. Ninja Van chưa có API cho tài khoản người bán, nên ShopNexus chưa đọc được vận đơn. Khi có, bạn sẽ thấy Ninja Van trong Đơn vị giao.</p><p class="tnum mt-1 flex items-center justify-end gap-1 px-1 text-[11px] text-on-surface-variant">Lan · 10:10</p></div><div class="ml-auto max-w-[85%]"><p class="rounded-[14px] rounded-br-[4px] bg-secondary-container px-3 py-2 text-[13.5px] leading-[20px]">Đã ghi nhận hãng Ninja Van.</p><p class="tnum mt-1 flex items-center justify-end gap-1 px-1 text-[11px] text-on-surface-variant"><iconify-icon icon="material-symbols-light:bolt-outline" width="12" height="12" class="block shrink-0 "></iconify-icon>Tự gửi khi đóng · 10:12</p></div></div>
+  <div class="px-3 pb-3"><div class="rounded-[12px] border hair bg-surface-container-lowest"><p class="min-h-[44px] px-3 pt-2.5 text-[13.5px] text-on-surface-variant">Nhắn tiếp, không mở lại ticket…</p>
+    <div class="flex items-center gap-2 px-2 pb-2"><span class="flex-1"></span><a id="send" href="#send" class="inline-flex h-7 items-center gap-1 rounded-md bg-primary px-2.5 text-[12.5px] font-medium text-on-primary">Gửi<iconify-icon icon="material-symbols-light:send-outline-rounded" width="14" height="14" class="block shrink-0 "></iconify-icon></a></div></div></div>
+</div></div></aside>
   </div>
 </div>
 </body>
