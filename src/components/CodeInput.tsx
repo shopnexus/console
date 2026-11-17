@@ -30,7 +30,7 @@ export function CodeInput({ value, onChange, onComplete, error, autoFocus, label
     return (
       <div key={i} className={`flex h-16 w-14 items-center justify-center rounded-md ${border}`}>
         {digit ? (
-          <span className="font-mono text-title-large text-on-surface">{digit}</span>
+          <span className="tabular-nums text-title-large text-on-surface">{digit}</span>
         ) : current ? (
           <span className="h-7 w-0.5 animate-pulse bg-primary" />
         ) : null}

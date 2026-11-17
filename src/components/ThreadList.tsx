@@ -5,7 +5,8 @@ import IconNew from '~icons/material-symbols-light/edit-square-outline'
 import IconOwn from '~icons/material-symbols-light/search-rounded'
 import IconTicket from '~icons/material-symbols-light/package-2-outline'
 import { type Conversation, type DayGroup, type SubjectKind, dayGroup, threadTitle } from '../lib/agent'
-import { Kbd } from './ui'
+import { Kbd, PickedBar } from './ui'
+import { pickedRow } from '../lib/look'
 
 /** The icon of the record a chat is about; a chat without one shows a search. */
 export function SubjectIcon({ kind, size = 16 }: { kind?: SubjectKind; size?: number }): ReactNode {
@@ -54,14 +55,17 @@ export function ThreadList({ items, onNew, fresh }: { items: Conversation[]; onN
                 key={c.id}
                 to={`/agent/${c.id}`}
                 title={threadTitle(c)}
-                className={({ isActive }) =>
-                  `flex h-8 items-center gap-2 rounded-sm px-2 text-body-medium ${
-                    isActive ? 'bg-surface-container' : 'hover:bg-surface-container-low'
-                  }`
-                }
+                className={({ isActive }) => `flex h-8 items-center gap-2 rounded-sm px-2 text-body-medium ${pickedRow(isActive)}`}
               >
-                <span className="text-on-surface-variant"><SubjectIcon kind={c.subject_kind} /></span>
-                <span className="min-w-0 flex-1 truncate">{threadTitle(c)}</span>
+                {({ isActive }) => (
+                  <>
+                    <PickedBar on={isActive} />
+                    <span className={isActive ? 'text-primary' : 'text-on-surface-variant'}>
+                      <SubjectIcon kind={c.subject_kind} />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{threadTitle(c)}</span>
+                  </>
+                )}
               </NavLink>
             ))}
           </div>

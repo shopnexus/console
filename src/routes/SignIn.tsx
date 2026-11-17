@@ -245,7 +245,7 @@ function EnrollCard({ email, enrollment }: { email: string; enrollment: Enrollme
       </div>
       <div className="mt-4 border-t border-hairline pt-3">
         <div className="flex items-center gap-2 rounded-sm bg-surface-container py-1.5 pl-3 pr-1">
-          <span className="flex-1 break-all font-mono text-body-large tracking-wide">{grouped}</span>
+          <span className="flex-1 break-all tabular-nums text-body-large tracking-wide">{grouped}</span>
           <button
             type="button"
             title={copied ? 'Đã chép' : 'Chép khoá'}

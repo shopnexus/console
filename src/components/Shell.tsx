@@ -14,8 +14,8 @@ import { navigation, useNavCollapsed } from '../lib/navigation'
 import { useForgetMe, useMe } from '../lib/session'
 import { useOpenCount } from '../lib/support'
 import { AccountSearch } from './AccountSearch'
-import { typing, useDismiss } from '../lib/dom'
-import { Kbd, ThemeSwitch } from './ui'
+import { typing, useAnchor, useDismiss } from '../lib/dom'
+import { Initial, Kbd, ThemeSwitch } from './ui'
 
 /**
  * The console's shell: a 232 px nav on the page colour and the work area as
@@ -176,6 +176,7 @@ function NavSearch({ rail }: { rail: boolean }) {
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const ref = useDismiss<HTMLDivElement>(open, close)
+  const at = useAnchor(ref, open, 'below')
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === '/' && !typing(e)) {
@@ -204,7 +205,7 @@ function NavSearch({ rail }: { rail: boolean }) {
         )}
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 w-[340px] rounded-xl bg-surface-container-lowest p-1.5 shadow-float">
+        <div style={at} className="fixed z-30 w-[340px] rounded-xl bg-surface-container-lowest p-1.5 shadow-float">
           <AccountSearch
             onPick={(a) => {
               rememberAccount(a)
@@ -225,6 +226,7 @@ function MemberMenu({ rail }: { rail: boolean }) {
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const ref = useDismiss<HTMLDivElement>(open, close)
+  const at = useAnchor(ref, open, 'above')
 
   async function signOut() {
     await post('/console/logout').catch(() => undefined)
@@ -239,9 +241,7 @@ function MemberMenu({ rail }: { rail: boolean }) {
         title={rail ? `${me.display_name} · ${roleName[me.role]}` : undefined}
         className={`flex h-10 items-center gap-2.5 rounded-sm text-left hover:bg-surface-container-low ${rail ? 'w-10 justify-center' : 'w-full px-2'}`}
       >
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-label-medium uppercase text-on-primary">
-          {me.display_name.trim()[0]}
-        </span>
+        <Initial name={me.display_name} id={me.id} size={24} member />
         {!rail && (
           <>
             <span className="min-w-0 flex-1">
@@ -253,7 +253,7 @@ function MemberMenu({ rail }: { rail: boolean }) {
         )}
       </button>
       {open && (
-        <div className="absolute bottom-full left-0 z-30 mb-1 w-[208px] rounded-xl bg-surface-container-lowest p-1.5 shadow-float">
+        <div style={at} className="fixed z-30 w-[208px] rounded-xl bg-surface-container-lowest p-1.5 shadow-float">
           <ThemeSwitch />
           <button
             onClick={signOut}

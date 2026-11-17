@@ -14,7 +14,8 @@ import IconAgent from '~icons/material-symbols/support-agent-rounded'
 import IconTruck from '~icons/material-symbols/local-shipping-outline-rounded'
 import IconUndo from '~icons/material-symbols/undo-rounded'
 import { Shell } from '../components/Shell'
-import { Kbd, Notice } from '../components/ui'
+import { Initial, Kbd, Notice, PickedBar } from '../components/ui'
+import { pickedRow } from '../lib/look'
 import {
   type ConsoleMessage,
   type ConsoleTicket,
@@ -178,9 +179,15 @@ function QueueRow({ t, on, status }: { t: ConsoleTicket; on: boolean; status: Ti
     <button
       data-ticket={t.ticket.id}
       onClick={() => navigate(`/support/${t.ticket.id}`)}
-      className={`state-layer flex w-full gap-2.5 rounded-md px-2 py-2 text-left ${on ? 'bg-secondary-container' : ''}`}
+      className={`flex w-full gap-2.5 rounded-md px-2.5 py-2 text-left ${pickedRow(on)}`}
     >
-      <KindBadge kind={t.ticket.kind} size={32} />
+      <PickedBar on={on} />
+      <span className="relative inline-flex h-fit shrink-0">
+        <Initial name={t.person.display_name} id={t.person.id} size={34} />
+        <span className="absolute -bottom-1 -right-1 rounded-full ring-2 ring-surface-container-lowest">
+          <KindBadge kind={t.ticket.kind} size={18} />
+        </span>
+      </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-baseline gap-2">
           <span className="min-w-0 flex-1 truncate text-label-large">{t.person.display_name}</span>
@@ -192,7 +199,7 @@ function QueueRow({ t, on, status }: { t: ConsoleTicket; on: boolean; status: Ti
         </span>
         <span className="flex items-center gap-1 text-body-small text-on-surface-variant">
           <span className="min-w-0 truncate">
-            {kindLabel[t.ticket.kind]} · <span className="font-mono">{t.person.id.slice(0, 8)}</span>
+            {kindLabel[t.ticket.kind]} · <span className="tabular-nums">{t.person.id.slice(0, 8)}</span>
           </span>
           {waiting && (
             <span className="ml-auto inline-flex shrink-0 items-center gap-0.5 text-label-medium text-primary">
@@ -237,23 +244,30 @@ function Facts({ d }: { d: ConsoleTicketDetail }) {
   const p = d.ticket.person
   return (
     <aside className="w-64 shrink-0 space-y-2 overflow-y-auto border-l border-hairline p-2">
-      <SideCard title="Người gửi">
-        <div className="mb-1 flex items-center gap-2.5 py-1">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-container-high text-label-large text-on-surface-variant">
-            {p.display_name.trim()[0] ?? '?'}
-          </span>
+      <section
+        className={`relative overflow-hidden rounded-md border border-hairline px-3 pb-3 pt-3 ${d.person_status === 'suspended' ? 'band-error' : 'band'}`}
+      >
+        <div aria-hidden className="dots pointer-events-none absolute inset-0" />
+        <div className="relative flex items-center gap-2.5">
+          <Initial name={p.display_name} id={p.id} size={40} status={d.person_status} />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-label-large">{p.display_name || 'Đã xoá'}</span>
-            <span className="block font-mono text-body-small text-on-surface-variant">{p.id.slice(0, 8)}</span>
+            <span className="block truncate text-title-small">{p.display_name || 'Đã xoá'}</span>
+            <span className="block tabular-nums text-body-small text-on-surface-variant">{p.id.slice(0, 8)}</span>
           </span>
         </div>
-        <Fact label="Trạng thái">
-          <span className="rounded-sm bg-secondary-container px-2 py-0.5 text-label-medium text-on-secondary-container">
+        <div className="relative mt-2.5 flex flex-wrap gap-1.5">
+          <span
+            className={`inline-flex h-6 items-center rounded-full px-2 text-label-small ${
+              d.person_status === 'suspended' ? 'bg-error text-on-error' : 'bg-primary/10 text-primary'
+            }`}
+          >
             {personStatus[d.person_status]}
           </span>
-        </Fact>
-        <Fact label="Tham gia">{joined(d.joined_at)}</Fact>
-      </SideCard>
+          <span className="inline-flex h-6 items-center rounded-full border border-hairline bg-surface-container-lowest/80 px-2 text-label-small text-on-surface-variant">
+            Từ {joined(d.joined_at)}
+          </span>
+        </div>
+      </section>
       {d.order && (
         <SideCard title="Đơn liên quan">
           <p className="text-label-large">{d.order.title}</p>
@@ -262,11 +276,11 @@ function Facts({ d }: { d: ConsoleTicketDetail }) {
           </Fact>
           <Fact label="Người bán">
             {d.order.seller.display_name}{' '}
-            <span className="font-mono text-body-small text-on-surface-variant">{d.order.seller.id.slice(0, 8)}</span>
+            <span className="tabular-nums text-body-small text-on-surface-variant">{d.order.seller.id.slice(0, 8)}</span>
           </Fact>
           {d.order.carrier && (
             <Fact label={d.order.carrier.toUpperCase()}>
-              <span className="font-mono">{d.order.tracking_code}</span>
+              <span className="tabular-nums">{d.order.tracking_code}</span>
             </Fact>
           )}
           {d.order.shipment_status && (
@@ -382,7 +396,7 @@ function Thread({ d }: { d: ConsoleTicketDetail }) {
                   {t.order && (
                     <div className="mt-2 rounded-md bg-surface-container-lowest px-3 py-1.5">
                       <p className="truncate text-title-small">{t.order.title}</p>
-                      <p className="font-mono text-body-small text-on-surface-variant">
+                      <p className="tabular-nums text-body-small text-on-surface-variant">
                         {t.order.carrier?.toUpperCase()} · {t.order.tracking_code}
                       </p>
                     </div>

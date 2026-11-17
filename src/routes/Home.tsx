@@ -10,7 +10,7 @@ import IconUnlock from '~icons/material-symbols/lock-open-right-outline-rounded'
 import { Shell } from '../components/Shell'
 import { useMembersToSee } from '../lib/members'
 import { AccountRow } from '../components/AccountSearch'
-import { Kbd } from '../components/ui'
+import { Initial, Kbd } from '../components/ui'
 import { type Action, type ActionKind, api, type Page, shortId } from '../lib/api'
 import { useRecentAccounts } from '../lib/accounts'
 import { useMe } from '../lib/session'
@@ -64,7 +64,7 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
 
 function ActionsCard() {
   const actions = useQuery({ queryKey: ['console', 'actions', 'latest'], queryFn: () => api<Page<Action>>('/console/actions?limit=8') })
-  const cols = 'grid grid-cols-[56px_128px_136px_1fr] items-center gap-3'
+  const cols = 'grid grid-cols-[56px_156px_148px_1fr] items-center gap-3'
   return (
     <Card title="Nhật ký thao tác">
       <div className={`${cols} px-2 pb-1.5 text-label-medium text-on-surface-variant`}>
@@ -79,7 +79,10 @@ function ActionsCard() {
         return (
           <div key={a.id} className={`${cols} min-h-10 border-t border-hairline px-2 py-1.5 text-body-medium`}>
             <span className="text-on-surface-variant">{when(a.at)}</span>
-            <span className="truncate">{a.actor.display_name ?? 'CLI'}</span>
+            <span className="flex min-w-0 items-center gap-2">
+              <Initial name={a.actor.display_name ?? 'CLI'} id={a.actor.member_id ?? 'cli'} size={20} member />
+              <span className="truncate">{a.actor.display_name ?? 'CLI'}</span>
+            </span>
             <span className={`inline-flex w-fit items-center gap-1 rounded-sm px-1.5 py-0.5 text-label-medium ${tone[t]}`}>
               {icon}
               {label}
@@ -87,7 +90,7 @@ function ActionsCard() {
             <span className="flex min-w-0 items-baseline gap-2">
               <span className="shrink-0">
                 {a.target.kind === 'account' ? 'Tài khoản' : 'Nhân viên'}{' '}
-                <span className="font-mono text-body-small text-on-surface-variant">{shortId(a.target.id)}</span>
+                <span className="tabular-nums text-body-small text-on-surface-variant">{shortId(a.target.id)}</span>
               </span>
               {reason && <span className="min-w-0 truncate text-body-small text-on-surface-variant" title={reason}>{reason}</span>}
             </span>

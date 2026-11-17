@@ -4,6 +4,7 @@ import IconComputer from '~icons/material-symbols-light/computer-outline-rounded
 import IconDark from '~icons/material-symbols-light/dark-mode-outline-rounded'
 import IconLight from '~icons/material-symbols-light/light-mode-outline-rounded'
 import { type ShapeName, shapes } from '../lib/shapes'
+import { tintOf } from '../lib/look'
 import { type ThemeChoice, useTheme } from '../lib/theme'
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -95,7 +96,7 @@ export function Steps({ active }: { active: 1 | 2 }) {
 
 export function Kbd({ children }: { children: ReactNode }) {
   return (
-    <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded-xs border border-hairline bg-surface-container-lowest px-1 font-mono text-label-small text-on-surface-variant">
+    <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded-xs border border-hairline bg-surface-container-lowest px-1 tabular-nums text-label-small text-on-surface-variant">
       {children}
     </kbd>
   )
@@ -108,4 +109,45 @@ export function Notice({ children }: { children: ReactNode }) {
       {children}
     </p>
   )
+}
+
+/**
+ * A record's initial in its tint, or a member's in `primary`. status adds
+ * the dot at the bottom end: `primary` active, `error` suspended.
+ */
+export function Initial({
+  name,
+  id,
+  size = 32,
+  status,
+  member = false,
+}: {
+  name: string
+  id: string
+  size?: number
+  status?: 'active' | 'suspended' | 'deleted'
+  member?: boolean
+}) {
+  const dot = Math.max(8, Math.round(size * 0.26))
+  return (
+    <span className="relative inline-flex shrink-0">
+      <span
+        className={`flex items-center justify-center rounded-full font-semibold uppercase ${member ? 'bg-primary text-on-primary' : tintOf(id)}`}
+        style={{ width: size, height: size, fontSize: Math.round(size * 0.42) }}
+      >
+        {name.trim()[0] ?? '?'}
+      </span>
+      {status && status !== 'deleted' && (
+        <span
+          className={`absolute bottom-0 right-0 rounded-full ring-2 ring-surface-container-lowest ${status === 'suspended' ? 'bg-error' : 'bg-primary'}`}
+          style={{ width: dot, height: dot }}
+        />
+      )}
+    </span>
+  )
+}
+
+/** The bar at the start of a picked row; the row's classes come from pickedRow in lib/look. */
+export function PickedBar({ on }: { on: boolean }) {
+  return on ? <span aria-hidden className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-primary" /> : null
 }

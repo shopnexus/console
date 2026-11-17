@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { type CSSProperties, type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 /**
  * Closes a menu or popover on a press outside it or on Escape. Put the
@@ -28,4 +28,20 @@ export function useDismiss<T extends HTMLElement>(open: boolean, close: () => vo
 export function typing(e: KeyboardEvent): boolean {
   const t = e.target as HTMLElement | null
   return !!t?.closest('input, textarea, select, [contenteditable]') || e.metaKey || e.ctrlKey || e.altKey
+}
+
+/**
+ * Pins a popover to its trigger with fixed positioning, so a nav that
+ * scrolls or clips its overflow neither cuts the popover off nor slides
+ * sideways when a field in it takes focus. Put the ref on the element that
+ * holds the trigger; the popover opens below it, or above it at the bottom.
+ */
+export function useAnchor(ref: RefObject<HTMLElement | null>, open: boolean, side: 'below' | 'above'): CSSProperties {
+  const [style, setStyle] = useState<CSSProperties>({})
+  useLayoutEffect(() => {
+    if (!open || !ref.current) return
+    const r = ref.current.getBoundingClientRect()
+    setStyle(side === 'below' ? { left: r.left, top: r.bottom + 4 } : { left: r.left, bottom: window.innerHeight - r.top + 4 })
+  }, [ref, open, side])
+  return style
 }

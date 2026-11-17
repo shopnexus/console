@@ -21,14 +21,14 @@ shadows and breakpoints are off.
   view; `error` marks an action that takes a right away from someone;
   `tertiary` appears only for a listing's price. The page is
   `surface-container`; the work area is one `surface-container-lowest` card.
-- **Type.** Geist, and Geist Mono (`font-mono`) for ids, codes, keys and
-  version tags. Text runs at −0.012em, titles at −0.022em; times and counts
-  use `tabular-nums`. The utilities keep the M3 role names with Geist sizes:
-  `text-body-large` 14 px for chat and inputs, `text-body-medium` 13 px for
-  rows, `text-body-small` 12 px for secondary lines, `text-label-*` 13.5,
-  12.5 and 11.5 px, `text-title-*` 15, 14 and 13.5 px semibold,
-  `text-headline-medium` 20 px for sign-in titles, `text-display-medium`
-  28 px for figures.
+- **Type.** Geist for all text. Ids, codes, keys and version tags stay in
+  Geist with `tabular-nums`. Text runs at −0.012em,
+  titles at −0.022em; times and counts use `tabular-nums` too. The utilities
+  keep the M3 role names: `text-body-large` 16 px for chat and inputs,
+  `text-body-medium` 15 px for rows, `text-body-small` 13 px for secondary
+  lines, `text-label-*` 15, 14 and 13 px, `text-title-*` 17, 16 and 15 px
+  semibold, `text-headline-medium` 22 px for sign-in titles,
+  `text-display-medium` 32 px for figures.
 - **Borders and depth.** `border-hairline` is `outline-variant` mixed 70 %
   with the card colour. Depth is `shadow-lift`, a 1 px ring with a 1 to 2 px
   shadow; menus and dialogs take `shadow-float`, a soft 12/32 px shadow.
@@ -70,10 +70,24 @@ which opens that record's shared chat. While an answer is on its way two
 grey lines wait and send becomes stop (Esc). No screen says what the agent
 is doing or can do.
 
+## Records
+
+- A record's initial is `Initial` in `components/ui.tsx`. It takes one of
+  four tints picked from the record's id (`tintOf` in `lib/look.ts`), so an
+  account has the same colour on every page. With `status`, a dot at the
+  bottom end shows `primary` for active and `error` for suspended. A
+  member's initial is filled `primary` (`member`).
+- A picked row in any list takes `pickedRow(on)` from `lib/look.ts` and
+  `PickedBar`: `primary` at 6 % with a 3 px `primary` bar at the start.
+- A ticket's queue row shows the person's initial with the ticket's kind as
+  an 18 px badge on it.
+- The person at the top of a side column sits on a `band` (`band-error`
+  when suspended) with a `dots` layer, both utilities in `tokens.css`.
+
 ## Density and keyboard
 
 Pages are lists of records: 32 to 40 px rows, `hairline` dividers, opaque
-ids in `font-mono`, a reason that does not fit cut short with the full text
+ids in `tabular-nums`, a reason that does not fit cut short with the full text
 as the row's title. Detail opens beside the list. Lists move with `j`/`k`,
 open with Enter and close with Escape; every control has a visible 2 px
 `primary` focus ring.

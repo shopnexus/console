@@ -2,6 +2,8 @@ import { type ReactNode, type Ref, useState } from 'react'
 import IconSearch from '~icons/material-symbols-light/search-rounded'
 import { type Account, shortId } from '../lib/api'
 import { useAccountSearch, useRecentAccounts } from '../lib/accounts'
+import { Initial, PickedBar } from './ui'
+import { pickedRow } from '../lib/look'
 
 const day = new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit' })
 
@@ -18,17 +20,14 @@ export function AccountRow({ a, right, selected, onClick }: { a: Account; right?
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left ${
-        selected ? 'bg-surface-container' : 'hover:bg-surface-container-low'
-      }`}
+      className={`flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left ${pickedRow(!!selected)}`}
     >
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-container-high text-label-medium uppercase text-on-surface-variant">
-        {a.display_name.trim()[0]}
-      </span>
+      <PickedBar on={!!selected} />
+      <Initial name={a.display_name} id={a.id} size={30} status={a.status} />
       <span className="min-w-0 flex-1">
         <span className="flex items-baseline gap-2">
           <span className="truncate text-label-large">{a.display_name}</span>
-          <span className="font-mono text-body-small text-on-surface-variant">{shortId(a.id)}</span>
+          <span className="tabular-nums text-body-small text-on-surface-variant">{shortId(a.id)}</span>
         </span>
         <span className={`block truncate text-body-small ${a.status === 'suspended' ? 'text-error' : 'text-on-surface-variant'}`}>
           {accountLine(a)}
