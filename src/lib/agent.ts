@@ -49,6 +49,8 @@ export interface Turn {
   /** Phase-1 turns carry their answer as text; newer ones replay their events. */
   answer?: string
   sources?: LegacySource[]
+  /** The console's own key for a turn it sent, kept when the server's id replaces the pending one. */
+  client_key?: string
 }
 
 export interface ConversationDetail extends Conversation {
@@ -157,29 +159,43 @@ export function startTurn(conversationId: string, req: TurnRequest) {
 }
 
 /**
- * Asking: posts the turn, puts it into the conversation's cache and starts
- * following its events. A refusal comes back as a failure.
+ * Asking: the question shows in the conversation at once as a pending
+ * turn, then the post replaces it with the turn the agent stored and starts
+ * following its events. A refusal takes the pending turn out again and
+ * comes back as the error.
  */
 export function useStartTurn(memberId: string) {
   const client = useQueryClient()
   return useMutation({
     mutationFn: async ({ conversationId, req }: { conversationId: string; req: TurnRequest }) => {
-      if (req.text.length > maxQuestion) throw new ApiError(422, 'agent_input_rejected', 'too long')
-      const { turn_id } = await startTurn(conversationId, req)
-      const turn: Turn = {
-        id: turn_id,
+      const key = `pending-${crypto.randomUUID()}`
+      const pending: Turn = {
+        id: key,
+        client_key: key,
         member_id: memberId,
         text: req.text,
-        status: 'RUNNING',
+        status: 'PENDING',
         created_at: new Date().toISOString(),
         agent_id: req.agent_id,
         skill_id: req.skill_id,
         attachments: req.attachments,
       }
-      client.setQueryData<ConversationDetail>(detailKey(conversationId), (d) => (d && !d.turns.some((t) => t.id === turn_id) ? { ...d, turns: [...d.turns, turn] } : d))
-      followTurn(turn_id)
-      void client.invalidateQueries({ queryKey: listKey })
-      return turn
+      client.setQueryData<ConversationDetail>(detailKey(conversationId), (d) =>
+        d ? { ...d, turns: [...d.turns, pending] } : { id: conversationId, updated_at: pending.created_at, title: req.text.slice(0, 80), turns: [pending] },
+      )
+      try {
+        if (req.text.length > maxQuestion) throw new ApiError(422, 'agent_input_rejected', 'too long')
+        const { turn_id } = await startTurn(conversationId, req)
+        client.setQueryData<ConversationDetail>(detailKey(conversationId), (d) =>
+          d ? { ...d, turns: d.turns.map((t) => (t.id === key ? { ...t, id: turn_id, status: 'RUNNING' } : t)) } : d,
+        )
+        followTurn(turn_id)
+        void client.invalidateQueries({ queryKey: listKey })
+        return turn_id
+      } catch (e) {
+        client.setQueryData<ConversationDetail>(detailKey(conversationId), (d) => (d ? { ...d, turns: d.turns.filter((t) => t.id !== key) } : d))
+        throw e
+      }
     },
   })
 }
@@ -255,7 +271,7 @@ async function readEvents(id: string, after: number, onEvent: (ev: RunEvent) => 
  * again). Closing the tab ends the stream, not the run.
  */
 export function followTurn(id: string) {
-  if (streams.has(id) || missing.has(id)) return
+  if (streams.has(id) || missing.has(id) || id.startsWith('pending-')) return
   const st = runs.get(id)
   if (st?.phase === 'finished') return
   const controller = new AbortController()

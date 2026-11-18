@@ -336,13 +336,23 @@
  *   animate-grow    a progress bar filling from the start
  *   animate-fade    plain fade, for labels that appear with the nav
  *   animate-shimmer a waiting line's sweep
+ *   animate-panel   a side panel beside the chat: in from 16 px
+ *   animate-wait    a placeholder that holds its space at once and shows
+ *                   only after 300 ms, so a fast answer never flashes it
+ *   animate-pulse-soft the live step's icon, 1.6 s
+ * `shimmer-text` sweeps a highlight across live text in its own colour;
+ * `disclosure` opens and closes a block by height and opacity (200 ms
+ * open, 150 ms close) with data-open.
  * `stagger` with style --i: 0, 1, 2 … delays an item 18 ms a step, capped;
  * `rise-list` on a list does the same for its rows without the index.
  */
 @theme {
   --animate-rise: sn-rise 220ms var(--ease-spatial) backwards;
   --animate-pane: sn-pane 200ms var(--ease-spatial) backwards;
-  --animate-pop: sn-pop 160ms var(--ease-spatial-fast) backwards;
+  --animate-pop: sn-pop 150ms var(--ease-spatial-fast) backwards;
+  --animate-panel: sn-panel 220ms var(--ease-spatial) backwards;
+  --animate-wait: sn-fade 160ms var(--ease-effects) 300ms backwards;
+  --animate-pulse-soft: sn-pulse 1.6s ease-in-out infinite;
   --animate-thumb: sn-thumb 200ms var(--ease-spatial-fast) backwards;
   --animate-bar: sn-bar 200ms var(--ease-spatial-fast) backwards;
   --animate-badge: sn-badge 240ms var(--ease-spatial-fast) backwards;
@@ -358,6 +368,16 @@
   }
   @keyframes sn-pop {
     from { opacity: 0; scale: 0.96; }
+  }
+  @keyframes sn-panel {
+    from { opacity: 0; translate: 16px 0; }
+  }
+  @keyframes sn-pulse {
+    50% { opacity: 0.45; }
+  }
+  @keyframes sn-text-sweep {
+    from { background-position: 100% center, 0 0; }
+    to { background-position: 0% center, 0 0; }
   }
   @keyframes sn-thumb {
     from { opacity: 0.4; scale: 0.88 0.8; }
@@ -421,6 +441,38 @@
   }
   & > :nth-child(10) {
     animation-delay: 162ms;
+  }
+}
+
+/* Live text: a highlight sweeps across it in the text's own colour, so a
+   muted label shimmers muted and a step title shimmers dark. */
+@utility shimmer-text {
+  display: inline-block;
+  background-image:
+    linear-gradient(90deg, transparent calc(50% - 40px), var(--md-surface-container-lowest), transparent calc(50% + 40px)),
+    linear-gradient(currentColor, currentColor);
+  background-size: 250% 100%, auto;
+  background-repeat: no-repeat, padding-box;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: sn-text-sweep 2s linear infinite;
+}
+
+/* A block that opens and closes by height: grid rows from 0fr to 1fr. */
+@utility disclosure {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 150ms var(--ease-effects), opacity 150ms var(--ease-effects);
+  & > * {
+    min-height: 0;
+    overflow: hidden;
+  }
+  &[data-open] {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transition-duration: 200ms;
   }
 }
 
@@ -494,6 +546,12 @@
     animation-delay: 0ms !important;
     transition-duration: 1ms !important;
   }
+  /* Live text stays plain text. */
+  .shimmer-text {
+    background: none;
+    -webkit-text-fill-color: currentColor;
+    animation: none;
+  }
 }
 
 /* ------------------------------------------------------------- base -- */
@@ -529,7 +587,7 @@
       var(--ease-effects), var(--ease-spatial-fast);
   }
   :where(button, a[href], [role="button"]):where(:active:not(:disabled)) {
-    scale: 0.98;
+    scale: 0.97;
     transition-duration: 80ms;
   }
 

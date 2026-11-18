@@ -11,6 +11,7 @@ import IconPlay from '~icons/material-symbols-light/play-arrow-rounded'
 import IconRetry from '~icons/material-symbols-light/refresh-rounded'
 import IconTicket from '~icons/material-symbols-light/package-2-outline'
 import IconBolt from '~icons/material-symbols-light/bolt-outline-rounded'
+import IconDown from '~icons/material-symbols-light/arrow-downward-rounded'
 import {
   type Answers,
   answerTurn,
@@ -36,6 +37,7 @@ import {
 } from '../../lib/agent'
 import { ApiError, shortId } from '../../lib/api'
 import { useDismiss, useNow } from '../../lib/dom'
+import { markThreadOpened, useArrival, useSmoothReveal } from '../../lib/motion'
 import { compact, duration, time, usd } from '../../lib/format'
 import { type Panel, PanelContext, type PanelApi } from '../../lib/panel'
 import { answerBlocks, canContinue, counts, elapsed, isLive, outcomeGroup, type RunState } from '../../lib/run'
@@ -48,7 +50,7 @@ import { Blocks, SourceRow } from './Answer'
 import { ClarifyCard } from './Clarify'
 import { BudgetLock, type Chip, Composer, type ComposerMode, PausedStrip } from './Composer'
 import { DocumentPanel, SourcesPanel, ToolPanel } from './Panels'
-import { CompactionDivider, Compacting, DraftSoFar, RunCard } from './Run'
+import { CompactionDivider, Compacting, RunCard, Waiting } from './Run'
 
 const attachIcon: Record<Attachment['kind'], ReactNode> = {
   ticket: <IconTicket width={13} height={13} />,
@@ -260,35 +262,71 @@ function TurnView({
     )
   }
 
+  return <RunTurn turn={turn} run={run} last={last} by={by} onAsk={onAsk} busy={busy} act={act} copied={copied} setCopied={setCopied} />
+}
+
+/** A turn with its run: the waiting word, the activity, the answer revealed as it arrives, and its footer. */
+function RunTurn({
+  turn,
+  run,
+  last,
+  by,
+  onAsk,
+  busy,
+  act,
+  copied,
+  setCopied,
+}: {
+  turn: Turn
+  run?: RunState
+  last: boolean
+  by?: string
+  onAsk?: (text: string) => void
+  busy: boolean
+  act: (f: () => Promise<unknown>) => Promise<void>
+  copied: boolean
+  setCopied: (v: boolean) => void
+}) {
+  // Only what arrives now animates: a turn the member just sent, or one that streams after the thread opened.
+  const arrived = useArrival(turn.client_key ?? turn.id, !!turn.client_key)
+  const [stream] = useState(() => arrived || !!turn.client_key)
   const blocks = run ? answerBlocks(run) : []
   const finished = run?.phase === 'finished'
+  const textBlock = blocks.find((b) => b.type === 'text') as { markdown: string } | undefined
+  const answerText = textBlock?.markdown ?? (run && run.phase !== 'finished' ? run.draft : '')
+  const reveal = useSmoothReveal(answerText, stream)
+  const quiet = !run || (isLive(run) && run.steps.length === 0 && run.toolOrder.length === 0 && !run.draft && blocks.length === 0 && run.thinking.length === 0)
   const textOf = blocks.filter((b) => b.type === 'text').map((b) => plain((b as { markdown: string }).markdown)).join('\n\n')
   return (
     <div className="space-y-4">
-      <Bubble turn={turn} by={by} />
+      <div className={arrived ? 'animate-rise' : ''}>
+        <Bubble turn={turn} by={by} />
+      </div>
       {run && <Steers run={run} onAsk={onAsk} />}
       <div className="flex gap-3">
         <Mascot />
         <div className="min-w-0 flex-1 space-y-4">
-          {!run && (
-            <div className="space-y-2 py-1" aria-busy>
-              <span className="shimmer block h-2.5 w-[86%] rounded-full" />
-              <span className="shimmer block h-2.5 w-[58%] rounded-full [animation-delay:120ms]" />
-            </div>
-          )}
+          {quiet && (!run || isLive(run)) && <Waiting />}
           {run?.compactions.map((c, i) => (
             <CompactionDivider key={i} summary={c.summary} before={c.before} after={c.after} />
           ))}
           {run?.compacting && <Compacting />}
-          {run && <RunCard run={run} />}
-          {run && isLive(run) && run.draft && !blocks.some((b) => b.type === 'text') && <DraftSoFar text={run.draft} />}
-          {run?.phase === 'awaiting_input' && !blocks.length && run.draft && <p className="text-body-large leading-[26px]">{run.draft}</p>}
+          {run && <RunCard run={run} turnId={turn.id} />}
           {run?.phase === 'awaiting_input' && run.clarify && last && <ClarifyCard questions={run.clarify} busy={busy} onAnswer={(answers: Answers) => void act(() => answerTurn(turn.id, { answers }))} />}
-          {run && finished && <SourceRow sources={run.sources} turnId={turn.id} />}
-          {run && <Blocks blocks={blocks} sources={run.sources} turnId={turn.id} onAsk={last && finished ? onAsk : undefined} />}
+          {run && finished && !reveal.revealing && <SourceRow sources={run.sources} turnId={turn.id} />}
+          {run && (
+            <Blocks
+              blocks={blocks}
+              sources={run.sources}
+              turnId={turn.id}
+              onAsk={last && finished ? onAsk : undefined}
+              reveal={answerText ? { text: reveal.shown, caret: reveal.revealing } : undefined}
+              finished={finished}
+            />
+          )}
           {run && <OutcomeNotice run={run} last={last} busy={busy} onContinue={() => void act(() => continueTurn(turn.id))} />}
-          {run && finished && (
-            <div className="-ml-1.5 flex items-center gap-0.5">
+          {run && finished && !reveal.revealing && (
+            <div className="-ml-1.5 flex animate-fade items-center gap-0.5">
               {textOf && (
                 <IconBtn
                   title={copied ? 'Copied' : 'Copy'}
@@ -298,10 +336,12 @@ function TurnView({
                     setTimeout(() => setCopied(false), 1500)
                   }}
                 >
-                  {copied ? <IconCheck width={16} height={16} className="text-primary" /> : <IconCopy width={16} height={16} />}
+                  <span key={copied ? 'y' : 'n'} className="animate-fade">
+                    {copied ? <IconCheck width={16} height={16} className="text-primary" /> : <IconCopy width={16} height={16} />}
+                  </span>
                 </IconBtn>
               )}
-              {onAsk && (
+              {onAsk && run.outcome?.status !== 'BUDGET' && (
                 <IconBtn title="Ask again" onClick={() => onAsk(turn.text)}>
                   <IconRetry width={16} height={16} />
                 </IconBtn>
@@ -360,7 +400,8 @@ export function ChatView({
   const [busy, setBusy] = useState(false)
   const [panel, setPanel] = useState<Panel>()
   const box = useRef<HTMLTextAreaElement>(null)
-  const end = useRef<HTMLDivElement>(null)
+  // Whatever mounts while the thread opens draws still (lib/motion).
+  useState(() => markThreadOpened())
   const { run: panelRun } = useRun(panel && panel.kind !== 'tool' ? panel.turnId : undefined)
 
   const lastAgent = lastTurn?.agent_id ?? lastRun?.agent?.id
@@ -390,47 +431,67 @@ export function ChatView({
   // A chat that goes away takes its panel with it.
   useEffect(() => () => onPanel?.(false), [onPanel])
 
-  // The thread stays at its newest line while the run writes.
+  // The thread follows its newest line while the member is at the bottom; scrolled up, it stays put and offers a jump back.
+  const scroller = useRef<HTMLDivElement>(null)
+  const [atBottom, setAtBottom] = useState(true)
   const seq = lastRun?.lastSeq ?? 0
+  const toBottom = useCallback((smooth = false) => {
+    const el = scroller.current
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' })
+  }, [])
   useEffect(() => {
-    end.current?.scrollIntoView({ block: 'end' })
-  }, [turns.length, seq])
+    if (atBottom) toBottom()
+    // atBottom is read, not followed: scrolling back down needs no jump.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turns.length, seq, toBottom])
+  // The thread opens at its end.
+  useEffect(() => {
+    if (conversation.data) toBottom()
+  }, [conversation.data?.id, toBottom]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function ask(text: string) {
     setError(undefined)
+    // The box clears and keeps focus at once; a refusal puts the text back.
+    const keep = { attachments, skill }
+    setDraft('')
+    setAttachments([])
+    setSkill(undefined)
+    setAtBottom(true)
     let target = conversationId
     try {
-      if (!target) {
-        target = (await openConversation(subject ? { kind: subject.kind, id: subject.id } : undefined)).id
-      }
-      const req = { text, agent_id: chosenAgent, attachments: attachments.length ? attachments : undefined, skill_id: skill?.id }
-      await starter.mutateAsync({ conversationId: target, req })
-      setDraft('')
-      setAttachments([])
-      setSkill(undefined)
+      if (!target) target = (await openConversation(subject ? { kind: subject.kind, id: subject.id } : undefined)).id
+      const req = { text, agent_id: chosenAgent, attachments: keep.attachments.length ? keep.attachments : undefined, skill_id: keep.skill?.id }
+      const sent = starter.mutateAsync({ conversationId: target, req })
       if (!conversationId) {
+        await Promise.resolve()
         if (onCreated) onCreated(target)
         else navigate(`/agent/${target}`)
       }
+      requestAnimationFrame(() => toBottom(true))
+      await sent
     } catch (e) {
       const f = failureOf(e)
-      // A turn already running takes the message as a steer.
+      // A turn already running or paused takes the message as a steer.
       if (f === 'busy' && lastTurn && lastRun && (isLive(lastRun) || lastRun.phase === 'paused')) {
-        await steerTurn(lastTurn.id, text)
-        setDraft('')
+        await steerTurn(lastTurn.id, text).catch(() => undefined)
         return
       }
+      setDraft((d) => d || text)
+      setAttachments(keep.attachments)
+      setSkill(keep.skill)
       setError(failureText[f] || undefined)
     }
   }
 
   async function send(text: string) {
     if (steering && lastTurn) {
+      setDraft('')
       setBusy(true)
       try {
         await steerTurn(lastTurn.id, text)
-        setDraft('')
+        requestAnimationFrame(() => toBottom(true))
       } catch (e) {
+        setDraft((d) => d || text)
         setError(e instanceof ApiError ? 'The run did not take the message.' : failureText.other)
       } finally {
         setBusy(false)
@@ -541,17 +602,38 @@ export function ChatView({
         ) : (
           <section className="flex min-w-0 flex-1 flex-col">
             {header}
-            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+            <div
+              ref={scroller}
+              onScroll={(e) => {
+                const el = e.currentTarget
+                setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80)
+              }}
+              className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+            >
               <span className="flex-1" />
               <div className="mx-auto w-full max-w-[800px] space-y-7 px-8 py-6">
                 {notFound && <p className="text-body-medium text-on-surface-variant">{failureText.not_found}</p>}
                 {turns.map((t, i) => (
-                  <TurnView key={t.id} turn={t} last={i === turns.length - 1} by={by(t)} onAsk={(text) => void send(text)} />
+                  <TurnView key={t.client_key ?? t.id} turn={t} last={i === turns.length - 1} by={by(t)} onAsk={(text) => void send(text)} />
                 ))}
-                <div ref={end} />
               </div>
             </div>
-            <div className="mx-auto w-full max-w-[800px] px-8 pb-5">{composer}</div>
+            <div className="relative mx-auto w-full max-w-[800px] px-8 pb-5">
+              {!atBottom && turns.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAtBottom(true)
+                    toBottom(true)
+                  }}
+                  className="absolute -top-12 left-1/2 inline-flex h-9 -translate-x-1/2 animate-fade items-center gap-1.5 rounded-full border border-hairline bg-surface-container-lowest px-3.5 text-label-medium shadow-float"
+                >
+                  Jump to latest
+                  <IconDown width={16} height={16} />
+                </button>
+              )}
+              {composer}
+            </div>
           </section>
         )}
         {panel?.kind === 'tool' && <ToolPanel key={panel.id} id={panel.id} />}

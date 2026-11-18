@@ -20,7 +20,9 @@ shadows and breakpoints are off.
 - **Colour.** The app's M3 roles. `primary` is the one main action per
   view; `error` marks an action that takes a right away from someone;
   `tertiary` appears only for a listing's price. The page is
-  `surface-container`; the work area is one `surface-container-lowest` card.
+  `surface-container-lowest` (white) and the sidebar `surface`. Charts take
+  `chart-1` to `chart-5` by an agent's or provider's place in its list; raw
+  JSON takes the `code-*` colours.
 - **Type.** Be Vietnam Pro for all text. Ids, codes, keys and version tags
   stay in Be Vietnam Pro with `tabular-nums`. Text keeps the face's own
   spacing, because negative tracking closes its narrow word spaces; titles run
@@ -33,43 +35,60 @@ shadows and breakpoints are off.
 - **Borders and depth.** `border-hairline` is `outline-variant` mixed 70 %
   with the card colour. Depth is `shadow-lift`, a 1 px ring with a 1 to 2 px
   shadow; menus and dialogs take `shadow-float`, a soft 12/32 px shadow.
-- **Corners.** `rounded-xs` 5 px for keys and version tags, `sm` 6 px for
-  controls, chips and nav rows, `md` 8 px for tiles and record avatars,
-  `lg` 10 px for blocks and notices, `xl` 12 px for cards, the work card and
-  the ask box, `2xl` 14 px for the sign-in card and chat bubbles.
-- **Controls.** Buttons and nav rows are 32 px high. The primary action is
-  filled `primary`; the agent's send and "Cuộc mới" are filled `on-surface`.
-  Hover is a `surface-container-low` fill.
+- **Corners.** `rounded-xs` 5 px for keys, `sm` 6 px, `md` 8 px for record
+  avatars, `lg` 10 px for nav rows, `xl` 12 px for inputs, `2xl` 14 px for
+  small cards inside a card, `3xl` 16 px for cards and list rows, `4xl`
+  20 px for bubbles and panels, `5xl` 24 px for the ask box and the sign-in
+  card.
+- **Controls.** Buttons are 36 px pills (`Btn`), 40 px when big. The
+  primary action is filled `primary`, send included; Pause is filled
+  `on-surface`. Hover is `on-surface` at 5 %. Every select is `Select` in
+  `components/Select.tsx`, never the browser's.
 - **Icons.** Material Symbols Light (`~icons/material-symbols-light/…`);
   the agent's sparkle is Material Symbols Rounded, which the light set lacks.
 
 ## Shell
 
-A 232 px nav on the page colour: the mark and "ShopNexus Console", account
-search on `/`, then Trang chủ, Hỗ trợ with the count of open tickets, Báo
-cáo (greyed "Sắp có" until report cases ship), Agent and Tài khoản
-("Sắp có"). Nhật ký thao tác and Nhân viên join for admins once they have
-pages. Công cụ lists the ops dashboards with ↗, or a lock below the
-member's role. The member sits at the bottom with the theme and sign-out
-in a menu. `[` collapses the nav to a 64 px rail of icons; the browser keeps
-that choice, and Hỗ trợ opens on the rail.
+One 272 px sidebar on `surface` beside the white page, with no card around
+the page. From the top: the mark, New chat (`N`, the home page `/`),
+Search (`/`, chats by title and an account by id, email or phone on Enter),
+Support and Reports with their counts, Accounts, Tools (the dashboards in a
+menu, a lock below the member's role), the member's chats grouped by day
+(Today, Yesterday, Previous 7 days, Older), Settings for admins, and the
+member with the theme and sign-out in a menu. `[` folds the sidebar to a
+64 px rail; Support and a chat with a side panel open start on the rail.
 
-The work area is one white card with 12 px corners and `shadow-lift`. A
-page with a title gets a 52 px header in the card; pages of panes (Hỗ trợ,
-Agent) fill it and split it with hairlines.
+Settings (`/settings/*`, admins) swaps the sidebar for its own, with
+Console to go back: Overview, Members, Agents, Models, Providers, Budgets,
+Tools, Guardrails and Audit log. Each page opens on a band with the page's
+icon, its title, a row of fact chips and its actions.
 
 ## Agent
 
-The agent reads and answers; the member acts. The page has a 264 px list
-of the member's chats grouped by day (Hôm nay, Hôm qua, 7 ngày trước, Cũ
-hơn) with an icon for the record each is about, and "Cuộc mới" (`N`). The
-chat column is at most 680 px: the member's questions as bubbles (with who
-asked and when in a record's shared chat), answers as plain text after the
-sources as 24 px chips, and copy and ask-again under each answer. The ask
-box holds the attached ticket or account as a chip; + attaches another,
-which opens that record's shared chat. While an answer is on its way two
-grey lines wait and send becomes stop (Esc). No screen says what the agent
-is doing or can do.
+The agent reads and proposes; the member acts. A new chat opens on the
+mascot, a greeting and the ask box, with the last three chats under it. A
+chat is at most 800 px wide: the member's questions as bubbles, each answer
+after the mascot.
+
+- A turn is a run: its steps with a one-line summary, tool calls as quiet
+  chips that open the tool panel (Result, Input, Raw JSON, Timing),
+  retries, provider switches and guardrails as one-line notes, the
+  rate-limit countdown, and the context meter in the ask box. A finished
+  run folds to "Worked for 42 s · steps · tool calls · sources".
+- Pause is the run's main control and becomes Stop now. A paused run shows
+  Continue and End above the ask box. A message sent while the run works
+  or is paused steers it; each steer shows Waiting, "Read before step n",
+  or Not read with "Send as a new message".
+- Answers are text with numbered citations, figures, tables, charts, a
+  document card, follow-ups and the turn details chip. The sources panel
+  lists every source by kind with its quoted line; the document panel has
+  versions, Copy as Markdown and Print to PDF.
+- Clarifying questions are numbered cards of options with Continue and
+  Use defaults. A spent budget replaces the ask box until midnight.
+- The ask box takes `/` for skills, `@` and `+` for a ticket, report or
+  account, and the agent picker.
+- Support shows the ticket's shared chat with the agent in the middle and
+  the customer's chat and Details in a 340 px column.
 
 ## Records
 
@@ -78,53 +97,47 @@ is doing or can do.
   account has the same colour on every page. With `status`, a dot at the
   bottom end shows `primary` for active and `error` for suspended. A
   member's initial is filled `primary` (`member`).
-- A picked row in any list takes `pickedRow(on)` from `lib/look.ts` and
-  `PickedBar`: `primary` at 6 % with a 3 px `primary` bar at the start.
-- A ticket's queue row shows the person's initial with the ticket's kind as
-  an 18 px badge on it.
+- A picked row in any list takes `pickedRow(on)` from `lib/look.ts`: a
+  white card with the soft shadow and a faint `primary` ring.
 - The person at the top of a side column sits on a `band` (`band-error`
   when suspended) with a `dots` layer, both utilities in `tokens.css`.
 
-## Báo cáo
+## Reports
 
-- `/reports` and `/reports/:account_id`: the 320 px queue beside the case.
-  Chờ xử lý lists open cases by their latest report, with the open count
-  from the server's `total` in an `error` badge here and beside Báo cáo in
-  the nav; Đã xử lý lists resolved cases, newest first.
-- The case opens on a `band` with the account, its reasons as pills and
-  the most reported listing. Tin bị báo lists every reported listing with
-  its photo, price, status and report count; then each report with the
-  reporter, the reason and the note.
+- `/reports` and `/reports/:account_id`: the 310 px queue beside the case.
+  Waiting lists open cases by their latest report, with the open count from
+  the server's `total` in an `error` badge here and beside Reports in the
+  sidebar; Resolved lists resolved cases, newest first.
+- The case opens on a hero with the account, its reasons as pills and the
+  most reported listing; then the reported listings and the people who
+  reported, with their notes.
 - The decision bar is pinned to the bottom. The member ticks the listings
-  to hide and Tạm khoá with a term; Tạm khoá adds the reason the person
-  sees. The action button names what is ticked. It hides, then suspends,
-  then marks the case actioned (`carryOut` in `lib/reports.ts`); Không vi
-  phạm dismisses the case.
+  to hide and Suspend with a term; Suspend adds the reason the person sees.
+  The action button names what is ticked. It hides, then suspends, then
+  marks the case actioned (`carryOut` in `lib/reports.ts`); Not a violation
+  dismisses the case.
 - A resolved case's bar lists what was done, the member and the time.
-  Hoàn tác restores the hidden listings and the suspension, then reopens
-  the case (`undoCase`).
-- Hỏi agent opens the account's shared chat in Agent. The agent's evidence
-  and proposal come with the agent's blocks.
+  Undo restores the hidden listings and the suspension, then reopens the
+  case (`undoCase`).
+- Ask the agent opens the account's shared chat.
 
-## Tài khoản
+## Accounts
 
-- `/accounts` and `/accounts/:id`: the 340 px list beside the account.
-  Tất cả lists every account newest first; Đang khoá lists the suspended
-  ones whose term ends first, with their count from the server's `total`
-  in an `error` badge. The search finds one account by id or phone number
-  on Enter. On this page `/` and the nav's "Tìm tài khoản" focus that
-  search; elsewhere a pick in the nav's popover opens the account here.
-- The account opens on a `band`: the 72 px initial, the name, the status,
-  the id with a copy button, chips for a verified phone and earlier
-  suspensions, Hỏi agent (the account's shared chat in Agent) and Tạm khoá
-  or Mở khoá. A suspended account adds a card with the end, the days left,
-  a bar for the time served and who suspended it for how long.
-- Lịch sử is the console's suspensions and their ends as a timeline that
-  ends on the account's creation. Thông tin and Định danh sit in a 272 px
-  column beside it.
-- Tạm khoá opens a popover: 1 ngày, 7 ngày, 30 ngày or Không hạn, each with
-  its end date, then the reason (up to 500 characters) that the person
-  sees, and "Tạm khoá 7 ngày" in `error`.
+- `/accounts` and `/accounts/:id`: the 330 px list beside the account. All
+  lists every account newest first; Suspended lists the suspended ones whose
+  term ends first, with their count in an `error` badge. The search finds
+  one account by id or phone number on Enter; on this page `/` focuses it.
+- The account opens on a hero: the 72 px initial, the name, the status, the
+  id with a copy button, chips for a verified phone and earlier
+  suspensions, Ask the agent and Suspend, or Lift suspension. A suspended
+  account adds a card with the term, the days left, a bar for the time
+  served and who suspended it.
+- History is the console's suspensions and their ends as a timeline that
+  ends on the account's creation; Details (phone, email, joined) sits in a
+  300 px column beside it.
+- Suspend opens a popover: 1 day, 7 days, 30 days or No end as cards with
+  their end dates, then the reason (up to 500 characters) the person sees,
+  and "Suspend 7 days" in `error`.
 
 ## Motion
 
@@ -152,6 +165,40 @@ while it runs.
   in.
 - With reduced motion every animation and transition takes 1 ms.
 
+## Chat motion
+
+Only what arrives now moves; a thread that opens draws still.
+
+- Text streams by a smooth reveal (`useSmoothReveal` in `lib/motion.ts`):
+  the speed eases over 300 ms toward clearing the backlog in 0.6 s, never
+  under 40 characters a second, and plays out the rest after the stream
+  ends. It never cuts inside a combining mark or a surrogate pair, so a
+  Vietnamese vowel never shows without its tone. A soft caret sits at the
+  end only while text is revealed. History shows in full at once.
+- Whatever mounts in the 800 ms after a thread opens draws still; an
+  entrance keyed by an id plays once, also when the live turn is replaced
+  by the stored one (`useArrival`).
+- A sent question shows at once and rises 6 px in 220 ms; the ask box
+  clears and keeps its focus. Enter sends, Shift+Enter breaks the line, and
+  nothing sends while an input method composes. The box grows to eight
+  lines. While a run is live, send is Pause, then Stop now.
+- Before the run's first event a placeholder holds its space and shows
+  after 300 ms: one plain word that changes every 4.5 s and a clock after
+  3 s. The first step replaces it.
+- The run is a trigger line over steps on a 1 px rail, told apart by ink.
+  Only the live step moves: its title shimmers (`shimmer-text`) and its dot
+  pulses every 1.6 s. A new step rises in once. The fold opens in 200 ms
+  and closes in 150 ms (`disclosure`); its chevron turns in 180 ms.
+- Answer blocks rise in once as they arrive, figures count up on arrival,
+  and follow-ups come after the answer, 18 ms apart.
+- The thread follows its end while the member is at the bottom; scrolled
+  up, it stays and shows "Jump to latest". Sending always scrolls to the
+  new question.
+- Meters move by translate in 280 ms and draw still at first. Menus open
+  from their trigger at 96 % in 150 ms. Side panels come in from 16 px in
+  220 ms. A press sinks a control to 97 %. With reduced motion every
+  animation takes 1 ms and live text stays plain.
+
 ## Density and keyboard
 
 Pages are lists of records: 32 to 40 px rows, `hairline` dividers, opaque
@@ -164,9 +211,9 @@ open with Enter and close with Escape; every control has a visible 2 px
 
 ShopNexus holds no money: the only deal path is cash on delivery with
 inspection at the door. No screen offers escrow, a wallet or a refund.
-Copy is Vietnamese with correct diacritics, short, and states facts: a
-title names the thing, a refusal states the fact ("Cần quyền Quản trị
-viên").
+Copy is English, short, and states facts: a title names the thing, a
+refusal states the fact ("Admins only"). What a customer wrote, the replies
+sent to customers and the reason a suspended person sees stay Vietnamese.
 
 ## Sign-in
 

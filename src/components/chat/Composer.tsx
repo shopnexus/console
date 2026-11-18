@@ -328,7 +328,9 @@ export function Composer({
                 return
               }
             }
-            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+            // Never send while an input method is composing (Vietnamese Telex, keyCode 229).
+            if (e.nativeEvent.isComposing || e.keyCode === 229) return
+            if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()
               send()
             } else if (e.key === 'Escape') {
@@ -343,7 +345,7 @@ export function Composer({
           placeholder={placeholder}
           aria-label="Message"
           aria-invalid={!!error || over}
-          className="field-sizing-content block max-h-60 min-h-[56px] w-full resize-none bg-transparent px-5 pt-3 text-body-large text-on-surface outline-none placeholder:text-on-surface-variant/80"
+          className="field-sizing-content block max-h-[212px] min-h-[56px] w-full resize-none bg-transparent px-5 pt-3 text-body-large text-on-surface outline-none placeholder:text-on-surface-variant/80"
         />
         <div className="flex items-center gap-1.5 px-3 pb-3">
           {attachMenu && (
@@ -377,32 +379,33 @@ export function Composer({
           <span className="flex-1" />
           {meter && <ContextMeter used={meter.used} window={meter.window} />}
           {onAgent && agents.length > 0 && <AgentPicker agents={agents} value={agentId} onChange={onAgent} up={up} />}
-          {mode === 'running' && onPause && (
-            <>
-              <span className="hidden items-center gap-1 text-label-small font-normal text-on-surface-variant xl:flex">
-                <Kbd>Esc</Kbd>to pause
-              </span>
-              <button type="button" onClick={onPause} className="flex h-9 items-center gap-1.5 rounded-full bg-on-surface px-3.5 text-label-medium text-surface">
-                <IconPause width={17} height={17} />
-                Pause
-              </button>
-            </>
+          {mode === 'running' && onPause && text === '' && (
+            <span className="hidden items-center gap-1 text-label-small font-normal text-on-surface-variant xl:flex">
+              <Kbd>Esc</Kbd>to pause
+            </span>
           )}
-          {mode === 'pausing' && onStopNow && (
-            <button type="button" onClick={onStopNow} className="flex h-9 items-center gap-1.5 rounded-full bg-error px-3.5 text-label-medium text-on-error">
+          {/* While a run is live the send button is its control: Pause, then Stop now; typing turns it back into send. */}
+          {mode === 'running' && onPause && text === '' ? (
+            <button type="button" onClick={onPause} className="flex h-9 animate-pop items-center gap-1.5 rounded-full bg-on-surface px-3.5 text-label-medium text-surface">
+              <IconPause width={17} height={17} />
+              Pause
+            </button>
+          ) : mode === 'pausing' && onStopNow && text === '' ? (
+            <button type="button" onClick={onStopNow} className="flex h-9 animate-pop items-center gap-1.5 rounded-full bg-error px-3.5 text-label-medium text-on-error">
               <IconStop width={17} height={17} />
               Stop now
             </button>
+          ) : (
+            <button
+              type="button"
+              title={blocked ? hold : steering ? 'Send to the run (Enter)' : 'Send (Enter)'}
+              onClick={send}
+              disabled={text === '' || over || blocked}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-on-primary disabled:opacity-40"
+            >
+              <IconSend width={19} height={19} />
+            </button>
           )}
-          <button
-            type="button"
-            title={blocked ? hold : steering ? 'Send to the run (Enter)' : 'Send (Enter)'}
-            onClick={send}
-            disabled={text === '' || over || blocked}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-on-primary disabled:opacity-40"
-          >
-            <IconSend width={19} height={19} />
-          </button>
         </div>
       </div>
       {(error || over || blocked) && (

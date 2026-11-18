@@ -123,11 +123,15 @@ export function Toggle({ on, onChange, label, disabled }: { on: boolean; onChang
   )
 }
 
-/** A bar for a share of a whole, 0 to 100. */
+/** A bar for a share of a whole, 0 to 100. It draws still, then moves by translate (280 ms) when the share changes. */
 export function Meter({ pct, tone = 'bg-primary', className = 'h-2' }: { pct: number; tone?: string; className?: string }) {
+  const p = Math.max(0, Math.min(100, pct))
   return (
     <div className={`w-full overflow-hidden rounded-full bg-surface-container ${className}`}>
-      <div className={`h-full origin-left animate-grow rounded-full ${tone}`} style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
+      <div
+        className={`h-full w-full rounded-full transition-transform duration-[280ms] ease-effects ${tone}`}
+        style={{ transform: `translateX(${p - 100}%)` }}
+      />
     </div>
   )
 }

@@ -23,7 +23,7 @@ import { SourceBadge } from './sourceLook'
 /** The one panel shell beside a chat: a header, then a body that scrolls. */
 export function SidePanel({ width = 'w-[480px]', head, children }: { width?: string; head: ReactNode; children: ReactNode }) {
   return (
-    <aside className={`flex shrink-0 animate-pane flex-col border-l border-hairline bg-surface-container-low/50 ${width}`}>
+    <aside className={`flex shrink-0 animate-panel flex-col border-l border-hairline bg-surface-container-low/50 ${width}`}>
       <div className="flex min-h-14 shrink-0 items-center gap-2 border-b border-hairline bg-surface-container-lowest px-4 py-2.5">{head}</div>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
     </aside>

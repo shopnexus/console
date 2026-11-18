@@ -5,6 +5,7 @@ import IconFull from '~icons/material-symbols-light/open-in-full-rounded'
 import IconOpen from '~icons/material-symbols-light/north-east-rounded'
 import IconArrow from '~icons/material-symbols-light/arrow-forward-rounded'
 import { useDismiss } from '../../lib/dom'
+import { splitFigure, useArrival, useCountUp } from '../../lib/motion'
 import { type Inline, type MdBlock, parseMarkdown } from '../../lib/markdown'
 import { usePanel } from '../../lib/panel'
 import type { Block, ChartSeries, Figure, Source } from '../../lib/run'
@@ -90,7 +91,7 @@ function renderInline(xs: Inline[], turnId: string): ReactNode[] {
 }
 
 /** Markdown with citations, as the answer's text or a document's section. */
-export function Markdown({ md, turnId, sources, big = false }: { md: string; turnId: string; sources: Source[]; big?: boolean }) {
+export function Markdown({ md, turnId, sources, big = false, caret = false }: { md: string; turnId: string; sources: Source[]; big?: boolean; caret?: boolean }) {
   const known = (n: number) => sources.some((s) => s.n === n)
   const blocks: MdBlock[] = parseMarkdown(md, known)
   const text = big ? 'text-body-large leading-[26px]' : 'text-body-medium leading-[23px]'
@@ -109,6 +110,7 @@ export function Markdown({ md, turnId, sources, big = false }: { md: string; tur
           return (
             <p key={i} className={`whitespace-pre-wrap ${text}`}>
               {renderInline(b.inline, turnId)}
+              {caret && i === blocks.length - 1 && <Caret />}
             </p>
           )
         }
@@ -132,14 +134,35 @@ export function Markdown({ md, turnId, sources, big = false }: { md: string; tur
   )
 }
 
+/** The soft caret at the end of text while it is revealed. */
+function Caret() {
+  return <span aria-hidden className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-pulse-soft rounded-full bg-primary" />
+}
+
 const figureTone = { good: 'text-primary', bad: 'text-error', neutral: 'text-primary' }
 
-export function Figures({ items }: { items: Figure[] }) {
+/** A figure's value, counted up from zero when it arrives. */
+function FigureValue({ value, animate }: { value: string; animate: boolean }) {
+  const parts = splitFigure(value)
+  const n = useCountUp(parts?.n ?? 0, animate && !!parts)
+  if (!parts) return <>{value}</>
+  return (
+    <>
+      {parts.before}
+      {n.toFixed(parts.decimals)}
+      {parts.after}
+    </>
+  )
+}
+
+export function Figures({ items, animate = false }: { items: Figure[]; animate?: boolean }) {
   return (
     <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
       {items.map((f, i) => (
         <div key={i} className="rounded-2xl border border-hairline bg-surface-container-lowest px-3.5 py-3">
-          <p className="text-display-small tabular-nums">{f.value}</p>
+          <p className="text-display-small tabular-nums">
+            <FigureValue value={f.value} animate={animate} />
+          </p>
           <p className="text-body-small text-on-surface-variant">{f.label}</p>
           {f.change && <p className={`mt-1 tabular-nums text-label-small ${figureTone[f.tone ?? 'neutral']}`}>{f.change}</p>}
         </div>
@@ -275,7 +298,7 @@ export function DocCard({ b, turnId }: { b: Extract<Block, { type: 'document_ref
 
 export function FollowUps({ items, onAsk }: { items: string[]; onAsk?: (text: string) => void }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="rise-list flex flex-wrap gap-2">
       {items.map((t) => (
         <button
           key={t}
@@ -319,27 +342,72 @@ export function SourceRow({ sources, turnId }: { sources: Source[]; turnId: stri
   )
 }
 
-/** The answer's blocks in order. */
-export function Blocks({ blocks, sources, turnId, onAsk }: { blocks: Block[]; sources: Source[]; turnId: string; onAsk?: (text: string) => void }) {
+/** One block, rising in once when it arrives now; history draws still. */
+function BlockView({ b, sources, turnId, onAsk, id }: { b: Block; sources: Source[]; turnId: string; onAsk?: (text: string) => void; id: string }) {
+  const arrived = useArrival(id)
+  const rise = arrived ? 'animate-rise' : ''
+  switch (b.type) {
+    case 'figures':
+      return (
+        <div className={rise}>
+          <Figures items={b.items} animate={arrived} />
+        </div>
+      )
+    case 'table':
+      return (
+        <div className={rise}>
+          <Table columns={b.columns} rows={b.rows} />
+        </div>
+      )
+    case 'chart':
+      return (
+        <div className={rise}>
+          <Chart kind={b.kind} labels={b.labels} series={b.series} title={b.title} />
+        </div>
+      )
+    case 'document_ref':
+      return (
+        <div className={rise}>
+          <DocCard b={b} turnId={turnId} />
+        </div>
+      )
+    case 'follow_ups':
+      return <FollowUps items={b.items} onAsk={onAsk} />
+    case 'text':
+      return <Markdown md={b.markdown} turnId={turnId} sources={sources} big />
+    default:
+      return null
+  }
+}
+
+/**
+ * The answer's blocks in order. reveal stands in for the first text block
+ * (or the draft before it) while it is revealed; follow-ups wait for the
+ * answer to finish.
+ */
+export function Blocks({
+  blocks,
+  sources,
+  turnId,
+  onAsk,
+  reveal,
+  finished,
+}: {
+  blocks: Block[]
+  sources: Source[]
+  turnId: string
+  onAsk?: (text: string) => void
+  reveal?: { text: string; caret: boolean }
+  finished: boolean
+}) {
+  const firstText = blocks.findIndex((b) => b.type === 'text')
   return (
     <>
+      {firstText < 0 && reveal?.text && <Markdown md={reveal.text} turnId={turnId} sources={sources} big caret={reveal.caret} />}
       {blocks.map((b, i) => {
-        switch (b.type) {
-          case 'text':
-            return <Markdown key={i} md={b.markdown} turnId={turnId} sources={sources} big />
-          case 'figures':
-            return <Figures key={i} items={b.items} />
-          case 'table':
-            return <Table key={i} columns={b.columns} rows={b.rows} />
-          case 'chart':
-            return <Chart key={i} kind={b.kind} labels={b.labels} series={b.series} title={b.title} />
-          case 'document_ref':
-            return <DocCard key={i} b={b} turnId={turnId} />
-          case 'follow_ups':
-            return <FollowUps key={i} items={b.items} onAsk={onAsk} />
-          default:
-            return null
-        }
+        if (i === firstText && reveal) return <Markdown key={i} md={reveal.text} turnId={turnId} sources={sources} big caret={reveal.caret} />
+        if (b.type === 'follow_ups' && (!finished || reveal?.caret)) return null
+        return <BlockView key={i} id={`${turnId}:b${i}`} b={b} sources={sources} turnId={turnId} onAsk={onAsk} />
       })}
     </>
   )
