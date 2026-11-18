@@ -6,11 +6,13 @@ import IconFull from '~icons/material-symbols-light/open-in-full-rounded'
 import IconOpen from '~icons/material-symbols-light/north-east-rounded'
 import IconNext from '~icons/material-symbols-light/subdirectory-arrow-right-rounded'
 import IconChevron from '~icons/material-symbols-light/expand-more-rounded'
+import IconRight from '~icons/material-symbols-light/chevron-right-rounded'
 import { splitFigure, useArrival, useCountUp } from '../../lib/motion'
 import { type Inline, type MdBlock, parseMarkdown } from '../../lib/markdown'
 import { usePanel } from '../../lib/panel'
 import type { Block, ChartSeries, Figure, Source } from '../../lib/run'
-import { kindName, sourceHref } from '../../lib/sources'
+import { openLabel, sourceHref, sourceLabel, sourceMeta } from '../../lib/sources'
+import { useMe } from '../../lib/session'
 import { SourceAvatar } from './sourceLook'
 
 /** A source number set in the text: an 18px pill sitting just above the line (AI Portal's CitePill). */
@@ -46,7 +48,8 @@ function useHoverOpen() {
 
 /** A citation in the answer: the pill, previewing its source on rest or click, with the way into the record. */
 export function Cite({ n, turnId }: { n: number; turnId: string }) {
-  const { sourcesOf, open: openPanel } = usePanel()
+  const { sourcesOf, open: openPanel, panel } = usePanel()
+  const me = useMe()
   const { open, set, hover } = useHoverOpen()
   const anchor = useRef<HTMLSpanElement>(null)
   const [at, setAt] = useState<CSSProperties>()
@@ -66,12 +69,24 @@ export function Cite({ n, turnId }: { n: number; turnId: string }) {
     return () => document.removeEventListener('pointerdown', off)
   }, [open, set])
   if (!s) return <CitePill n={n} />
-  const href = sourceHref(s)
+  const href = sourceHref(s, me.role === 'admin')
+  const label = sourceLabel(s)
+  const showing = panel?.kind === 'sources' && panel.turnId === turnId && panel.n === n
   const action = 'flex h-7 items-center gap-1.5 rounded-lg px-1.5 transition-colors duration-150 hover:bg-on-surface/8'
   return (
     <span ref={anchor} className="relative inline-block" {...hover}>
-      <button type="button" onClick={() => set(!open)} onKeyDown={(e) => e.key === 'Escape' && set(false)} aria-label={`Source ${n}: ${s.label}`} aria-expanded={open} className="rounded-full">
-        <CitePill n={n} className="cursor-pointer transition-colors duration-[120ms] hover:bg-surface-container-highest hover:text-on-surface" />
+      <button
+        type="button"
+        data-panel-trigger=""
+        onClick={() => {
+          set(false)
+          openPanel(showing ? undefined : { kind: 'sources', turnId, n })
+        }}
+        aria-label={`Source ${n}: ${label}`}
+        aria-pressed={showing}
+        className="rounded-full"
+      >
+        <CitePill n={n} className={`cursor-pointer transition-colors duration-[120ms] ${showing ? 'bg-primary text-on-primary' : 'hover:bg-surface-container-highest hover:text-on-surface'}`} />
       </button>
       {open &&
         at &&
@@ -85,12 +100,12 @@ export function Cite({ n, turnId }: { n: number; turnId: string }) {
           className={`fixed z-50 block w-[340px] max-w-[calc(100vw-24px)] animate-pop rounded-2xl bg-surface-container-lowest p-3 text-left shadow-float ring-1 ring-hairline ${at.top === undefined ? 'origin-bottom-left' : 'origin-top-left'}`}
         >
           <span className="flex min-w-0 items-center gap-2.5">
-            <SourceAvatar seed={s.label} />
+            <SourceAvatar seed={label} />
             <span className="min-w-0 flex-1 leading-4">
-              <span title={s.label} className="block truncate text-[13.5px] font-medium leading-5 text-on-surface">
-                {s.label}
+              <span title={label} className="block truncate text-[13.5px] font-medium leading-5 text-on-surface">
+                {label}
               </span>
-              <span className="block truncate text-[12px] text-outline">{kindName(s.kind)}</span>
+              <span className="block truncate text-[12px] text-outline">{sourceMeta(s)}</span>
             </span>
             <CitePill n={n} className="m-0 shrink-0" />
           </span>
@@ -98,7 +113,7 @@ export function Cite({ n, turnId }: { n: number; turnId: string }) {
           <span className="mt-2 flex items-center gap-2 text-[12.5px] font-medium text-on-surface">
             {href && (
               <Link to={href} className={`-ml-1.5 ${action}`}>
-                Open {kindName(s.kind).toLowerCase()}
+                {openLabel(s)}
                 <IconOpen width={14} height={14} />
               </Link>
             )}
@@ -110,7 +125,7 @@ export function Cite({ n, turnId }: { n: number; turnId: string }) {
                 openPanel({ kind: 'sources', turnId, n })
               }}
             >
-              All sources
+              Show in sources
             </button>
           </span>
         </span>,
@@ -408,12 +423,12 @@ function SourceLabel({ s }: { s: Source }) {
   return (
     <>
       <CitePill n={s.n} className="m-0 shrink-0" />
-      <SourceAvatar seed={s.label} />
+      <SourceAvatar seed={sourceLabel(s)} />
       <span className="min-w-0 flex-1 leading-4">
-        <span title={s.label} className="block truncate text-[14px] font-medium leading-5 text-on-surface">
-          {s.label}
+        <span title={sourceLabel(s)} className="block truncate text-[14px] font-medium leading-5 text-on-surface">
+          {sourceLabel(s)}
         </span>
-        <span className="block truncate text-[12.5px] text-outline">{kindName(s.kind)}</span>
+        <span className="block truncate text-[12.5px] text-outline">{sourceMeta(s)}</span>
       </span>
     </>
   )
@@ -437,7 +452,7 @@ function QuotedSource({ s }: { s: Source }) {
               <figcaption className="mt-1">
                 <Link to={href} className="-ml-2.5 flex h-7 w-fit items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium text-on-surface transition-colors duration-150 hover:bg-on-surface/8">
                   <IconOpen width={14} height={14} aria-hidden />
-                  Open {kindName(s.kind).toLowerCase()}
+                  {openLabel(s)}
                 </Link>
               </figcaption>
             )}
@@ -449,7 +464,8 @@ function QuotedSource({ s }: { s: Source }) {
 }
 
 /** The answer's sources as one bordered list, numbered the way the answer marks them (AI Portal's source list). */
-export function SourceList({ sources }: { sources: Source[] }) {
+export function SourceList({ sources, turnId }: { sources: Source[]; turnId: string }) {
+  const { open } = usePanel()
   return (
     <div className="mt-2 flex min-w-0 flex-col divide-y divide-hairline overflow-hidden rounded-2xl border border-hairline bg-surface-container-lowest">
       <div className="flex items-center justify-between gap-3 px-4 py-2.5">
@@ -469,10 +485,12 @@ export function SourceList({ sources }: { sources: Source[] }) {
             </Link>
           )
         }
+        // Nothing to quote or open here: the sources panel has its facts and its tool call.
         return (
-          <div key={s.n} className={`${sourceRow} hover:bg-transparent`}>
+          <button key={s.n} type="button" data-panel-trigger="" onClick={() => open({ kind: 'sources', turnId, n: s.n })} className={sourceRow}>
             <SourceLabel s={s} />
-          </div>
+            <IconRight width={16} height={16} aria-hidden className="shrink-0 text-outline" />
+          </button>
         )
       })}
     </div>
@@ -486,7 +504,7 @@ export function SourcesButton({ sources, open, onToggle }: { sources: Source[]; 
     <button type="button" aria-expanded={open} onClick={onToggle} className="ml-1 flex h-8 items-center gap-1.5 rounded-lg px-2 text-left transition-colors duration-[120ms] hover:bg-on-surface/8">
       <span className="flex -space-x-1">
         {sources.slice(0, 3).map((s) => (
-          <SourceAvatar key={s.n} seed={s.label} size={14} ring />
+          <SourceAvatar key={s.n} seed={sourceLabel(s)} size={14} ring />
         ))}
       </span>
       <span className="text-[12.5px] leading-4 text-on-surface-variant">

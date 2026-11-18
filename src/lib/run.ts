@@ -3,9 +3,14 @@
 // reducer takes events in seq order and ignores one it has seen, so a
 // replay after Last-Event-ID is safe.
 
-export type SourceKind = 'report' | 'account' | 'ticket' | 'order' | 'listing' | 'data' | 'log'
+export type SourceKind = 'report' | 'account' | 'ticket' | 'order' | 'listing' | 'member' | 'data' | 'log'
 
-/** A record a tool returned, numbered in the order results arrived; the answer's [n] point here. */
+/**
+ * A record a tool returned, numbered in the order results arrived; the
+ * answer's [n] point here. An agent before source labels sends a kind it
+ * may not know and a label such as "Record 01a1ef31", with no meta or
+ * facts; lib/sources reads it gracefully.
+ */
 export interface Source {
   n: number
   kind: SourceKind
@@ -14,6 +19,9 @@ export interface Source {
   quote?: string
   call_id?: string
   tool?: string
+  /** One line under the name: "Seller · active", "3 reports · scam". */
+  meta?: string
+  facts?: { label: string; value: string }[]
 }
 
 export interface Figure {

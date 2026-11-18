@@ -1,11 +1,14 @@
 import { createContext, use } from 'react'
 import type { Source } from './run'
 
-/** The side panel beside a chat: one tool call, the sources of a turn, or a document. */
-export type Panel =
-  | { kind: 'tool'; id: string }
-  | { kind: 'sources'; turnId: string; n?: number }
-  | { kind: 'doc'; id: string; version?: number; turnId?: string }
+export type SourcesPanel = { kind: 'sources'; turnId: string; n?: number }
+
+/**
+ * A chat's panel: one tool call or the sources of a turn, over the chat, or
+ * a document beside it. A tool call opened from the sources keeps them
+ * under it (back) and returns to them when it closes.
+ */
+export type Panel = { kind: 'tool'; id: string; back?: SourcesPanel } | SourcesPanel | { kind: 'doc'; id: string; version?: number; turnId?: string }
 
 export interface PanelApi {
   panel?: Panel

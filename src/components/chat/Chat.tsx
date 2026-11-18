@@ -58,7 +58,7 @@ import { Btn, Mascot, Spinner } from '../ui'
 import { Blocks, SourceList, SourcesButton } from './Answer'
 import { ClarifyCard } from './Clarify'
 import { BudgetLock, type Chip, Composer, type ComposerMode, PausedStrip } from './Composer'
-import { DocumentPanel, SourcesPanel, ToolOverlay } from './Panels'
+import { DocumentPanel, Overlay, SourcesPanel, ToolPanel } from './Panels'
 import { CompactionDivider, Compacting, RunCard, Waiting } from './Run'
 
 const attachIcon: Record<Attachment['kind'], ReactNode> = {
@@ -408,7 +408,7 @@ function RunTurn({
               {run.sources.length > 0 && (
                 <div className="act-disclosure pl-1.5" data-open={sourcesOpen ? '' : undefined} inert={!sourcesOpen}>
                   <div className="pr-1">
-                    <SourceList sources={run.sources} />
+                    <SourceList sources={run.sources} turnId={turn.id} />
                   </div>
                 </div>
               )}
@@ -467,23 +467,27 @@ export function ChatView({
   const [panel, setPanel] = useState<Panel>()
   const [leaving, setLeaving] = useState(false)
   const leaveTimer = useRef<number>(undefined)
-  const opener = useRef<HTMLElement | null>(null)
-  // The tool call leaves in 140 ms, then focus goes back to its row.
-  const closeTool = useCallback(() => {
+  // What opened each overlay, which gets focus back when it closes.
+  const openers = useRef<{ tool?: HTMLElement; sources?: HTMLElement }>({})
+  // The top overlay leaves in 140 ms; a tool call opened from the sources gives way to them.
+  const closePanel = useCallback(() => {
+    const kind = panel?.kind === 'tool' ? 'tool' : 'sources'
+    const next = panel?.kind === 'tool' ? panel.back : undefined
     setLeaving(true)
     window.clearTimeout(leaveTimer.current)
     leaveTimer.current = window.setTimeout(() => {
-      setPanel(undefined)
       setLeaving(false)
-      opener.current?.focus()
-      opener.current = null
+      setPanel(next)
+      openers.current[kind]?.focus()
+      openers.current[kind] = undefined
     }, 140)
-  }, [])
+  }, [panel])
   useEffect(() => () => window.clearTimeout(leaveTimer.current), [])
   const box = useRef<HTMLTextAreaElement>(null)
   // Whatever mounts while the thread opens draws still (lib/motion).
   useState(() => markThreadOpened())
-  const { run: panelRun } = useRun(panel && panel.kind !== 'tool' ? panel.turnId : undefined)
+  const sourcesPanel = panel?.kind === 'sources' ? panel : panel?.kind === 'tool' ? panel.back : undefined
+  const { run: panelRun } = useRun(sourcesPanel?.turnId ?? (panel?.kind === 'doc' ? panel.turnId : undefined))
 
   const lastAgent = lastTurn?.agent_id ?? lastRun?.agent?.id
   const chosenAgent = agentId ?? lastAgent ?? (agents.data?.items.find((a) => a.default) ?? agents.data?.items[0])?.id
@@ -687,11 +691,16 @@ export function ChatView({
   const api: PanelApi = {
     panel,
     open: (p) => {
-      if (!p && panel?.kind === 'tool') return closeTool()
+      if (!p && (panel?.kind === 'tool' || panel?.kind === 'sources')) return closePanel()
       window.clearTimeout(leaveTimer.current)
       setLeaving(false)
-      // A tool call gives focus back to what opened it when it closes.
-      if (p?.kind === 'tool') opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      const from = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
+      if (p?.kind === 'tool') {
+        openers.current.tool = from
+        setPanel({ ...p, back: p.back ?? sourcesPanel })
+        return
+      }
+      if (p?.kind === 'sources' && panel?.kind !== 'sources') openers.current.sources = from
       setPanel(p)
     },
     sourcesOf: (turnId) => runOf(turnId)?.sources ?? [],
@@ -750,8 +759,16 @@ export function ChatView({
             </div>
           </section>
         )}
-        {panel?.kind === 'tool' && <ToolOverlay key={panel.id} id={panel.id} leaving={leaving} onClose={closeTool} />}
-        {panel?.kind === 'sources' && <SourcesPanel sources={panelRun?.sources ?? []} active={panel.n} />}
+        {sourcesPanel && (
+          <Overlay key="sources" label="Sources" width="w-[420px]" leaving={leaving && panel?.kind === 'sources'} active={panel?.kind === 'sources'} onClose={closePanel}>
+            <SourcesPanel sources={panelRun?.sources ?? []} active={sourcesPanel.n} tools={panelRun?.tools} />
+          </Overlay>
+        )}
+        {panel?.kind === 'tool' && (
+          <Overlay key={panel.id} label="Tool call" leaving={leaving} onClose={closePanel}>
+            <ToolPanel id={panel.id} bare />
+          </Overlay>
+        )}
         {panel?.kind === 'doc' && <DocumentPanel key={panel.id} id={panel.id} version={panel.version} sources={panelRun?.sources ?? []} turnId={panel.turnId ?? ''} />}
       </div>
     </PanelContext>

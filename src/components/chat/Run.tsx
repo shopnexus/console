@@ -80,7 +80,7 @@ function TraceRow({ calls, index, compact = false }: { calls: ToolCall[]; index:
           type="button"
           aria-label={[title.verb, title.text].filter(Boolean).join(' ')}
           aria-pressed={on}
-          data-tool-row=""
+          data-panel-trigger=""
           onClick={() => open(on ? undefined : { kind: 'tool', id: lead.id })}
           className="act-title group/row flex w-full min-w-0 items-center gap-1 rounded-md text-left"
         >

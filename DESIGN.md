@@ -86,9 +86,14 @@ after the mascot.
   document card and follow-ups. Under a finished answer: Copy, Ask again,
   the turn's time, tokens and cost as quiet text (shown on hover, nothing
   that is unknown or zero), and "N sources", which opens the bordered list
-  of sources. The sources panel lists every source by kind with its quoted
-  line; the document panel has versions, Copy as Markdown and Print to PDF.
-  No chat panel folds the sidebar.
+  of sources. A citation opens the sources panel over the chat at its
+  source: grouped by kind with filter chips, each row the record's initial
+  (a dot for an account's state) or its kind, its name, a meta line, its
+  number and a one-line quote. A row opens in place, one at a time, to the
+  quote, up to four facts, Open, View tool call and Copy id. A tool call
+  opened from it floats over it and gives way to it on close. The document
+  panel has versions, Copy as Markdown and Print to PDF. No chat panel folds
+  the sidebar.
 - Clarifying questions are numbered cards of options with Continue and
   Use defaults. A spent budget replaces the ask box until midnight.
 - The ask box takes `/` for skills, `@` and `+` for a ticket, report or

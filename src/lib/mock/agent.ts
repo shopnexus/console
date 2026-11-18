@@ -80,15 +80,31 @@ function detailOf(c: MockConversation): ConversationDetail {
 }
 
 const SOURCES: Source[] = [
-  { n: 1, kind: 'data', label: 'Reports · last 7 days', quote: '86 reports, 66 scam, 23 fake, 8 banned', call_id: 'c-r1' },
-  { n: 2, kind: 'report', record_id: 'a1f0c3aa-0000', label: 'Đồ Cũ Gò Vấp', quote: '3 reports · deposit scam · shares pickup address', call_id: 'c-a1' },
-  { n: 3, kind: 'account', record_id: '7d22e9aa-0000', label: 'Trần Đức Anh', quote: "4 listings reuse Gò Vấp's photos at 97%", call_id: 'c-a2' },
-  { n: 4, kind: 'report', record_id: 'b31f77aa-0000', label: 'Thủ Đức AirPods resellers', quote: '14 reports since Monday, same AirPods photo set', call_id: 'c-l1' },
-  { n: 5, kind: 'data', label: 'Report reasons', quote: '“Chuyển cọc trước” in 35 of 86 reports', call_id: 'c-r1' },
-  { n: 6, kind: 'account', record_id: 'c90b14aa-0000', label: 'Phạm Quốc Bảo', quote: 'Suspended 30 days · same deposit message', call_id: 'c-a3' },
-  { n: 7, kind: 'ticket', record_id: 't1', label: 'Quang Huy · scam', quote: '“Bắt chuyển cọc trước rồi chặn mình”', call_id: 'c-t1' },
-  { n: 8, kind: 'log', label: 'Audit log', quote: '2 suspensions in the Gò Vấp ring this week', call_id: 'c-g1' },
-  { n: 9, kind: 'account', record_id: 'e5aa0000', label: 'Mỹ Phẩm Xách Tay Hà', quote: 'Hải Châu cosmetics · 1 suspended', call_id: 'c-a4' },
+  { n: 1, kind: 'data', label: 'Reports · last 7 days', meta: 'report_cases_list · 86 rows', quote: '86 reports, 66 scam, 23 fake, 8 banned', call_id: 'c-r1', tool: 'report_cases_list' },
+  { n: 2, kind: 'report', record_id: 'a1f0c3aa-0000', label: 'Đồ Cũ Gò Vấp', meta: '3 reports · scam · open', quote: '3 reports · deposit scam · shares pickup address', call_id: 'c-a1', tool: 'report_case_get' },
+  {
+    n: 3,
+    kind: 'account',
+    record_id: '7d22e9aa-0000',
+    label: 'Trần Đức Anh',
+    meta: 'Seller · 7d22e9 · active',
+    quote: "4 listings reuse Gò Vấp's photos at 97%",
+    facts: [
+      { label: 'Listings', value: '14' },
+      { label: 'Reports', value: '4 · scam' },
+      { label: 'Pickup address', value: '41 Lê Văn Thọ' },
+      { label: 'Joined', value: 'Aug 14' },
+    ],
+    call_id: 'c-a2',
+    tool: 'account_get',
+  },
+  { n: 4, kind: 'report', record_id: 'b31f77aa-0000', label: 'Thủ Đức AirPods resellers', meta: '14 reports · scam · open', quote: '14 reports since Monday, same AirPods photo set', call_id: 'c-l1', tool: 'report_cases_list' },
+  { n: 5, kind: 'data', label: 'Report reasons', quote: '“Chuyển cọc trước” in 35 of 86 reports', call_id: 'c-r1', tool: 'report_cases_list' },
+  { n: 6, kind: 'account', record_id: 'c90b14aa-0000', label: 'Phạm Quốc Bảo', meta: 'Seller · c90b14 · suspended', quote: 'Suspended 30 days · same deposit message', call_id: 'c-a3', tool: 'account_get' },
+  // As an agent before source labels sends it: no name, no meta; the panel shows the tool's label.
+  { n: 7, kind: 'ticket', record_id: '01a1ef31-0000', label: 'Ticket 01a1ef31', quote: '“Bắt chuyển cọc trước rồi chặn mình”', call_id: 'c-t1', tool: 'tickets_list' },
+  { n: 8, kind: 'member', record_id: 'm-lan', label: 'Nguyễn Thị Lan', meta: 'Moderator · suspended 2 accounts this week', quote: 'Suspended Đồ Cũ Gò Vấp for 30 days', call_id: 'c-g1', tool: 'console_actions' },
+  { n: 9, kind: 'account', record_id: 'e5aa0000', label: 'Mỹ Phẩm Xách Tay Hà', meta: 'Seller · e5aa00 · active', quote: 'Hải Châu cosmetics · 1 suspended', call_id: 'c-a4', tool: 'account_get' },
 ]
 
 const answer: Block[] = [

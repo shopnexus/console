@@ -3,10 +3,12 @@ import IconAccount from '~icons/material-symbols-light/person-outline-rounded'
 import IconData from '~icons/material-symbols-light/monitoring'
 import IconListing from '~icons/material-symbols-light/storefront-outline-rounded'
 import IconLog from '~icons/material-symbols-light/history-rounded'
+import IconMember from '~icons/material-symbols-light/badge-outline'
 import IconOrder from '~icons/material-symbols-light/package-2-outline'
 import IconReport from '~icons/material-symbols-light/flag-outline-rounded'
 import IconTicket from '~icons/material-symbols-light/support-agent-outline'
 import type { SourceKind } from '../../lib/run'
+import { kindOf } from '../../lib/sources'
 
 const looks: Record<SourceKind, [string, (s: number) => ReactNode, string]> = {
   report: ['Report case', (s) => <IconReport width={s} height={s} />, 'bg-error-container text-error'],
@@ -16,14 +18,20 @@ const looks: Record<SourceKind, [string, (s: number) => ReactNode, string]> = {
   listing: ['Listing', (s) => <IconListing width={s} height={s} />, 'bg-inverse-primary/40 text-primary-container'],
   data: ['Data', (s) => <IconData width={s} height={s} />, 'bg-tertiary-fixed text-on-tertiary-fixed-variant'],
   log: ['Audit log', (s) => <IconLog width={s} height={s} />, 'bg-surface-container text-on-surface-variant'],
+  member: ['Member', (s) => <IconMember width={s} height={s} />, 'bg-secondary-container text-on-secondary-container'],
 }
 
-/** A source's kind as a small round icon in its tint. */
-export function SourceBadge({ kind, size = 20 }: { kind: SourceKind; size?: number }) {
-  const [, icon, tone] = looks[kind] ?? looks.data
+/** A kind's icon alone, for a group's header. */
+export function KindIcon({ kind, size }: { kind: SourceKind; size: number }) {
+  return <>{(looks[kindOf(kind)] ?? looks.data)[1](size)}</>
+}
+
+/** A source's kind as a small round icon in its tint; tile makes it a rounded square, for a record without a name. */
+export function SourceBadge({ kind, size = 20, tile = false }: { kind: SourceKind; size?: number; tile?: boolean }) {
+  const [, icon, tone] = looks[kindOf(kind)] ?? looks.data
   return (
-    <span className={`flex shrink-0 items-center justify-center rounded-full ${tone}`} style={{ width: size, height: size }}>
-      {icon(Math.round(size * 0.6))}
+    <span className={`flex shrink-0 items-center justify-center ${tile ? 'rounded-[10px]' : 'rounded-full'} ${tone}`} style={{ width: size, height: size }}>
+      {icon(Math.round(size * (tile ? 0.53 : 0.6)))}
     </span>
   )
 }
