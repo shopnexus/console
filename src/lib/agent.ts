@@ -2,7 +2,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import { useEffect, useSyncExternalStore } from 'react'
 import { useAccount } from './accounts'
 import { ApiError, api, apiUrl, del, post, shortId } from './api'
-import { emptyRun, type LocalAction, reduceRun, type RunEvent, type RunState } from './run'
+import { type Block, type ClarifyQuestion, emptyRun, type LocalAction, type Outcome, reduceRun, type RunEvent, type RunState, type Source } from './run'
 import { SseParser } from './sse'
 import { useTicket } from './support'
 
@@ -21,14 +21,8 @@ export interface Conversation {
   updated_at: string
 }
 
-/** A record of the phase-1 answers, before runs had events. */
-export interface LegacySource {
-  tool: string
-  label: string
-  ids: string[]
-}
-
-export type AttachmentKind = 'ticket' | 'account' | 'report'
+/** AgentAttachment: a record or a document the question is about. */
+export type AttachmentKind = 'ticket' | 'account' | 'order' | 'listing' | 'report_case' | 'document'
 
 export interface Attachment {
   kind: AttachmentKind
@@ -36,21 +30,35 @@ export interface Attachment {
   label?: string
 }
 
+/** AgentTurnStatus. paused and awaiting_input wait on the member; the ones after them are final. */
+export type TurnViewStatus = 'running' | 'paused' | 'awaiting_input' | 'succeeded' | 'failed' | 'cancelled' | 'timed_out' | 'budget'
+
+/** AgentTurn: the agent's view of a turn, in the conversation and from GET …/turns/{id}. */
 export interface Turn {
   id: string
+  conversation_id?: string
   /** The member who asked. */
   member_id: string
   text: string
-  status: string
-  created_at: string
-  agent_id?: string
-  skill_id?: string
-  attachments?: Attachment[]
-  /** Phase-1 turns carry their answer as text; newer ones replay their events. */
   answer?: string
-  sources?: LegacySource[]
-  /** The console's own key for a turn it sent, kept when the server's id replaces the pending one. */
+  status: TurnViewStatus | 'pending'
+  blocks: Block[]
+  sources: Source[]
+  outcome?: Outcome
+  error_code?: string
+  continuable: boolean
+  agent?: { id: string; name: string }
+  usage?: { input_tokens: number; output_tokens: number; cost_usd: number; first_token_ms?: number; provider?: string }
+  steers: { steer_id: string; text: string }[]
+  questions?: ClarifyQuestion[]
+  /** The seq of the turn's newest event; the stream opens after it. */
+  last_seq: number
+  created_at: string
+  /** The console's own fields for a turn it sent: what it was asked with, and a key kept when the server's id replaces the pending one. */
   client_key?: string
+  attachments?: Attachment[]
+  skill_id?: string
+  agent_id?: string
 }
 
 export interface ConversationDetail extends Conversation {
@@ -61,9 +69,11 @@ export interface ConversationDetail extends Conversation {
 export const maxQuestion = 2000
 
 /** Why a question was refused, by the server's error code. */
-export type Failure = 'timeout' | 'budget' | 'rate_limited' | 'unavailable' | 'busy' | 'closed' | 'too_long' | 'not_found' | 'aborted' | 'other'
+export type Failure = 'agent_gone' | 'agent_off' | 'timeout' | 'budget' | 'rate_limited' | 'unavailable' | 'busy' | 'closed' | 'too_long' | 'not_found' | 'aborted' | 'other'
 
 const byCode: Record<string, Failure> = {
+  ai_agent_not_found: 'agent_gone',
+  ai_agent_disabled: 'agent_off',
   agent_timeout: 'timeout',
   agent_budget: 'budget',
   agent_rate_limited: 'rate_limited',
@@ -89,6 +99,8 @@ export function failureOf(e: unknown): Failure {
 
 /** What the member reads for each refusal; aborted is the member's own stop and says nothing. */
 export const failureText: Record<Failure, string> = {
+  agent_gone: 'That agent is no longer there. Pick another.',
+  agent_off: 'That agent is turned off. Pick another.',
   timeout: 'No answer within the time limit.',
   budget: 'Your daily budget is used up.',
   rate_limited: 'Too many questions in a few minutes. Try again later.',
@@ -174,7 +186,12 @@ export function useStartTurn(memberId: string) {
         client_key: key,
         member_id: memberId,
         text: req.text,
-        status: 'PENDING',
+        status: 'pending',
+        blocks: [],
+        sources: [],
+        continuable: false,
+        steers: [],
+        last_seq: 0,
         created_at: new Date().toISOString(),
         agent_id: req.agent_id,
         skill_id: req.skill_id,
@@ -187,7 +204,7 @@ export function useStartTurn(memberId: string) {
         if (req.text.length > maxQuestion) throw new ApiError(422, 'agent_input_rejected', 'too long')
         const { turn_id } = await startTurn(conversationId, req)
         client.setQueryData<ConversationDetail>(detailKey(conversationId), (d) =>
-          d ? { ...d, turns: d.turns.map((t) => (t.id === key ? { ...t, id: turn_id, status: 'RUNNING' } : t)) } : d,
+          d ? { ...d, turns: d.turns.map((t) => (t.id === key ? { ...t, id: turn_id, status: 'running' } : t)) } : d,
         )
         followTurn(turn_id)
         void client.invalidateQueries({ queryKey: listKey })
@@ -334,13 +351,23 @@ export function useRun(id: string | undefined): { run?: RunState; missing: boole
 
 const turnPath = (id: string, action: string) => `/console/agent/turns/${id}/${action}`
 
+/** What a member reads when a control on a run is refused. */
+export function controlFailure(e: unknown): string {
+  if (e instanceof ApiError) {
+    if (e.code === 'agent_turn_state' || e.code === 'turn_state') return 'The run changed state. Try again.'
+    if (e.code === 'agent_answers_invalid') return 'Those answers do not fit the questions.'
+    if (e.code === 'agent_forbidden' || e.code === 'forbidden') return 'Only the member who asked can do that.'
+  }
+  return 'That did not reach the run. Try again.'
+}
+
 /** Pause takes effect before the next model call; the call in flight and its tools finish. */
 export const pauseTurn = (id: string) => post(turnPath(id, 'pause'))
 
-/** Stop now ends a running turn at once. */
+/** Stop now ends the model call in flight at once; the turn goes paused with reason stop_now and can be continued. */
 export const stopTurn = (id: string) => post(turnPath(id, 'stop'))
 
-/** End closes a paused turn. */
+/** End closes a paused turn, or one awaiting input, as cancelled. */
 export const endTurn = (id: string) => post(turnPath(id, 'end'))
 
 /** Continue resumes the same turn with no message. */
@@ -355,7 +382,7 @@ export async function continueTurn(id: string) {
  * continues the run. The receipt shows Waiting until steer.read names it.
  */
 export async function steerTurn(id: string, text: string) {
-  const r = await post<{ steer_id: string; resumed?: boolean }>(turnPath(id, 'steer'), { text })
+  const r = await post<{ steer_id: string; turn_id: string; resumed: boolean }>(turnPath(id, 'steer'), { text })
   dispatchRun(id, { type: 'local.steer', steer_id: r?.steer_id ?? crypto.randomUUID(), text, at: new Date().toISOString() })
   if (r?.resumed || runs.get(id)?.phase === 'paused') dispatchRun(id, { type: 'local.resume' })
   followTurn(id)
@@ -372,19 +399,21 @@ export async function answerTurn(id: string, body: { answers: Answers }) {
 
 // ------------------------------------------------- tool calls, documents --
 
+/** AgentToolCall. */
 export interface ToolCallDetail {
   id: string
+  turn_id: string
   tool: string
   status: 'running' | 'success' | 'failed' | 'skipped'
-  input?: unknown
+  input: unknown
   output?: unknown
-  error?: string
+  /** The output was too long to keep whole. */
+  output_spilled: boolean
+  attempts: number
   started_at: string
+  finished_at?: string
   duration_ms?: number
-  timing?: { queued: number; server: number; db: number | null; return: number }
-  attempts?: { attempt: number; error?: string; at: string }[]
-  step_title?: string
-  bytes?: number
+  timing?: { queued: number | null; server: number | null; db: number | null; return: number | null }
 }
 
 /** One tool call's input, result and timing, for the tool panel. */
@@ -397,34 +426,51 @@ export type DocSection =
   | { type: 'table'; columns: string[]; rows: (string | number)[][]; title?: string }
   | { type: 'chart'; kind: 'bar' | 'stacked_bar' | 'line'; labels: string[]; series: { name: string; values: number[] }[]; title?: string }
 
+/** AgentDocumentVersion. */
+export interface DocumentVersion {
+  version: number
+  title: string
+  sections: DocSection[]
+  turn_id?: string
+  created_by?: string
+  created_at: string
+}
+
+/** AgentDocument: a document the agent wrote, with every version, newest first. */
 export interface AgentDocument {
   id: string
-  title: string
-  version: number
-  versions: { version: number; at: string }[]
-  sections: DocSection[]
-  updated_at: string
-  /** The turn whose sources the document cites. */
+  conversation_id: string
   turn_id?: string
+  title: string
+  latest_version: number
+  created_by?: string
+  created_at: string
+  updated_at: string
+  versions: DocumentVersion[]
 }
 
-/** A document the agent wrote, at a version (the newest without one). */
-export function useDocument(id: string | undefined, version?: number) {
-  return useQuery({
-    queryKey: ['agent', 'document', id, version ?? 'latest'],
-    enabled: !!id,
-    queryFn: () => api<AgentDocument>(`/console/agent/documents/${id}${version ? `?version=${version}` : ''}`),
-  })
+/** A document the agent wrote, with all its versions. */
+export function useDocument(id: string | undefined) {
+  return useQuery({ queryKey: ['agent', 'document', id], enabled: !!id, queryFn: () => api<AgentDocument>(`/console/agent/documents/${id}`) })
 }
 
+/** AgentSkillVariable. */
+export interface SkillVariable {
+  name: string
+  label?: string
+  default?: string
+}
+
+/** AgentSkill. */
 export interface Skill {
   id: string
+  created_by: string
   name: string
   slug: string
   description: string
+  /** The question, with {{name}} for each variable. */
   prompt: string
-  variables: string[]
-  created_by?: string
+  variables: SkillVariable[]
   updated_at: string
 }
 
@@ -438,7 +484,7 @@ export function useSkillCommands() {
   const done = () => client.invalidateQueries({ queryKey: ['agent', 'skills'] })
   return {
     create: useMutation({
-      mutationFn: (s: { name: string; description: string; prompt: string; variables?: string[] }) => post<Skill>('/console/agent/skills', s),
+      mutationFn: (s: { name: string; slug?: string; description?: string; prompt: string; variables?: SkillVariable[] }) => post<Skill>('/console/agent/skills', s),
       onSettled: done,
     }),
     remove: useMutation({ mutationFn: (id: string) => del(`/console/agent/skills/${id}`), onSettled: done }),
@@ -446,8 +492,15 @@ export function useSkillCommands() {
 }
 
 /** The {{variables}} a question names, for a skill made from it. */
-export function variablesOf(prompt: string): string[] {
-  return [...new Set([...prompt.matchAll(/\{\{\s*([a-z_][a-z0-9_]*)\s*\}\}/gi)].map((m) => m[1]))]
+export function variablesOf(prompt: string): SkillVariable[] {
+  return [...new Set([...prompt.matchAll(/\{\{\s*([a-z][a-z0-9_]*)\s*\}\}/g)].map((m) => m[1]))].map((name) => ({ name }))
+}
+
+/** What a member reads when saving a skill fails. */
+export function skillFailure(e: unknown): string {
+  if (e instanceof ApiError && (e.code === 'agent_skill_taken' || e.code === 'skill_exists')) return 'Another skill has that name.'
+  if (e instanceof ApiError && e.code === 'agent_skill_invalid') return 'The skill does not fit: a name and a question are needed.'
+  return 'The skill did not save.'
 }
 
 // ------------------------------------------------------------ labelling --

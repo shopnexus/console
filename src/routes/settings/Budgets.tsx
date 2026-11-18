@@ -1,219 +1,135 @@
 import { type ReactNode, useState } from 'react'
-import IconBell from '~icons/material-symbols-light/notifications-outline-rounded'
 import IconBudget from '~icons/material-symbols-light/speed-outline-rounded'
 import IconPay from '~icons/material-symbols-light/payments-outline-rounded'
 import IconPerson from '~icons/material-symbols-light/person-outline-rounded'
-import IconShield from '~icons/material-symbols-light/shield-person-outline-rounded'
-import IconTrend from '~icons/material-symbols-light/trending-up-rounded'
-import IconTune from '~icons/material-symbols-light/tune-rounded'
-import { Select } from '../../components/Select'
 import { SettingsShell } from '../../components/SettingsShell'
-import { Card, CardHead, Donut, Meter, Notice } from '../../components/ui'
+import { Card, CardHead, Meter, Notice, Segmented, Tag } from '../../components/ui'
 import { fillAt } from '../../lib/aiLook'
-import { firstName, usd } from '../../lib/format'
-import { type Budgets as BudgetsT, type Spend, useAgents, useBudgets, useSettingsCommands, useSpend } from '../../lib/settings'
+import { ApiError } from '../../lib/api'
+import { day, usd } from '../../lib/format'
+import { settingsFailure, type SpendRange, useAgents, useBudgets, useSettingsCommands, useSpend } from '../../lib/settings'
+import { SpendBars } from './SpendBars'
 
-/** Settings › Budgets: the month's spend against its cap with a forecast, each agent's budget, and each member's daily budget. */
+/** Settings › Budgets: spend over a range, each agent's monthly budget against what it spent, and each member's daily budget. */
 export function Budgets() {
+  const [range, setRange] = useState<SpendRange>('30d')
   const budgets = useBudgets()
-  const spend = useSpend('month')
+  const spend = useSpend(range)
   const agents = useAgents()
   const commands = useSettingsCommands()
   const b = budgets.data
   const s = spend.data
-  const alist = agents.data?.items ?? []
+  const order = agents.data?.items.map((a) => a.id) ?? []
+  const failure = commands.updateBudgets.error
   return (
     <SettingsShell
       title="Budgets"
       icon={<IconBudget />}
       chips={
-        s && b
-          ? [
-              [<IconPay key="a" width={16} height={16} />, `${usd(s.total_usd)} / $${b.monthly_cap_usd}`],
-              ...(s.projected_usd !== undefined ? ([[<IconTrend key="b" width={16} height={16} />, `Projected ${usd(s.projected_usd)} by month end`]] as [ReactNode, ReactNode][]) : []),
-              [<IconBell key="c" width={16} height={16} />, `Alert at ${b.alert_pct}%`],
-            ]
+        s
+          ? ([
+              [<IconPay key="a" width={16} height={16} />, `${usd(s.total_usd)} in ${range === '7d' ? '7' : range === '30d' ? '30' : '90'} days`],
+              ...(b?.member_daily_usd !== undefined ? [[<IconPerson key="b" width={16} height={16} />, `$${b.member_daily_usd} a member a day`]] : []),
+            ] as [ReactNode, ReactNode][])
           : undefined
       }
     >
-      {(budgets.error || spend.error) && <Notice>Budgets did not load.</Notice>}
-      {b && s && (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_400px]">
-          <div className="space-y-4">
-            <Card>
-              <div className="flex gap-6">
-                <Donut parts={[{ pct: (s.total_usd / b.monthly_cap_usd) * 100, tone: 'text-primary' }]} size={168} stroke={18}>
-                  <span className="text-label-small font-normal text-on-surface-variant">Used</span>
-                  <span className="text-headline-large tabular-nums">${Math.round(s.total_usd)}</span>
-                  <span className="text-label-small font-normal tabular-nums text-on-surface-variant">of ${b.monthly_cap_usd}</span>
-                </Donut>
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-title-medium">This month</h2>
-                  <div className="mt-3">
-                    <Forecast s={s} cap={b.monthly_cap_usd} alertPct={b.alert_pct} />
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-label-small font-normal text-on-surface-variant">
-                    <Legend tone="bg-primary">Used</Legend>
-                    {s.projected_usd !== undefined && <Legend tone="bg-primary/40">Projected {usd(s.projected_usd)}</Legend>}
-                    <Legend tone="bg-chart-2">Alert {b.alert_pct}%</Legend>
-                    <Legend tone="bg-error">Budget</Legend>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-5 grid grid-cols-3 gap-3 border-t border-hairline pt-4">
-                <NumberField label="Monthly budget" unit="USD" value={b.monthly_cap_usd} onSave={(monthly_cap_usd) => commands.updateBudgets.mutate({ monthly_cap_usd })} />
-                <NumberField label="Alert at" unit="%" value={b.alert_pct} onSave={(alert_pct) => commands.updateBudgets.mutate({ alert_pct })} />
-                <div>
-                  <span className="mb-1.5 block text-body-small text-on-surface-variant">When it runs out</span>
-                  <Select
-                    label="When it runs out"
-                    value={b.on_cap}
-                    onChange={(on_cap: BudgetsT['on_cap']) => commands.updateBudgets.mutate({ on_cap })}
-                    options={[
-                      { value: 'stop_console', label: 'Stop console agents' },
-                      { value: 'stop_all', label: 'Stop every agent' },
-                    ]}
-                  />
-                </div>
-              </div>
-            </Card>
-            <Card className="p-5 pb-3">
-              <CardHead title="By agent" />
-              <div className="grid grid-cols-1 gap-x-8 lg:grid-cols-2">
-                {s.by_agent.map((x) => {
-                  const i = alist.findIndex((a) => a.id === x.agent_id)
-                  const a = alist[i]
-                  const cap = a?.monthly_budget_usd
-                  const pct = cap ? (x.usd / cap) * 100 : 0
-                  return (
-                    <div key={x.agent_id} className="py-2">
-                      <div className="flex items-center gap-2 text-body-medium">
-                        <span className={`h-2.5 w-2.5 rounded-[3px] ${fillAt(i)}`} />
-                        <span className="font-medium">{a?.name ?? x.agent_id}</span>
-                        <span className="ml-auto tabular-nums">
-                          {usd(x.usd)} {cap !== undefined && <span className="text-on-surface-variant">/ ${cap}</span>}
-                        </span>
-                      </div>
-                      {cap !== undefined && <Meter pct={pct} tone={pct >= 80 ? 'bg-chart-2' : fillAt(i)} className="mt-1.5 h-2" />}
-                    </div>
-                  )
-                })}
-              </div>
-            </Card>
-          </div>
-          <div className="space-y-4">
-            <Card>
-              <CardHead title="Per member, per day" />
-              <div className="grid grid-cols-2 gap-3">
-                <DailyTile
-                  icon={<IconPerson width={15} height={15} />}
-                  label="Moderator"
-                  value={b.member_daily_usd.moderator}
-                  onSave={(v) => commands.updateBudgets.mutate({ member_daily_usd: { ...b.member_daily_usd, moderator: v } })}
-                />
-                <DailyTile
-                  icon={<IconShield width={15} height={15} />}
-                  label="Admin"
-                  value={b.member_daily_usd.admin}
-                  onSave={(v) => commands.updateBudgets.mutate({ member_daily_usd: { ...b.member_daily_usd, admin: v } })}
-                />
-              </div>
-              {b.overrides.length > 0 && (
-                <p className="mt-3 flex items-center gap-2 text-body-small text-on-surface-variant">
-                  <IconTune width={16} height={16} />
-                  Overrides: {b.overrides.map((o) => `${firstName(o.display_name)} $${o.daily_usd}`).join(', ')}
-                </p>
-              )}
-            </Card>
-          </div>
+      {(budgets.error || spend.error) && <Notice>{settingsFailure(((budgets.error ?? spend.error) as ApiError | null)?.code)}</Notice>}
+      {failure && (
+        <div className="mb-4">
+          <Notice>{settingsFailure(failure instanceof ApiError ? failure.code : undefined)}</Notice>
         </div>
       )}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_380px]">
+        <div className="space-y-4">
+          <Card>
+            <CardHead
+              title="Spend"
+              sub={s ? `${usd(s.total_usd)} · ${day(s.start)} to ${day(s.end)}` : undefined}
+              right={
+                <Segmented
+                  label="Range"
+                  value={range}
+                  onChange={setRange}
+                  items={[
+                    { value: '7d', label: '7 days' },
+                    { value: '30d', label: '30 days' },
+                    { value: '90d', label: '90 days' },
+                  ]}
+                />
+              }
+            />
+            {s && <SpendBars s={s} order={order} names={Object.fromEntries((agents.data?.items ?? []).map((a) => [a.id, a.name]))} />}
+          </Card>
+          {b && (
+            <Card className="p-5 pb-3">
+              <CardHead title="By agent" sub="A month's budget each; spent is LiteLLM's count for the current period" />
+              {b.agents.map((x) => {
+                const i = Math.max(0, order.indexOf(x.agent_id))
+                const pct = x.monthly_budget_usd ? (x.spent_usd / x.monthly_budget_usd) * 100 : 0
+                return (
+                  <div key={x.agent_id} className="flex items-center gap-4 border-t border-hairline py-3 first:border-t-0">
+                    <span className={`h-2.5 w-2.5 shrink-0 rounded-[3px] ${fillAt(i)}`} />
+                    <span className="w-[200px] min-w-0 truncate text-label-medium">
+                      {x.name} {x.kind === 'app' && <Tag tone="bg-surface-container text-on-surface-variant">App</Tag>}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex justify-between text-body-small">
+                        <span className="tabular-nums">{usd(x.spent_usd)}</span>
+                        {x.monthly_budget_usd !== undefined && <span className="tabular-nums text-on-surface-variant">{Math.round(pct)}%</span>}
+                      </div>
+                      {x.monthly_budget_usd !== undefined && <Meter pct={pct} tone={pct >= 80 ? 'bg-chart-2' : fillAt(i)} className="mt-1.5 h-2" />}
+                    </div>
+                    <MoneyField
+                      key={`${x.agent_id}-${x.monthly_budget_usd}`}
+                      value={x.monthly_budget_usd}
+                      label={`${x.name}'s monthly budget`}
+                      onSave={(v) => commands.updateBudgets.mutate({ agents: [{ agent_id: x.agent_id, monthly_budget_usd: v ?? null }] })}
+                    />
+                  </div>
+                )
+              })}
+            </Card>
+          )}
+        </div>
+        <div className="space-y-4">
+          {b && (
+            <Card>
+              <CardHead title="Per member, per day" sub="Through the console agents" />
+              <MoneyField
+                key={String(b.member_daily_usd)}
+                big
+                value={b.member_daily_usd}
+                label="Each member's daily budget"
+                onSave={(v) => commands.updateBudgets.mutate({ member_daily_usd: v ?? null })}
+              />
+            </Card>
+          )}
+        </div>
+      </div>
     </SettingsShell>
   )
 }
 
-function Legend({ tone, children }: { tone: string; children: ReactNode }) {
+/** A dollar amount saved when the field loses focus; empty takes the budget away. */
+function MoneyField({ value, label, onSave, big = false }: { value?: number; label: string; onSave: (v: number | undefined) => void; big?: boolean }) {
+  const [v, setV] = useState(value === undefined ? '' : String(value))
   return (
-    <span className="flex items-center gap-1.5">
-      <span className={`h-2.5 w-2.5 rounded-[3px] ${tone}`} />
-      {children}
-    </span>
-  )
-}
-
-/** Spend so far as a line, the projection dashed to the month's end, and the alert and budget lines. */
-function Forecast({ s, cap, alertPct }: { s: Spend; cap: number; alertPct: number }) {
-  const w = 520
-  const h = 150
-  const end = new Date(s.from)
-  end.setMonth(end.getMonth() + 1, 0)
-  const days = end.getDate()
-  const top = Math.max(cap, s.projected_usd ?? 0) * 1.05
-  const daily = s.days.map((d) => Object.values(d.by_agent).reduce((a, b) => a + b, 0))
-  const actual = [0, ...daily.map((_, i) => daily.slice(0, i + 1).reduce((a, b) => a + b, 0))]
-  const sx = w / days
-  const y = (v: number) => h - (v / top) * h
-  const pts = actual.map((v, i) => `${(i * sx).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
-  const lx = (actual.length - 1) * sx
-  const ly = y(actual[actual.length - 1])
-  return (
-    <div>
-      <svg width="100%" height={h + 8} viewBox={`0 0 ${w} ${h + 8}`} preserveAspectRatio="none" className="block overflow-visible text-primary" aria-label="Spend this month">
-        <line x1={0} x2={w} y1={y(cap)} y2={y(cap)} className="stroke-error" strokeDasharray="4 4" opacity={0.6} />
-        <line x1={0} x2={w} y1={y((cap * alertPct) / 100)} y2={y((cap * alertPct) / 100)} className="stroke-chart-2" strokeDasharray="2 4" opacity={0.7} />
-        <polygon points={`0,${h} ${pts} ${lx},${h}`} fill="currentColor" opacity={0.1} />
-        <polyline points={pts} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinejoin="round" />
-        {s.projected_usd !== undefined && (
-          <line x1={lx} y1={ly} x2={w} y2={y(s.projected_usd)} stroke="currentColor" strokeWidth={2} strokeDasharray="5 5" opacity={0.55} />
-        )}
-        <circle cx={lx} cy={ly} r={4.5} fill="currentColor" className="stroke-surface-container-lowest" strokeWidth={2} />
-      </svg>
-      <div className="mt-1 flex justify-between text-label-small font-normal text-on-surface-variant">
-        <span>{new Date(s.from).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-        <span>Today</span>
-        <span>{end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-      </div>
-    </div>
-  )
-}
-
-function NumberField({ label, unit, value, onSave }: { label: string; unit: string; value: number; onSave: (v: number) => void }) {
-  const [v, setV] = useState(String(value))
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-body-small text-on-surface-variant">{label}</span>
-      <span className="flex h-10 items-center rounded-xl border border-hairline bg-surface-container-lowest px-3.5 text-body-medium focus-within:border-primary/50">
-        <input
-          value={v}
-          inputMode="numeric"
-          onChange={(e) => setV(e.target.value.replace(/[^\d.]/g, '').slice(0, 7))}
-          onBlur={() => Number(v) !== value && onSave(Number(v) || 0)}
-          className="w-full min-w-0 bg-transparent tabular-nums outline-none"
-        />
-        <span className="text-on-surface-variant">{unit}</span>
-      </span>
-    </label>
-  )
-}
-
-function DailyTile({ icon, label, value, onSave }: { icon: ReactNode; label: string; value: number; onSave: (v: number) => void }) {
-  const [v, setV] = useState(String(value))
-  return (
-    <label className="block rounded-2xl bg-surface-container-low p-3.5 focus-within:ring-2 focus-within:ring-primary/30">
-      <span className="flex items-center gap-1.5 text-body-small text-on-surface-variant">
-        {icon}
-        {label}
-      </span>
-      <span className="mt-1 flex items-baseline">
-        <span className="text-headline-medium">$</span>
-        <input
-          value={v}
-          inputMode="numeric"
-          onChange={(e) => setV(e.target.value.replace(/[^\d.]/g, '').slice(0, 5))}
-          onBlur={() => Number(v) !== value && onSave(Number(v) || 0)}
-          className="w-full min-w-0 bg-transparent text-headline-medium tabular-nums outline-none"
-        />
-      </span>
+    <label className={`flex items-baseline rounded-xl border border-hairline bg-surface-container-lowest px-3 focus-within:border-primary/50 ${big ? 'h-14 text-headline-medium' : 'h-10 w-[120px] text-body-medium'}`}>
+      <span className="text-on-surface-variant">$</span>
+      <input
+        value={v}
+        aria-label={label}
+        placeholder="None"
+        inputMode="decimal"
+        onChange={(e) => setV(e.target.value.replace(/[^\d.]/g, '').slice(0, 8))}
+        onBlur={() => {
+          const n = v === '' ? undefined : Number(v)
+          if (n !== value) onSave(n)
+        }}
+        className="h-full w-full min-w-0 bg-transparent tabular-nums outline-none placeholder:text-on-surface-variant"
+      />
+      {!big && <span className="text-body-small text-on-surface-variant">/mo</span>}
     </label>
   )
 }

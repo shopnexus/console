@@ -1,5 +1,6 @@
-import type { AgentDocument, Conversation, ConversationDetail, Skill, ToolCallDetail, Turn } from '../agent'
-import type { Block, RunEvent, Source } from '../run'
+import type { AgentDocument, Attachment, Conversation, ConversationDetail, Skill, ToolCallDetail, Turn } from '../agent'
+import { type Block, replay, type RunEvent, type Source } from '../run'
+import { ids } from './settings'
 import { MockError, type Route } from '.'
 
 // The agent's chats and runs behind VITE_MOCK_AI=1: a scripted run taken
@@ -35,7 +36,48 @@ interface MockTurn {
 }
 
 const turns = new Map<string, MockTurn>()
-const conversations = new Map<string, ConversationDetail>()
+/** A conversation as stored: its asks, each with the turn that answers it. */
+interface MockConversation extends Conversation {
+  asks: { turnId: string; member_id: string; text: string; created_at: string; attachments?: Attachment[]; skill_id?: string; agent_id?: string }[]
+}
+
+const conversations = new Map<string, MockConversation>()
+
+const viewStatus: Record<string, Turn['status']> = { SUCCEEDED: 'succeeded', FAILED: 'failed', CANCELLED: 'cancelled', TIMED_OUT: 'timed_out', BUDGET: 'budget' }
+
+/** The server's turn view (AgentTurn) of a mock turn, from its events. */
+function viewOf(t: MockTurn, ask: MockConversation['asks'][number]): Turn {
+  const run = replay(t.events)
+  const phase = phaseOf(t)
+  const end = [...t.events].reverse().find((e) => e.type === 'turn.finished') as Extract<RunEvent, { type: 'turn.finished' }> | undefined
+  const text = run.blocks.find((b) => b.type === 'text') as { markdown: string } | undefined
+  return {
+    id: t.id,
+    conversation_id: t.conversationId,
+    member_id: ask.member_id,
+    text: ask.text,
+    answer: text?.markdown,
+    status: phase === 'finished' ? (viewStatus[end?.status ?? 'FAILED'] ?? 'failed') : phase === 'awaiting' ? 'awaiting_input' : phase,
+    blocks: run.blocks,
+    sources: run.sources,
+    outcome: end?.outcome ?? undefined,
+    error_code: end?.failure,
+    continuable: end ? end.continuable : phase === 'paused',
+    agent: run.agent,
+    usage: run.usage.input ? { input_tokens: run.usage.input, output_tokens: run.usage.output, cost_usd: run.usage.costUsd, first_token_ms: run.firstTokenMs, provider: run.provider } : undefined,
+    steers: run.steers.filter((x) => x.text).map((x) => ({ steer_id: x.id, text: x.text })),
+    questions: run.clarify,
+    last_seq: t.events.length,
+    created_at: ask.created_at,
+    attachments: ask.attachments,
+    skill_id: ask.skill_id,
+    agent_id: ask.agent_id,
+  }
+}
+
+function detailOf(c: MockConversation): ConversationDetail {
+  return { id: c.id, title: c.title, updated_at: c.updated_at, subject_kind: c.subject_kind, subject_id: c.subject_id, turns: c.asks.map((a) => viewOf(turns.get(a.turnId)!, a)) }
+}
 
 const SOURCES: Source[] = [
   { n: 1, kind: 'data', label: 'Reports · last 7 days', quote: '86 reports, 66 scam, 23 fake, 8 banned', call_id: 'c-r1' },
@@ -278,10 +320,10 @@ function resume(t: MockTurn, by: 'continue' | 'steer' | 'input') {
 }
 
 function newTurn(conversationId: string, text: string, agentId?: string, instant = false, startAt?: number): MockTurn {
-  const agent = agentId === 'weekly-brief' ? { id: 'weekly-brief', name: 'Weekly brief' } : { id: 'console-assistant', name: 'Console assistant' }
+  const agent = agentId === ids.brief ? { id: ids.brief, name: 'Weekly brief' } : { id: ids.console, name: 'Console assistant' }
   const q = text.toLowerCase()
   const script = q.includes('budget') ? briefScript(agent, 'budget') : q.startsWith('prepare') ? clarifyScript(agent) : q.includes('retry') || q.includes('slow') ? briefScript(agent, 'retry') : briefScript(agent, 'run')
-  const t: MockTurn = { id: `t-${Math.random().toString(36).slice(2, 10)}`, conversationId, events: [], script, at: 0, pausing: false, halted: false, steers: [], stepsDone: 0, wake: new Set(), virtual: startAt }
+  const t: MockTurn = { id: crypto.randomUUID(), conversationId, events: [], script, at: 0, pausing: false, halted: false, steers: [], stepsDone: 0, wake: new Set(), virtual: startAt }
   turns.set(t.id, t)
   tick(t, instant)
   return t
@@ -314,11 +356,11 @@ export async function* mockEvents(id: string, after: number, signal: AbortSignal
 
 function seed(id: string, title: string, minutesAgo: number, question?: string, subject?: { kind: 'ticket' | 'account'; id: string }) {
   const at = new Date(Date.now() - minutesAgo * 60_000).toISOString()
-  const c: ConversationDetail = { id, title, updated_at: at, turns: [], subject_kind: subject?.kind, subject_id: subject?.id }
+  const c: MockConversation = { id, title, updated_at: at, asks: [], subject_kind: subject?.kind, subject_id: subject?.id }
   if (question) {
     const t = newTurn(id, question, undefined, true, Date.parse(at))
     t.virtual = undefined
-    c.turns.push({ id: t.id, member_id: 'm-lan', text: question, status: 'SUCCEEDED', created_at: at, agent_id: 'console-assistant' })
+    c.asks.push({ turnId: t.id, member_id: '0193e000-0000-7000-8000-00000000c002', text: question, created_at: at, agent_id: ids.console })
   }
   conversations.set(id, c)
 }
@@ -330,30 +372,33 @@ seed('g4', 'Air gun listings this week', 60 * 26)
 seed('g5', 'Lê Thị Hồng reported for scams', 60 * 27)
 
 const skills: Skill[] = [
-  { id: 'sk1', name: 'Weekly brief', slug: 'weekly-brief', description: 'Reports, rings and actions for a period', prompt: 'Write the weekly brief for {{period}}.', variables: ['period'], updated_at: new Date().toISOString() },
-  { id: 'sk2', name: 'Ring check', slug: 'ring-check', description: 'Accounts linked by address, photos or messages', prompt: 'Which accounts are linked to {{account}}?', variables: ['account'], updated_at: new Date().toISOString() },
-  { id: 'sk3', name: 'Seller profile', slug: 'seller-profile', description: 'Orders, refusals, reports and history', prompt: 'Profile of seller {{account}}.', variables: ['account'], updated_at: new Date().toISOString() },
-  { id: 'sk4', name: 'Ticket digest', slug: 'ticket-digest', description: 'Open tickets grouped by cause', prompt: 'Group the open tickets by cause.', variables: [], updated_at: new Date().toISOString() },
-  { id: 'sk5', name: 'Carrier report', slug: 'carrier-report', description: 'Delivery disputes by carrier and hub', prompt: 'Delivery disputes by carrier and hub for {{period}}.', variables: ['period'], updated_at: new Date().toISOString() },
+  { id: 'sk1', name: 'Weekly brief', slug: 'weekly-brief', description: 'Reports, rings and actions for a period', prompt: 'Write the weekly brief for {{period}}.', variables: [{ name: 'period', label: 'Period', default: 'last 7 days' }], created_by: ids.khoa, updated_at: new Date().toISOString() },
+  { id: 'sk2', name: 'Ring check', slug: 'ring-check', description: 'Accounts linked by address, photos or messages', prompt: 'Which accounts are linked to {{account}}?', variables: [{ name: 'account', label: 'Account' }], created_by: ids.khoa, updated_at: new Date().toISOString() },
+  { id: 'sk3', name: 'Seller profile', slug: 'seller-profile', description: 'Orders, refusals, reports and history', prompt: 'Profile of seller {{account}}.', variables: [{ name: 'account', label: 'Account' }], created_by: ids.khoa, updated_at: new Date().toISOString() },
+  { id: 'sk4', name: 'Ticket digest', slug: 'ticket-digest', description: 'Open tickets grouped by cause', prompt: 'Group the open tickets by cause.', variables: [], created_by: ids.khoa, updated_at: new Date().toISOString() },
+  { id: 'sk5', name: 'Carrier report', slug: 'carrier-report', description: 'Delivery disputes by carrier and hub', prompt: 'Delivery disputes by carrier and hub for {{period}}.', variables: [{ name: 'period', label: 'Period', default: 'last 7 days' }], created_by: ids.khoa, updated_at: new Date().toISOString() },
+]
+
+const briefSections = [
+  {
+    type: 'markdown' as const,
+    markdown:
+      '# Scam reports, Nov 12–18\n\n## Summary\n\n- 86 reports, up 31%; scam is 77% of them [1].\n- The Gò Vấp deposit ring grew to 5 accounts [2][3].\n- A new AirPods reseller group in Thủ Đức filed 14 reports since Monday [4].\n- Median time to resolve fell to 6.2 hours [8].',
+  },
+  answer[2] as Extract<Block, { type: 'chart' }>,
+  { type: 'markdown' as const, markdown: '## Next steps\n\n1. Review suspensions for 3 Thủ Đức accounts.\n2. Block the AirPods photo set in new listings.\n3. Warn buyers in chat about deposits.' },
 ]
 
 const document: AgentDocument = {
   id: 'doc-brief',
+  conversation_id: 'g1',
   title: 'Weekly scam brief',
-  version: 2,
-  versions: [
-    { version: 1, at: new Date(Date.now() - 20 * 60_000).toISOString() },
-    { version: 2, at: new Date(Date.now() - 2 * 60_000).toISOString() },
-  ],
+  latest_version: 2,
+  created_at: new Date(Date.now() - 20 * 60_000).toISOString(),
   updated_at: new Date(Date.now() - 2 * 60_000).toISOString(),
-  sections: [
-    {
-      type: 'markdown',
-      markdown:
-        '# Scam reports, Nov 12–18\n\n## Summary\n\n- 86 reports, up 31%; scam is 77% of them [1].\n- The Gò Vấp deposit ring grew to 5 accounts [2][3].\n- A new AirPods reseller group in Thủ Đức filed 14 reports since Monday [4].\n- Median time to resolve fell to 6.2 hours [8].',
-    },
-    answer[2] as Extract<Block, { type: 'chart' }>,
-    { type: 'markdown', markdown: '## Next steps\n\n1. Review suspensions for 3 Thủ Đức accounts.\n2. Block the AirPods photo set in new listings.\n3. Warn buyers in chat about deposits.' },
+  versions: [
+    { version: 2, title: 'Weekly scam brief', sections: briefSections, created_at: new Date(Date.now() - 2 * 60_000).toISOString() },
+    { version: 1, title: 'Weekly scam brief (draft)', sections: [briefSections[0]], created_at: new Date(Date.now() - 20 * 60_000).toISOString() },
   ],
 }
 
@@ -372,7 +417,7 @@ function toolResult(call: Extract<RunEvent, { type: 'tool.started' }>): unknown 
 
 const A = '^/console/agent'
 
-function conversation(id: string) {
+function conversation(id: string): MockConversation {
   const c = conversations.get(id)
   if (!c) throw new MockError(404, 'agent_conversation_not_found')
   return c
@@ -384,7 +429,7 @@ function turn(id: string) {
   return t
 }
 
-const summary = (c: ConversationDetail): Conversation => ({ id: c.id, title: c.title, updated_at: c.updated_at, subject_kind: c.subject_kind, subject_id: c.subject_id })
+const summary = (c: MockConversation): Conversation => ({ id: c.id, title: c.title, updated_at: c.updated_at, subject_kind: c.subject_kind, subject_id: c.subject_id })
 
 export const agentRoutes: Route[] = [
   [
@@ -401,23 +446,34 @@ export const agentRoutes: Route[] = [
       const b = body as { subject_kind?: 'ticket' | 'account'; subject_id?: string }
       const found = b.subject_id && [...conversations.values()].find((c) => c.subject_id === b.subject_id)
       if (found) return summary(found)
-      const c: ConversationDetail = { id: `c-${Math.random().toString(36).slice(2, 10)}`, updated_at: new Date().toISOString(), turns: [], subject_kind: b.subject_kind, subject_id: b.subject_id }
+      const c: MockConversation = { id: crypto.randomUUID(), updated_at: new Date().toISOString(), asks: [], subject_kind: b.subject_kind, subject_id: b.subject_id }
       conversations.set(c.id, c)
       return summary(c)
     },
   ],
-  ['GET', new RegExp(`${A}/conversations/([^/]+)$`), (m) => conversation(m[1])],
+  ['GET', new RegExp(`${A}/conversations/([^/]+)$`), (m) => detailOf(conversation(m[1]))],
+  [
+    'GET',
+    new RegExp(`${A}/turns/([^/]+)$`),
+    (m) => {
+      const t = turn(m[1])
+      const ask = conversations.get(t.conversationId)?.asks.find((a) => a.turnId === t.id)
+      if (!ask) throw new MockError(404, 'agent_turn_not_found')
+      return viewOf(t, ask)
+    },
+  ],
   [
     'POST',
     new RegExp(`${A}/conversations/([^/]+)/turns$`),
     (m, body) => {
       const c = conversation(m[1])
-      const last = c.turns[c.turns.length - 1]
-      const lastTurn = last && turns.get(last.id)
-      if (lastTurn && phaseOf(lastTurn) !== 'finished') throw new MockError(409, 'turn_in_progress')
-      const b = body as { text: string; agent_id?: string; skill_id?: string; attachments?: Turn['attachments'] }
+      const last = c.asks[c.asks.length - 1]
+      const lastTurn = last && turns.get(last.turnId)
+      if (lastTurn && phaseOf(lastTurn) !== 'finished') throw new MockError(409, 'agent_turn_in_progress')
+      const b = body as { text: string; agent_id?: string; skill_id?: string; attachments?: Attachment[] }
+      if (b.agent_id && b.agent_id !== ids.console && b.agent_id !== ids.brief) throw new MockError(404, 'ai_agent_not_found')
       const t = newTurn(c.id, b.text, b.agent_id)
-      c.turns.push({ id: t.id, member_id: 'me', text: b.text, status: 'RUNNING', created_at: new Date().toISOString(), agent_id: b.agent_id, skill_id: b.skill_id, attachments: b.attachments })
+      c.asks.push({ turnId: t.id, member_id: 'me', text: b.text, created_at: new Date().toISOString(), agent_id: b.agent_id, skill_id: b.skill_id, attachments: b.attachments })
       c.title ??= b.text.slice(0, 80)
       c.updated_at = new Date().toISOString()
       return { conversation_id: c.id, turn_id: t.id }
@@ -428,12 +484,12 @@ export const agentRoutes: Route[] = [
     new RegExp(`${A}/turns/([^/]+)/pause$`),
     (m) => {
       const t = turn(m[1])
-      if (phaseOf(t) !== 'running') throw new MockError(409, 'turn_state')
+      if (phaseOf(t) !== 'running') throw new MockError(409, 'agent_turn_state')
       if (!t.pausing) {
         t.pausing = true
         push(t, { type: 'turn.pausing', steps_done: t.stepsDone, reason: 'member' })
       }
-      return undefined
+      return { turn_id: t.id }
     },
   ],
   [
@@ -441,12 +497,13 @@ export const agentRoutes: Route[] = [
     new RegExp(`${A}/turns/([^/]+)/stop$`),
     (m) => {
       const t = turn(m[1])
-      if (phaseOf(t) !== 'running') throw new MockError(409, 'turn_state')
+      if (phaseOf(t) !== 'running') throw new MockError(409, 'agent_turn_state')
+      // Stop now: the call in flight ends and the turn goes paused, keeping what it wrote.
       clearTimeout(t.timer)
       t.halted = true
       t.pausing = false
-      push(t, { type: 'turn.finished', status: 'CANCELLED', outcome: 'stopped', continuable: t.stepsDone > 0, sources: SOURCES.slice(0, 3) })
-      return undefined
+      push(t, { type: 'turn.paused', steps_done: t.stepsDone, reason: 'stop_now' })
+      return { turn_id: t.id }
     },
   ],
   [
@@ -454,19 +511,22 @@ export const agentRoutes: Route[] = [
     new RegExp(`${A}/turns/([^/]+)/end$`),
     (m) => {
       const t = turn(m[1])
-      if (phaseOf(t) === 'finished') return undefined
+      const phase = phaseOf(t)
+      if (phase !== 'paused' && phase !== 'awaiting') throw new MockError(409, 'agent_turn_state')
       clearTimeout(t.timer)
       t.halted = true
       push(t, { type: 'turn.finished', status: 'CANCELLED', outcome: 'stopped', continuable: false })
-      return undefined
+      return { turn_id: t.id, status: 'cancelled' }
     },
   ],
   [
     'POST',
     new RegExp(`${A}/turns/([^/]+)/continue$`),
     (m) => {
-      resume(turn(m[1]), 'continue')
-      return undefined
+      const t = turn(m[1])
+      if (phaseOf(t) !== 'paused') throw new MockError(409, 'agent_turn_state')
+      resume(t, 'continue')
+      return { turn_id: t.id }
     },
   ],
   [
@@ -474,19 +534,23 @@ export const agentRoutes: Route[] = [
     new RegExp(`${A}/turns/([^/]+)/steer$`),
     (m, body) => {
       const t = turn(m[1])
-      const id = (body as { steer_id?: string }).steer_id ?? Math.random().toString(36).slice(2)
+      if (phaseOf(t) !== 'running' && phaseOf(t) !== 'paused') throw new MockError(409, 'agent_turn_state')
+      void body
+      const id = crypto.randomUUID()
       t.steers.push(id)
       const resumed = phaseOf(t) === 'paused'
       if (resumed) resume(t, 'steer')
-      return { steer_id: id, resumed }
+      return { steer_id: id, turn_id: t.id, resumed }
     },
   ],
   [
     'POST',
     new RegExp(`${A}/turns/([^/]+)/input$`),
     (m) => {
-      resume(turn(m[1]), 'input')
-      return undefined
+      const t = turn(m[1])
+      if (phaseOf(t) !== 'awaiting') throw new MockError(409, 'agent_turn_state')
+      resume(t, 'input')
+      return { turn_id: t.id }
     },
   ],
   [
@@ -498,24 +562,31 @@ export const agentRoutes: Route[] = [
         if (!start) continue
         const end = t.events.find((e) => e.type === 'tool.finished' && e.call_id === m[1]) as Extract<RunEvent, { type: 'tool.finished' }> | undefined
         const retries = t.events.filter((e) => e.type === 'tool.retry' && e.call_id === m[1]) as Extract<RunEvent, { type: 'tool.retry' }>[]
-        const step = t.events.find((e) => e.type === 'step.started' && e.step_id === start.step_id) as Extract<RunEvent, { type: 'step.started' }> | undefined
         return {
-          id: m[1], tool: start.tool, status: end?.status ?? 'running', input: start.input, output: end ? toolResult(start) : undefined,
-          started_at: start.at, duration_ms: end?.duration_ms, timing: end?.timing, step_title: step?.title, bytes: 1229,
-          attempts: retries.map((r) => ({ attempt: r.attempt, error: r.error, at: r.at })),
+          id: m[1], turn_id: t.id, tool: start.tool, status: end?.status ?? 'running', input: start.input ?? {}, output: end ? toolResult(start) : undefined, output_spilled: false,
+          started_at: start.at, finished_at: end?.at, duration_ms: end?.duration_ms, timing: end?.timing, attempts: retries.length + 1,
         }
       }
-      throw new MockError(404, 'not_found')
+      throw new MockError(404, 'agent_tool_call_not_found')
     },
   ],
-  ['GET', new RegExp(`${A}/documents/([^/]+)$`), (_, __, q) => ({ ...document, version: Number(q.get('version') ?? document.version) })],
+  [
+    'GET',
+    new RegExp(`${A}/documents/([^/]+)$`),
+    (m) => {
+      if (m[1] !== document.id) throw new MockError(404, 'agent_document_not_found')
+      return document
+    },
+  ],
   ['GET', new RegExp(`${A}/skills$`), () => ({ items: skills })],
   [
     'POST',
     new RegExp(`${A}/skills$`),
     (_, body) => {
-      const b = body as { name: string; description: string; prompt: string; variables?: string[] }
-      const s: Skill = { id: `sk-${Date.now()}`, slug: b.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), variables: b.variables ?? [], updated_at: new Date().toISOString(), ...b }
+      const b = body as Partial<Skill> & { name: string; prompt: string }
+      const slug = b.slug ?? b.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      if (skills.some((x) => x.slug === slug)) throw new MockError(409, 'agent_skill_taken')
+      const s: Skill = { id: crypto.randomUUID(), created_by: ids.khoa, name: b.name, slug, description: b.description ?? '', prompt: b.prompt, variables: b.variables ?? [], updated_at: new Date().toISOString() }
       skills.push(s)
       return s
     },

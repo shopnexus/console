@@ -72,6 +72,7 @@ export type RunEvent =
         timing?: Timing
         result_summary?: string
         source_ids?: number[]
+        sources?: Source[]
       }
     >
   | E<'model.switched', { from_provider: string; to_provider: string; reason: string }>
@@ -80,12 +81,12 @@ export type RunEvent =
   | E<'block', { block: Block }>
   | E<'clarify', { questions: ClarifyQuestion[] }>
   | E<'usage', { input_tokens: number; output_tokens: number; cost_usd: number; provider: string; first_token_ms?: number }>
-  | E<'steer.read', { steer_id: string; step_id: string; step_number?: number }>
+  | E<'steer.read', { steer_id: string; step_id: string | null; step_number?: number }>
   | E<'turn.pausing', { steps_done: number; reason: 'member' | 'stop_now' }>
   | E<'turn.paused', { steps_done: number; reason: 'member' | 'stop_now' }>
   | E<'turn.resumed', { by: 'continue' | 'steer' | 'input' }>
   | E<'rate.waiting', { until: string }>
-  | E<'context.compacting', object>
+  | E<'context.compacting', { before_tokens?: number }>
   | E<'context.compacted', { summary: string; before_tokens: number; after_tokens: number }>
   | E<'context.meter', { used_tokens: number; window_tokens: number }>
   | E<'guardrail', { rule: GuardrailRule; detail: string }>
@@ -287,6 +288,7 @@ export function reduceRun(s: RunState, ev: RunEvent | LocalAction): RunState {
             sourceIds: ev.source_ids ?? [],
           },
         },
+        sources: ev.sources ? mergeSources(n.sources, ev.sources) : n.sources,
       }
     }
     case 'model.switched':
@@ -411,4 +413,52 @@ export function canContinue(s: RunState): boolean {
   const g = outcomeGroup(s)
   if (s.phase === 'paused') return true
   return !!s.outcome?.continuable && g !== 'budget' && g !== 'blocked' && g !== 'done'
+}
+
+/** The fields of the server's turn view (AgentTurn) a run can be drawn from. */
+export interface TurnView {
+  status: string
+  answer?: string
+  blocks: Block[]
+  sources: Source[]
+  outcome?: Outcome
+  error_code?: string
+  continuable: boolean
+  agent?: { id: string; name: string }
+  usage?: { input_tokens: number; output_tokens: number; cost_usd: number; first_token_ms?: number; provider?: string }
+  steers: { steer_id: string; text: string }[]
+  questions?: ClarifyQuestion[]
+  created_at: string
+}
+
+const viewStatus: Record<string, TurnStatus> = {
+  succeeded: 'SUCCEEDED',
+  failed: 'FAILED',
+  cancelled: 'CANCELLED',
+  timed_out: 'TIMED_OUT',
+  budget: 'BUDGET',
+}
+
+/**
+ * A run drawn from the turn view, for a turn whose events the server does
+ * not stream: the answer, its sources and how it ended, without steps. An
+ * answer kept only as text counts as one text block.
+ */
+export function runFromView(v: TurnView): RunState {
+  const phase: RunPhase = v.status === 'running' ? 'running' : v.status === 'paused' ? 'paused' : v.status === 'awaiting_input' ? 'awaiting_input' : 'finished'
+  const blocks = v.blocks.length || !v.answer ? v.blocks : [{ type: 'text' as const, markdown: v.answer }]
+  return {
+    ...emptyRun(),
+    phase,
+    agent: v.agent,
+    provider: v.usage?.provider,
+    startedAt: v.created_at,
+    firstTokenMs: v.usage?.first_token_ms,
+    blocks: blocks.filter((b) => b.type !== 'sources'),
+    sources: [...v.sources].sort((a, b) => a.n - b.n),
+    clarify: phase === 'awaiting_input' ? v.questions : undefined,
+    usage: { input: v.usage?.input_tokens ?? 0, output: v.usage?.output_tokens ?? 0, costUsd: v.usage?.cost_usd ?? 0 },
+    steers: v.steers.map((x) => ({ id: x.steer_id, text: x.text, at: v.created_at, state: phase === 'finished' ? 'unread' : 'waiting' })),
+    outcome: phase === 'finished' ? { status: viewStatus[v.status] ?? 'FAILED', outcome: v.outcome, failure: v.error_code, continuable: v.continuable } : undefined,
+  }
 }

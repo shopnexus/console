@@ -10,7 +10,7 @@ import IconData from '~icons/material-symbols-light/data-object-rounded'
 import IconError from '~icons/material-symbols-light/error-outline-rounded'
 import IconOpen from '~icons/material-symbols-light/north-east-rounded'
 import IconPrint from '~icons/material-symbols-light/print-outline-rounded'
-import { type AgentDocument, type DocSection, useDocument, useToolCall } from '../../lib/agent'
+import { type DocSection, type DocumentVersion, useDocument, useToolCall } from '../../lib/agent'
 import { duration, time, when } from '../../lib/format'
 import { usePanel } from '../../lib/panel'
 import type { Source, SourceKind } from '../../lib/run'
@@ -118,14 +118,17 @@ export function ToolPanel({ id }: { id: string }) {
   const [tab, setTab] = useState<ToolTab>('result')
   const c = call.data
   const failed = c?.status === 'failed'
-  const timing = c?.timing
-  const total = timing ? timing.queued + timing.server + timing.return : (c?.duration_ms ?? 0)
-  const bars: [string, number, number, string][] = timing
+  const t = c?.timing
+  const q = t?.queued ?? 0
+  const sv = t?.server ?? 0
+  const total = t ? q + sv + (t.return ?? 0) : (c?.duration_ms ?? 0)
+  // Parts the server did not report (null) are left out.
+  const bars: [string, number, number, string][] = t
     ? ([
-        ['Queued', 0, timing.queued, 'bg-outline-variant'],
-        ['MCP server', timing.queued, timing.server, 'bg-primary'],
-        timing.db !== null && ['Database', timing.queued + (timing.server - timing.db) / 2, timing.db, 'bg-primary/50'],
-        ['Return', timing.queued + timing.server, timing.return, 'bg-outline-variant'],
+        t.queued !== null && ['Queued', 0, q, 'bg-outline-variant'],
+        t.server !== null && ['MCP server', q, sv, 'bg-primary'],
+        t.db !== null && ['Database', q + Math.max(0, sv - t.db) / 2, t.db, 'bg-primary/50'],
+        t.return !== null && ['Return', q + sv, t.return, 'bg-outline-variant'],
       ].filter(Boolean) as [string, number, number, string][])
     : []
   return (
@@ -146,7 +149,7 @@ export function ToolPanel({ id }: { id: string }) {
               )}
             </p>
             <p className="mt-0.5 truncate tabular-nums text-body-small text-on-surface-variant">
-              {[c?.step_title, c ? time(c.started_at) : '', 'read-only'].filter(Boolean).join(' · ')}
+              {[c ? time(c.started_at) : '', c && c.attempts > 1 ? `${c.attempts} attempts` : '', 'read-only'].filter(Boolean).join(' · ')}
             </p>
           </div>
           {c && (
@@ -176,7 +179,12 @@ export function ToolPanel({ id }: { id: string }) {
         {call.error && <p className="text-body-small text-error">This tool call did not load.</p>}
         {c && tab === 'result' && (
           <Box title={c.tool ? toolInfo(c.tool).label : 'Result'}>
-            {c.error ? <p className="text-body-small text-error">{c.error}</p> : c.output === undefined ? <p className="text-body-small text-on-surface-variant">Still running</p> : <Fields value={c.output} />}
+            {c.output === undefined ? (
+              <p className="text-body-small text-on-surface-variant">{c.status === 'running' ? 'Still running' : 'No result'}</p>
+            ) : (
+              <Fields value={c.output} />
+            )}
+            {c.output_spilled && <p className="mt-2 text-body-small text-on-surface-variant">The result was too long to keep whole.</p>}
           </Box>
         )}
         {c && tab === 'input' && (
@@ -197,18 +205,18 @@ export function ToolPanel({ id }: { id: string }) {
               <Json value={c.input ?? {}} />
             </Box>
             <Box
-              title={`Response${c.bytes ? ` · ${(c.bytes / 1024).toFixed(1)} KB` : ''}`}
+              title={`Response${c.output_spilled ? ' · cut' : ''}`}
               right={
                 <button type="button" onClick={() => void copy(JSON.stringify(c.output ?? null, null, 2))} className="text-label-small text-primary">
                   Copy
                 </button>
               }
             >
-              <Json value={c.output ?? c.error ?? null} />
+              <Json value={c.output ?? null} />
             </Box>
           </>
         )}
-        {c && (tab === 'timing' || tab === 'result') && (bars.length > 0 || (c.attempts?.length ?? 0) > 0) && (
+        {c && (tab === 'timing' || tab === 'result') && bars.length > 0 && (
           <Box title="Timing" right={<span className="tabular-nums text-label-small font-normal text-on-surface-variant">{duration(total)}</span>}>
             <div className="space-y-2">
               {bars.map(([label, start, len, tone]) => (
@@ -219,14 +227,6 @@ export function ToolPanel({ id }: { id: string }) {
                   </div>
                   <span className="w-12 text-right tabular-nums">{duration(len)}</span>
                 </div>
-              ))}
-              {c.attempts?.map((a) => (
-                <p key={a.attempt} className="flex items-center gap-2 text-body-small">
-                  <IconClose width={15} height={15} className="text-error" />
-                  <span className="w-[70px] text-on-surface-variant">Attempt {a.attempt}</span>
-                  <span className="flex-1">{a.error}</span>
-                  <span className="tabular-nums text-on-surface-variant">{time(a.at)}</span>
-                </p>
               ))}
             </div>
           </Box>
@@ -302,7 +302,7 @@ export function SourcesPanel({ sources, active }: { sources: Source[]; active?: 
 }
 
 /** A document as Markdown, for copy. */
-function documentMarkdown(d: AgentDocument): string {
+function documentMarkdown(d: DocumentVersion): string {
   const section = (s: DocSection): string => {
     if (s.type === 'markdown') return s.markdown
     const head = s.type === 'table' ? s.columns : ['', ...s.series.map((x) => x.name)]
@@ -325,11 +325,12 @@ function printDocument() {
 
 /** A document the agent wrote: its versions, copy as Markdown and print to PDF. */
 export function DocumentPanel({ id, version, sources, turnId }: { id: string; version?: number; sources: Source[]; turnId: string }) {
+  const doc = useDocument(id)
   const [v, setV] = useState(version)
-  const doc = useDocument(id, v)
-  const d = doc.data
-  const versions = d?.versions.map((x) => x.version) ?? []
-  const at = d ? versions.indexOf(d.version) : -1
+  // Versions come newest first; the panel walks them oldest to newest.
+  const versions = [...(doc.data?.versions ?? [])].sort((a, b) => a.version - b.version)
+  const d = versions.find((x) => x.version === (v ?? doc.data?.latest_version)) ?? versions[versions.length - 1]
+  const at = d ? versions.indexOf(d) : -1
   const [copied, setCopied] = useState(false)
   return (
     <SidePanel
@@ -339,16 +340,16 @@ export function DocumentPanel({ id, version, sources, turnId }: { id: string; ve
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-on-primary">
             <IconArticle width={17} height={17} />
           </span>
-          <p className="min-w-0 flex-1 truncate text-title-medium">{d?.title ?? 'Document'}</p>
+          <p className="min-w-0 flex-1 truncate text-title-medium">{d?.title ?? doc.data?.title ?? 'Document'}</p>
           {d && versions.length > 0 && (
             <span className="inline-flex h-8 items-center gap-0.5 rounded-full border border-hairline px-1 text-label-small font-normal">
-              <button type="button" title="Earlier version" disabled={at <= 0} onClick={() => setV(versions[at - 1])} className="disabled:text-outline">
+              <button type="button" title="Earlier version" disabled={at <= 0} onClick={() => setV(versions[at - 1].version)} className="disabled:text-outline">
                 <IconLeft width={16} height={16} />
               </button>
               <span className="tabular-nums">
                 v{d.version} of {versions.length}
               </span>
-              <button type="button" title="Later version" disabled={at >= versions.length - 1} onClick={() => setV(versions[at + 1])} className="disabled:text-outline">
+              <button type="button" title="Later version" disabled={at >= versions.length - 1} onClick={() => setV(versions[at + 1].version)} className="disabled:text-outline">
                 <IconRight width={16} height={16} />
               </button>
             </span>
@@ -375,7 +376,7 @@ export function DocumentPanel({ id, version, sources, turnId }: { id: string; ve
         </>
       }
     >
-      {d && <p className="px-5 pt-2.5 text-right text-label-small font-normal text-on-surface-variant">Edited {when(d.updated_at)}</p>}
+      {d && <p className="px-5 pt-2.5 text-right text-label-small font-normal text-on-surface-variant">Written {when(d.created_at)}</p>}
       {doc.error && <p className="p-5 text-body-small text-error">This document did not load.</p>}
       {d && (
         <div className="doc-print mx-4 mb-4 mt-2.5 space-y-5 rounded-4xl border border-hairline bg-surface-container-lowest px-8 py-7 shadow-soft">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { answerBlocks, canContinue, counts, elapsed, emptyRun, flatTools, outcomeGroup, reduceRun, replay, type RunEvent } from './run'
+import { answerBlocks, canContinue, counts, elapsed, emptyRun, flatTools, outcomeGroup, reduceRun, replay, runFromView, type RunEvent } from './run'
 
 let seq = 0
 const at = (s: number) => new Date(Date.UTC(2026, 10, 18, 10, 0, s)).toISOString()
@@ -141,5 +141,32 @@ describe('outcomeGroup', () => {
 
   it('has no group while running', () => {
     expect(outcomeGroup(emptyRun())).toBeUndefined()
+  })
+})
+
+describe('runFromView', () => {
+  const view = {
+    blocks: [],
+    sources: [{ n: 2, kind: 'account' as const, label: 'B' }, { n: 1, kind: 'data' as const, label: 'A' }],
+    continuable: true,
+    steers: [{ steer_id: 's1', text: 'Also count fakes' }],
+    created_at: at(0),
+  }
+
+  it('draws a finished turn: its answer kept as text, sources in order, and how it ended', () => {
+    const s = runFromView({ ...view, status: 'timed_out', outcome: 'out_of_room', answer: 'Rose 31% [1]' })
+    expect(s.phase).toBe('finished')
+    expect(s.blocks).toEqual([{ type: 'text', markdown: 'Rose 31% [1]' }])
+    expect(s.sources.map((x) => x.n)).toEqual([1, 2])
+    expect(outcomeGroup(s)).toBe('out_of_room')
+    expect(canContinue(s)).toBe(true)
+    expect(s.steers[0]).toMatchObject({ id: 's1', state: 'unread' })
+  })
+
+  it('keeps a paused or waiting turn open', () => {
+    expect(runFromView({ ...view, status: 'paused' }).phase).toBe('paused')
+    const q = [{ id: 'p', label: 'Which period?', kind: 'single' as const, options: [] }]
+    expect(runFromView({ ...view, status: 'awaiting_input', questions: q }).clarify).toEqual(q)
+    expect(outcomeGroup(runFromView({ ...view, status: 'budget', continuable: false }))).toBe('budget')
   })
 })

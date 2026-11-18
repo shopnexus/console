@@ -25,13 +25,13 @@ export function AttachMenu({ onPick }: { onPick: (a: Attachment) => void }) {
         onChange={setTab}
         items={[
           { value: 'ticket', label: 'Ticket' },
-          { value: 'report', label: 'Report' },
+          { value: 'report_case', label: 'Report' },
           { value: 'account', label: 'Account' },
         ]}
       />
       <div className="mt-1.5">
         {tab === 'ticket' && <TicketPick onPick={onPick} />}
-        {tab === 'report' && <ReportPick onPick={onPick} />}
+        {tab === 'report_case' && <ReportPick onPick={onPick} />}
         {tab === 'account' && <AccountSearch onPick={(a) => onPick({ kind: 'account', id: a.id, label: `Account · ${a.display_name}` })} />}
       </div>
     </div>
@@ -91,7 +91,7 @@ function ReportPick({ onPick }: { onPick: (a: Attachment) => void }) {
       <Finder q={q} setQ={setQ} label="Find a report case" />
       <p className="px-2 pb-1 pt-2 text-label-small text-on-surface-variant">Waiting</p>
       {items.map((c) => (
-        <button key={c.account.id} type="button" onClick={() => onPick({ kind: 'report', id: c.account.id, label: `Report · ${c.account.display_name}` })} className={row}>
+        <button key={c.account.id} type="button" onClick={() => onPick({ kind: 'report_case', id: c.account.id, label: `Report · ${c.account.display_name}` })} className={row}>
           <IconFlag width={16} height={16} className="shrink-0 text-error" />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-body-medium">{c.account.display_name}</span>

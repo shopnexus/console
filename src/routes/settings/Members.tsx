@@ -8,20 +8,18 @@ import IconSearch from '~icons/material-symbols-light/search-rounded'
 import IconShield from '~icons/material-symbols-light/shield-person-outline-rounded'
 import IconCopy from '~icons/material-symbols-light/content-copy-outline-rounded'
 import { SettingsShell } from '../../components/SettingsShell'
-import { Btn, Card, Dot, IconBtn, Initial, Meter, Notice, Segmented, Tag } from '../../components/ui'
+import { Btn, Card, Dot, IconBtn, Initial, Notice, Segmented, Tag } from '../../components/ui'
 import { ApiError, type Member, roleName } from '../../lib/api'
 import { useDismiss } from '../../lib/dom'
-import { time, usd } from '../../lib/format'
+import { day, time } from '../../lib/format'
 import { useMe } from '../../lib/session'
-import { useBudgets, useMemberCommands, useMembers, useSpend } from '../../lib/settings'
+import { useMemberCommands, useMembers } from '../../lib/settings'
 
 type Filter = 'all' | 'admin' | 'moderator'
 
 /** Settings › Members: every console member, their role, status and spend this month, and what an admin can do to each. */
 export function Members() {
   const members = useMembers()
-  const spend = useSpend('month')
-  const budgets = useBudgets()
   const [filter, setFilter] = useState<Filter>('all')
   const [q, setQ] = useState('')
   const [inviting, setInviting] = useState(false)
@@ -34,8 +32,6 @@ export function Members() {
     (m) => (filter === 'all' || m.role === filter) && (!needle || m.display_name.toLowerCase().includes(needle) || m.email.toLowerCase().includes(needle)),
   )
   const locked = (m: Member) => !!m.locked_until && new Date(m.locked_until).getTime() > now
-  const spent = (id: string) => spend.data?.by_member.find((b) => b.member_id === id)?.usd
-  const daily = (m: Member) => budgets.data?.overrides.find((o) => o.member_id === m.id)?.daily_usd ?? budgets.data?.member_daily_usd[m.role]
 
   return (
     <SettingsShell
@@ -83,13 +79,11 @@ export function Members() {
           <span className="w-[280px]">Member</span>
           <span className="w-[150px]">Role</span>
           <span className="w-[170px]">Status</span>
-          <span className="flex-1">This month</span>
+          <span className="flex-1">Since</span>
           <span className="w-8" />
         </div>
         <div className="rise-list">
           {rows.map((m) => {
-            const u = spent(m.id)
-            const cap = daily(m)
             return (
               <div key={m.id} className="flex items-center gap-5 border-t border-hairline px-5 py-2.5 first:border-t-0 hover:bg-on-surface/3">
                 <span className="flex w-[280px] min-w-0 items-center gap-3">
@@ -117,19 +111,7 @@ export function Members() {
                     </Tag>
                   )}
                 </span>
-                <span className="flex-1">
-                  {u !== undefined ? (
-                    <span className="block w-[160px]">
-                      <span className="flex justify-between text-body-small">
-                        <span className="font-medium tabular-nums">{usd(u)}</span>
-                        {cap !== undefined && <span className="tabular-nums text-on-surface-variant">${cap}/day</span>}
-                      </span>
-                      {cap !== undefined && <Meter pct={(u / (cap * 30)) * 100} tone="bg-primary/70" className="mt-1.5 h-[5px]" />}
-                    </span>
-                  ) : (
-                    <span className="text-on-surface-variant">–</span>
-                  )}
-                </span>
+                <span className="flex-1 tabular-nums text-body-small text-on-surface-variant">{day(m.created_at)}</span>
                 <MemberActions m={m} locked={locked(m)} />
               </div>
             )

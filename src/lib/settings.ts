@@ -1,134 +1,145 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, del, type Member, type Page, patch, post, put } from './api'
 
-// Settings for admins, on /v1/console/settings/* (spec
-// 2026-11-18-console-ai-synthesis-design.md, "Agents and LiteLLM"). The
-// server drives LiteLLM's admin API for providers, deployments and budgets
-// and keeps tags and agents in its own tables. Every change is written to
+// Settings for admins, on /v1/console/settings/* (server
+// api/paths/ai_settings.yaml, schemas/ai_settings.yaml). The server drives
+// LiteLLM's admin API for providers, deployments, rotation and budgets and
+// keeps tags and agents in its own tables. Every change is written to
 // console_actions.
 
 export type TagKind = 'type' | 'capability'
 
+/** AITag. */
 export interface ModelTag {
   name: string
   kind: TagKind
-  sort: number
 }
 
-/** A model the providers serve, with its tags. Speed and price show beside it; they are not tags. */
+/** AINamed and AIAgentRef. */
+export interface Named {
+  id: string
+  name: string
+}
+
+/** AIModel: a model the providers serve, with its tags. Price shows beside it; it is no tag. */
 export interface AiModel {
-  /** The model's name, as LiteLLM knows it ("Claude Sonnet 5.5"). */
+  /** The model's id, which may hold a slash (baai/bge-m3): it never goes into a path. */
   model: string
-  family?: string
   tags: string[]
-  /** Ids of the providers that serve it. */
-  providers: string[]
-  /** Dollars per million tokens, in and out; an embedding model has only in. */
-  price_in_usd?: number
-  price_out_usd?: number
-  context_tokens?: number
-  p50_ms?: number
-  /** Ids of the agents whose model it is. */
-  used_by: string[]
+  providers: Named[]
+  /** The agents that run on it. */
+  agents: Named[]
+  input_cost_per_mtok?: number
+  output_cost_per_mtok?: number
 }
 
+/** AIModelList: the models, and every tag in order. */
 export interface ModelList {
   items: AiModel[]
   tags: ModelTag[]
+}
+
+export type ProviderMode = 'pick' | 'sync'
+
+/** AIProvider: a LiteLLM credential; each of its models is a deployment with the provider's weight and order. */
+export interface Provider {
+  /** The LiteLLM credential name. */
+  id: string
+  name: string
+  /** LiteLLM's provider route, such as openai, anthropic or openrouter. */
+  kind: string
+  base_url?: string
+  /** The key as LiteLLM shows it, masked. */
+  key_hint?: string
+  weight: number
+  /** Lower is tried first; a higher order is the fallback. */
+  order: number
+  /** pick keeps the models an admin added; sync lists the provider's models every 6 hours and adds new ones. */
+  mode: ProviderMode
+  models: string[]
   synced_at?: string
 }
 
-export type ProviderKind = 'openai_compatible' | 'anthropic' | 'openrouter' | 'bedrock' | 'deepinfra'
+/** AIProviderNew. */
+export interface ProviderNew {
+  id: string
+  name?: string
+  kind: string
+  base_url?: string
+  api_key: string
+  weight?: number
+  order?: number
+  mode?: ProviderMode
+}
 
-export const providerKindName: Record<ProviderKind, string> = {
-  openai_compatible: 'OpenAI-compatible',
-  anthropic: 'Anthropic API',
+/** AIProviderPatch. */
+export type ProviderPatch = Partial<Pick<ProviderNew, 'name' | 'base_url' | 'api_key' | 'weight' | 'order' | 'mode'>>
+
+/** LiteLLM's provider routes the console names; the server takes any route. */
+export const providerKinds: Record<string, string> = {
+  openai: 'OpenAI-compatible',
+  anthropic: 'Anthropic',
   openrouter: 'OpenRouter',
   bedrock: 'AWS Bedrock',
   deepinfra: 'DeepInfra',
+  gemini: 'Google Gemini',
 }
 
-/** A provider is a LiteLLM credential; its weight and order are written onto each of its deployments. */
-export interface Provider {
-  id: string
-  name: string
-  kind: ProviderKind
-  base_url: string
-  /** The key's last characters, as "sk-ant-…91cd". */
-  key_hint: string
-  weight: number
-  order: number
-  enabled: boolean
-  /** pick keeps the deployments an admin added; sync lists the provider's models every 6 hours and adds new ones. */
-  models_mode: 'pick' | 'sync'
-  model_count: number
-  status: 'healthy' | 'paused' | 'failing'
-  paused_until?: string
-  last_error?: string
-  stats_24h?: { share_pct: number; success_pct: number; p50_ms: number; requests: number; series?: number[] }
-}
+export const kindName = (kind: string) => providerKinds[kind] ?? kind
 
-export interface ProviderInput {
-  name: string
-  kind: ProviderKind
-  base_url: string
-  /** Sent only to set or change it. */
-  api_key?: string
-  weight: number
-  order: number
-  enabled?: boolean
-  models_mode?: 'pick' | 'sync'
-}
-
-export interface ProviderModel {
-  model: string
-  /** The provider's own id for it ("claude-sonnet-5-5"). */
-  ident: string
-  tags: string[]
-  price_in_usd?: number
-  price_out_usd?: number
-}
-
-export interface ProviderModels {
-  items: ProviderModel[]
-  /** The provider's models not added yet. */
-  available: ProviderModel[]
-}
-
+/** AIProviderTest. */
 export interface ProviderTest {
   ok: boolean
-  models?: number
-  latency_ms?: number
+  model?: string
   error?: string
+  latency_ms: number
 }
 
-/** LiteLLM's router settings. weighted and even are simple-shuffle; fallback is order-based. */
+/** AIRoutingStrategy. Fallback by order holds under every strategy. */
+export type RoutingStrategy = 'simple-shuffle' | 'least-busy' | 'latency-based-routing' | 'usage-based-routing-v2'
+
+export const strategyName: Record<string, string> = {
+  'simple-shuffle': 'By weight',
+  'least-busy': 'Least busy',
+  'latency-based-routing': 'Fastest',
+  'usage-based-routing-v2': 'By usage',
+}
+
+/** AIRotation: LiteLLM's router settings. */
 export interface Rotation {
-  strategy: 'weighted' | 'even' | 'fallback'
+  routing_strategy: string
   num_retries: number
+  /** Failures in a minute before a deployment cools down. */
   allowed_fails: number
   cooldown_s: number
   timeout_s: number
 }
 
+export type RotationPatch = Partial<Omit<Rotation, 'routing_strategy'> & { routing_strategy: RoutingStrategy }>
+
+/** AIAgentLimits; a field left out takes the agent service's default. timeout_s is an app agent's call limit. */
 export interface AgentLimits {
-  deadline_s: number
-  max_tokens: number
-  history_turns: number
+  deadline_s?: number
+  max_model_calls?: number
+  context_window?: number
+  tool_timeout_s?: number
+  tool_attempts?: number
+  max_tokens?: number
+  timeout_s?: number
 }
 
-/** App agents are called by server's code and only edited; console agents run in the agent service and are created here. */
+/** AIAgent. App agents are called by server's code and only their model, limits and budget change; console agents are created here. */
 export interface AiAgent {
   id: string
   kind: 'app' | 'console'
   name: string
-  /** The name on the wire to LiteLLM only ("console-agent"). */
+  /** The model name sent to LiteLLM; shown nowhere else. */
   alias: string
   icon: string
   purpose: string
   required_tags: string[]
   model: string
-  instructions: string
+  instructions?: string
   instructions_version: number
   tools: string[]
   limits: AgentLimits
@@ -136,47 +147,76 @@ export interface AiAgent {
   enabled: boolean
   updated_by?: string
   updated_at: string
-  usage?: { requests_7d: number; spend_month_usd: number; series?: number[] }
 }
 
-export type AgentInput = Partial<Omit<AiAgent, 'id' | 'kind' | 'alias' | 'instructions_version' | 'updated_by' | 'updated_at' | 'usage'>>
+/** AIAgentNew. */
+export interface AgentNew {
+  name: string
+  alias: string
+  model: string
+  icon?: string
+  purpose?: string
+  required_tags?: string[]
+  instructions?: string
+  tools?: string[]
+  limits?: AgentLimits
+  monthly_budget_usd?: number
+  enabled?: boolean
+}
 
+/** AIAgentPatch; an app agent takes model, limits and monthly_budget_usd only. null takes the budget away. */
+export type AgentPatch = Partial<Omit<AgentNew, 'alias' | 'monthly_budget_usd'>> & { monthly_budget_usd?: number | null }
+
+/** AIAgentVersion. */
 export interface AgentVersion {
   version: number
-  by: string
-  at: string
   instructions: string
+  created_by?: string
+  created_at: string
 }
 
+/** AIAgentBudget. */
+export interface AgentBudget {
+  agent_id: string
+  name: string
+  kind: 'app' | 'console'
+  monthly_budget_usd?: number
+  /** Spent in the budget's current period, as LiteLLM counts it. */
+  spent_usd: number
+}
+
+/** AIBudgets. */
 export interface Budgets {
-  monthly_cap_usd: number
-  alert_pct: number
-  /** What happens at the cap: console agents stop and the app's agents keep running, or every agent stops. */
-  on_cap: 'stop_console' | 'stop_all'
-  member_daily_usd: { moderator: number; admin: number }
-  overrides: { member_id: string; display_name: string; daily_usd: number }[]
+  agents: AgentBudget[]
+  /** What each member may spend a day through the console agents. */
+  member_daily_usd?: number
 }
 
-export type SpendRange = 'month' | '7d' | '30d'
+/** AIBudgetsPatch. */
+export interface BudgetsPatch {
+  agents?: { agent_id: string; monthly_budget_usd: number | null }[]
+  member_daily_usd?: number | null
+}
 
+export type SpendRange = '7d' | '30d' | '90d'
+
+/** AISpend: LiteLLM's spend by day, in all and by agent, over a range ending today. */
 export interface Spend {
   range: SpendRange
-  from: string
-  to: string
+  start: string
+  end: string
   total_usd: number
-  cap_usd: number
-  projected_usd?: number
-  days: { date: string; by_agent: Record<string, number> }[]
-  by_agent: { agent_id: string; usd: number; requests: number }[]
-  by_member: { member_id: string; display_name: string; usd: number; requests: number }[]
+  days: { date: string; total_usd: number; agents: { agent_id: string; usd: number }[] }[]
 }
 
-/** A console agent a member may pick in the ask box. */
+/** ConsoleAgent: a console agent a member may pick in the ask box. */
 export interface PickableAgent {
   id: string
   name: string
   icon: string
   purpose: string
+  /** The agent a question goes to when it names none. */
+  default: boolean
 }
 
 const S = '/console/settings'
@@ -190,12 +230,10 @@ export function useProviders() {
   return useQuery({ queryKey: key('providers'), queryFn: () => api<Page<Provider>>(`${S}/providers`) })
 }
 
+/** One provider, from the list: the server has no GET for one. */
 export function useProvider(id: string | undefined) {
-  return useQuery({ queryKey: key('provider', id ?? ''), enabled: !!id, queryFn: () => api<Provider>(`${S}/providers/${id}`) })
-}
-
-export function useProviderModels(id: string | undefined) {
-  return useQuery({ queryKey: key('provider-models', id ?? ''), enabled: !!id, queryFn: () => api<ProviderModels>(`${S}/providers/${id}/models`) })
+  const list = useProviders()
+  return { ...list, data: id ? list.data?.items.find((p) => p.id === id) : undefined, missing: !!list.data && !list.data.items.some((p) => p.id === id) }
 }
 
 export function useRotation() {
@@ -206,8 +244,10 @@ export function useAgents() {
   return useQuery({ queryKey: key('agents'), queryFn: () => api<Page<AiAgent>>(`${S}/agents`) })
 }
 
+/** One agent, from the list: the server has no GET for one. */
 export function useAgent(id: string | undefined) {
-  return useQuery({ queryKey: key('agent', id ?? ''), enabled: !!id, queryFn: () => api<AiAgent>(`${S}/agents/${id}`) })
+  const list = useAgents()
+  return { ...list, data: id ? list.data?.items.find((a) => a.id === id) : undefined, missing: !!list.data && !list.data.items.some((a) => a.id === id) }
 }
 
 export function useAgentVersions(id: string | undefined, enabled: boolean) {
@@ -223,7 +263,7 @@ export function useBudgets() {
 }
 
 export function useSpend(range: SpendRange) {
-  return useQuery({ queryKey: key('spend', range), queryFn: () => api<Spend>(`${S}/budgets/spend?range=${range}`) })
+  return useQuery({ queryKey: key('spend', range), queryFn: () => api<Spend>(`${S}/spend?range=${range}`) })
 }
 
 /** The console agents the signed-in member may pick; every member can read it. */
@@ -239,33 +279,24 @@ function useCommand<A, R>(prefix: string[], fn: (a: A) => Promise<R>) {
 
 /** Writes on settings; each reads every settings query again when it lands. */
 export function useSettingsCommands() {
-  const m = <A, R>(fn: (a: A) => Promise<R>) => fn
   const settings = ['settings']
-  const fns = {
-    createProvider: m((p: ProviderInput) => post<Provider>(`${S}/providers`, p)),
-    updateProvider: m(({ id, ...p }: Partial<ProviderInput> & { id: string }) => patch<Provider>(`${S}/providers/${id}`, p)),
-    deleteProvider: m((id: string) => del(`${S}/providers/${id}`)),
-    testProvider: m((id: string) => post<ProviderTest>(`${S}/providers/${id}/test`)),
-    addProviderModel: m(({ id, model }: { id: string; model: string }) => post<ProviderModels>(`${S}/providers/${id}/models`, { model })),
-    removeProviderModel: m(({ id, model }: { id: string; model: string }) => del(`${S}/providers/${id}/models/${encodeURIComponent(model)}`)),
-    setModelTags: m(({ model, tags }: { model: string; tags: string[] }) => put<AiModel>(`${S}/models/${encodeURIComponent(model)}/tags`, { tags })),
-    createAgent: m((a: AgentInput) => post<AiAgent>(`${S}/agents`, a)),
-    updateAgent: m(({ id, ...a }: AgentInput & { id: string }) => patch<AiAgent>(`${S}/agents/${id}`, a)),
-    updateRotation: m((r: Partial<Rotation>) => patch<Rotation>(`${S}/rotation`, r)),
-    updateBudgets: m((b: Partial<Budgets>) => patch<Budgets>(`${S}/budgets`, b)),
-  }
   return {
-    createProvider: useCommand(settings, fns.createProvider),
-    updateProvider: useCommand(settings, fns.updateProvider),
-    deleteProvider: useCommand(settings, fns.deleteProvider),
-    testProvider: useCommand(settings, fns.testProvider),
-    addProviderModel: useCommand(settings, fns.addProviderModel),
-    removeProviderModel: useCommand(settings, fns.removeProviderModel),
-    setModelTags: useCommand(settings, fns.setModelTags),
-    createAgent: useCommand(settings, fns.createAgent),
-    updateAgent: useCommand(settings, fns.updateAgent),
-    updateRotation: useCommand(settings, fns.updateRotation),
-    updateBudgets: useCommand(settings, fns.updateBudgets),
+    createProvider: useCommand(settings, (p: ProviderNew) => post<Provider>(`${S}/providers`, p)),
+    updateProvider: useCommand(settings, ({ id, ...p }: ProviderPatch & { id: string }) => patch<Provider>(`${S}/providers/${id}`, p)),
+    deleteProvider: useCommand(settings, (id: string) => del(`${S}/providers/${id}`)),
+    testProvider: useCommand(settings, ({ id, model }: { id: string; model?: string }) => post<ProviderTest>(`${S}/providers/${id}/test`, model ? { model } : {})),
+    addProviderModel: useCommand(
+      settings,
+      ({ id, ...m }: { id: string; model: string; input_cost_per_mtok?: number; output_cost_per_mtok?: number }) => post<Provider>(`${S}/providers/${id}/models`, m),
+    ),
+    removeProviderModel: useCommand(settings, ({ id, model }: { id: string; model: string }) =>
+      api<Provider>(`${S}/providers/${id}/models?${new URLSearchParams({ model })}`, { method: 'DELETE' }),
+    ),
+    setModelTags: useCommand(settings, (b: { model: string; tags: string[] }) => put<{ model: string; tags: string[] }>(`${S}/models/tags`, b)),
+    createAgent: useCommand(settings, (a: AgentNew) => post<AiAgent>(`${S}/agents`, a)),
+    updateAgent: useCommand(settings, ({ id, ...a }: AgentPatch & { id: string }) => patch<AiAgent>(`${S}/agents/${id}`, a)),
+    updateRotation: useCommand(settings, (r: RotationPatch) => patch<Rotation>(`${S}/rotation`, r)),
+    updateBudgets: useCommand(settings, (b: BudgetsPatch) => patch<Budgets>(`${S}/budgets`, b)),
   }
 }
 
@@ -273,6 +304,47 @@ export function useSettingsCommands() {
 export function modelsFor(models: AiModel[], required: string[]): { fit: AiModel[]; hidden: number } {
   const fit = models.filter((m) => required.every((t) => m.tags.includes(t)))
   return { fit, hidden: models.length - fit.length }
+}
+
+/** An alias for a new agent from its name: lower-case ASCII words joined by hyphens. */
+export function aliasOf(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/đ/gi, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 63)
+}
+
+/** What an admin reads when a settings write fails, by the server's error code. */
+export function settingsFailure(code: string | undefined): string {
+  switch (code) {
+    case 'ai_provider_exists':
+      return 'A provider with that id exists.'
+    case 'ai_provider_in_use':
+      return 'An agent still runs on this provider.'
+    case 'ai_provider_not_found':
+      return 'There is no such provider.'
+    case 'ai_model_not_found':
+      return 'No provider serves that model.'
+    case 'ai_agent_app_fixed':
+      return "An app agent's name, tools and instructions are set in code."
+    case 'ai_agent_not_found':
+      return 'There is no such agent.'
+    case 'ai_gateway_refused':
+      return 'LiteLLM refused the change.'
+    case 'ai_gateway_unavailable':
+      return 'LiteLLM is unavailable. Try again later.'
+    case 'bad_request':
+      return 'Some field is not valid.'
+    case 'forbidden':
+    case 'console_forbidden':
+      return 'Admins only.'
+    default:
+      return 'That did not save.'
+  }
 }
 
 /** Members, newest first; the endpoint exists today. */

@@ -22,6 +22,8 @@ describe('failureOf', () => {
     [409, 'agent_conversation_closed', 'closed'],
     [422, 'agent_input_rejected', 'too_long'],
     [404, 'agent_conversation_not_found', 'not_found'],
+    [404, 'ai_agent_not_found', 'agent_gone'],
+    [409, 'ai_agent_disabled', 'agent_off'],
     [500, 'internal', 'other'],
   ])('maps %i %s to %s', (status, code, failure) => {
     expect(failureOf(new ApiError(status, code, code))).toBe(failure)
@@ -39,12 +41,12 @@ describe('failureOf', () => {
 
 describe('startTurn', () => {
   it('posts the question with the agent and attachments and returns the turn id', async () => {
-    const fetch = vi.fn(async () => reply(202, { turn_id: 't1' }))
+    const fetch = vi.fn(async () => reply(202, { conversation_id: 'c1', turn_id: 't1' }))
     vi.stubGlobal('fetch', fetch)
 
     await expect(
       startTurn('c1', { text: 'Đơn này giao chưa?', agent_id: 'console-assistant', attachments: [{ kind: 'account', id: 'a1', label: 'Account · Hoàng Nam' }] }),
-    ).resolves.toEqual({ turn_id: 't1' })
+    ).resolves.toEqual({ conversation_id: 'c1', turn_id: 't1' })
 
     const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('http://api.test/v1/console/agent/conversations/c1/turns')
@@ -55,14 +57,16 @@ describe('startTurn', () => {
   })
 
   it('throws the refusal with its code', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => refusal(409, 'agent_turn_in_progress')))
-    await expect(startTurn('c1', { text: 'x' })).rejects.toMatchObject({ status: 409, code: 'agent_turn_in_progress' })
+    vi.stubGlobal('fetch', vi.fn(async () => refusal(409, 'ai_agent_disabled')))
+    const e = await startTurn('c1', { text: 'x' }).catch((x: unknown) => x)
+    expect(e).toMatchObject({ status: 409, code: 'ai_agent_disabled' })
+    expect(failureOf(e)).toBe('agent_off')
   })
 })
 
 describe('variablesOf', () => {
   it('lists the {{variables}} of a skill prompt once each', () => {
-    expect(variablesOf('Brief for {{period}} on {{ sellers }} and {{period}}')).toEqual(['period', 'sellers'])
+    expect(variablesOf('Brief for {{period}} on {{ sellers }} and {{period}}')).toEqual([{ name: 'period' }, { name: 'sellers' }])
   })
 })
 

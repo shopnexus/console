@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useState } from 'react'
+import { useCallback, useState } from 'react'
 import IconAdd from '~icons/material-symbols-light/add-rounded'
 import IconApps from '~icons/material-symbols-light/apps-rounded'
 import IconChat from '~icons/material-symbols-light/chat-outline-rounded'
@@ -10,9 +10,8 @@ import IconSync from '~icons/material-symbols-light/sync-rounded'
 import { ModelTag, ProviderTile, TagIcon } from '../../components/AiBits'
 import { SettingsShell } from '../../components/SettingsShell'
 import { Card, Check, Notice, Segmented } from '../../components/ui'
-import { contextSize, fillAt, price } from '../../lib/aiLook'
+import { fillAt, price } from '../../lib/aiLook'
 import { useDismiss } from '../../lib/dom'
-import { time } from '../../lib/format'
 import { type AiModel, type ModelTag as Tag, useAgents, useModels, useProviders, useSettingsCommands } from '../../lib/settings'
 
 type Kind = 'all' | 'Chat' | 'Embedding'
@@ -40,9 +39,7 @@ export function Models() {
       title="Models"
       icon={<IconModel />}
       chips={[
-        ...(models.data?.synced_at
-          ? ([[<IconSync key="s" width={16} height={16} />, `Synced from ${plist.length} providers · ${time(models.data.synced_at)}`]] as [ReactNode, ReactNode][])
-          : []),
+        [<IconSync key="s" width={16} height={16} />, `From ${plist.length} providers`],
         [<IconModel key="m" width={16} height={16} />, `${items.length} models`],
         [<IconSell key="t" width={16} height={16} />, `${tags.filter((t) => t.kind === 'type').length} types · ${capabilities.length} capabilities`],
       ]}
@@ -111,10 +108,7 @@ export function Models() {
                   </span>
                   <span className="min-w-0 leading-tight">
                     <span className="block truncate text-title-small">{m.model}</span>
-                    <span className="block text-body-small text-on-surface-variant">
-                      {m.family ? `${m.family} · ` : ''}
-                      <span className="tabular-nums">{contextSize(m.context_tokens)}</span> context
-                    </span>
+                    {m.tags.length === 0 && <span className="block text-body-small text-error">No tags yet</span>}
                   </span>
                 </span>
                 <span className="flex w-[330px] flex-wrap items-center gap-1.5">
@@ -124,23 +118,19 @@ export function Models() {
                   <TagEditor m={m} tags={tags} />
                 </span>
                 <span className="flex w-[120px] -space-x-1.5">
-                  {m.providers.map((id) => {
-                    const i = plist.findIndex((p) => p.id === id)
-                    return i >= 0 ? <ProviderTile key={id} name={plist[i].name} index={i} size={26} /> : null
-                  })}
+                  {m.providers.map((n) => (
+                    <ProviderTile key={n.id} name={n.name} index={Math.max(0, plist.findIndex((p) => p.id === n.id))} size={26} />
+                  ))}
                 </span>
-                <span className="w-[100px] tabular-nums text-body-small">{price(m.price_in_usd, m.price_out_usd)}</span>
+                <span className="w-[100px] tabular-nums text-body-small">{price(m.input_cost_per_mtok, m.output_cost_per_mtok)}</span>
                 <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">
-                  {m.used_by.length === 0 && <span className="text-body-small text-on-surface-variant">Unused</span>}
-                  {m.used_by.map((id) => {
-                    const i = alist.findIndex((a) => a.id === id)
-                    return (
-                      <span key={id} className="inline-flex h-6 items-center gap-1.5 rounded-full border border-hairline bg-surface-container-lowest px-2 text-label-small font-normal">
-                        <span className={`h-2 w-2 rounded-full ${fillAt(i)}`} />
-                        {alist[i]?.name ?? id}
-                      </span>
-                    )
-                  })}
+                  {m.agents.length === 0 && <span className="text-body-small text-on-surface-variant">Unused</span>}
+                  {m.agents.map((a) => (
+                    <span key={a.id} className="inline-flex h-6 items-center gap-1.5 rounded-full border border-hairline bg-surface-container-lowest px-2 text-label-small font-normal">
+                      <span className={`h-2 w-2 rounded-full ${fillAt(Math.max(0, alist.findIndex((x) => x.id === a.id)))}`} />
+                      {a.name}
+                    </span>
+                  ))}
                 </span>
               </div>
             )
@@ -171,9 +161,7 @@ function TagEditor({ m, tags }: { m: AiModel; tags: Tag[] }) {
       </button>
       {open && (
         <div className="absolute left-0 top-8 z-20 w-[240px] animate-pop rounded-3xl border border-hairline bg-surface-container-lowest p-1.5 shadow-float">
-          {[...tags]
-            .sort((a, b) => a.sort - b.sort)
-            .map((t) => {
+          {tags.map((t) => {
               const on = m.tags.includes(t.name)
               return (
                 <button
@@ -187,7 +175,7 @@ function TagEditor({ m, tags }: { m: AiModel; tags: Tag[] }) {
                   <ModelTag name={t.name} small />
                 </button>
               )
-            })}
+          })}
         </div>
       )}
     </div>

@@ -27,12 +27,11 @@ export function ModelPicker({
 }) {
   const [showAll, setShowAll] = useState(false)
   const { fit, hidden } = modelsFor(models, required)
-  const tiles = (ids: string[]) => (
+  const tiles = (list: { id: string; name: string }[]) => (
     <span className="flex -space-x-1.5">
-      {ids.map((id) => {
-        const i = providers.findIndex((p) => p.id === id)
-        return i >= 0 ? <ProviderTile key={id} name={providers[i].name} index={i} size={22} /> : null
-      })}
+      {list.map((n) => (
+        <ProviderTile key={n.id} name={n.name} index={Math.max(0, providers.findIndex((p) => p.id === n.id))} size={22} />
+      ))}
     </span>
   )
   return (
@@ -62,7 +61,7 @@ export function ModelPicker({
         ),
         hint: (
           <span className="flex flex-wrap items-center gap-1 whitespace-normal pt-0.5">
-            <span className="mr-1 tabular-nums">{price(m.price_in_usd, m.price_out_usd)}</span>
+            <span className="mr-1 tabular-nums">{price(m.input_cost_per_mtok, m.output_cost_per_mtok)}</span>
             {m.tags.map((t) => (
               <ModelTag key={t} name={t} small />
             ))}

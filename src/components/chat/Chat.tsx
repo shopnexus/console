@@ -17,6 +17,7 @@ import {
   answerTurn,
   type Attachment,
   continueTurn,
+  controlFailure,
   endTurn,
   failureOf,
   failureText,
@@ -33,6 +34,7 @@ import {
   useSkillCommands,
   useSkills,
   useStartTurn,
+  skillFailure,
   variablesOf,
 } from '../../lib/agent'
 import { ApiError, shortId } from '../../lib/api'
@@ -40,7 +42,7 @@ import { useDismiss, useNow } from '../../lib/dom'
 import { markThreadOpened, useArrival, useSmoothReveal } from '../../lib/motion'
 import { compact, duration, time, usd } from '../../lib/format'
 import { type Panel, PanelContext, type PanelApi } from '../../lib/panel'
-import { answerBlocks, canContinue, counts, elapsed, isLive, outcomeGroup, type RunState } from '../../lib/run'
+import { answerBlocks, canContinue, counts, elapsed, isLive, outcomeGroup, runFromView, type RunState } from '../../lib/run'
 import { plain } from '../../lib/markdown'
 import { useMe } from '../../lib/session'
 import { usePickableAgents } from '../../lib/settings'
@@ -55,13 +57,19 @@ import { CompactionDivider, Compacting, RunCard, Waiting } from './Run'
 const attachIcon: Record<Attachment['kind'], ReactNode> = {
   ticket: <IconTicket width={13} height={13} />,
   account: <IconPerson width={13} height={13} />,
-  report: <IconFlag width={13} height={13} />,
+  report_case: <IconFlag width={13} height={13} />,
+  order: <IconTicket width={13} height={13} />,
+  listing: <IconFlag width={13} height={13} />,
+  document: <IconBolt width={13} height={13} />,
 }
 
 const attachTone: Record<Attachment['kind'], string> = {
   ticket: 'bg-secondary-container/60',
   account: 'bg-primary/7',
-  report: 'bg-error-container/60',
+  report_case: 'bg-error-container/60',
+  order: 'bg-tertiary-fixed/60',
+  listing: 'bg-inverse-primary/30',
+  document: 'bg-primary/7',
 }
 
 function Bubble({ turn, by }: { turn: Turn; by?: string }) {
@@ -238,31 +246,9 @@ function TurnView({
     }
   }
 
-  // A phase-1 turn has no events: its stored answer shows as text.
-  if (missing || (!run && turn.answer !== undefined)) {
-    return (
-      <div className="space-y-4">
-        <Bubble turn={turn} by={by} />
-        <div className="flex gap-3">
-          <Mascot />
-          <div className="min-w-0 flex-1 space-y-3">
-            {turn.sources && turn.sources.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {turn.sources.map((s, i) => (
-                  <span key={i} className="inline-flex h-7 items-center rounded-full border border-hairline px-2.5 text-label-small font-normal text-on-surface-variant">
-                    {s.label}
-                  </span>
-                ))}
-              </div>
-            )}
-            {turn.answer ? <p className="whitespace-pre-wrap text-body-large leading-[26px]">{turn.answer}</p> : <p className="text-body-medium text-on-surface-variant">No answer.</p>}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return <RunTurn turn={turn} run={run} last={last} by={by} onAsk={onAsk} busy={busy} act={act} copied={copied} setCopied={setCopied} />
+  // A turn whose events the server does not stream draws from its turn view.
+  const shown = missing ? runFromView(turn) : run
+  return <RunTurn turn={turn} run={shown} last={last} by={by} onAsk={onAsk} busy={busy} act={act} copied={copied} setCopied={setCopied} />
 }
 
 /** A turn with its run: the waiting word, the activity, the answer revealed as it arrives, and its footer. */
@@ -405,7 +391,7 @@ export function ChatView({
   const { run: panelRun } = useRun(panel && panel.kind !== 'tool' ? panel.turnId : undefined)
 
   const lastAgent = lastTurn?.agent_id ?? lastRun?.agent?.id
-  const chosenAgent = agentId ?? lastAgent ?? agents.data?.items[0]?.id
+  const chosenAgent = agentId ?? lastAgent ?? (agents.data?.items.find((a) => a.default) ?? agents.data?.items[0])?.id
 
   const mode: ComposerMode = !lastRun
     ? 'idle'
@@ -492,7 +478,7 @@ export function ChatView({
         requestAnimationFrame(() => toBottom(true))
       } catch (e) {
         setDraft((d) => d || text)
-        setError(e instanceof ApiError ? 'The run did not take the message.' : failureText.other)
+        setError(controlFailure(e))
       } finally {
         setBusy(false)
       }
@@ -505,8 +491,8 @@ export function ChatView({
     setBusy(true)
     try {
       await f()
-    } catch {
-      setError('The run changed state. Try again.')
+    } catch (e) {
+      setError(controlFailure(e))
     } finally {
       setBusy(false)
     }
@@ -560,7 +546,10 @@ export function ChatView({
         onMakeSkill={
           lastTurn
             ? (name) =>
-                skillCommands.create.mutate({ name, description: lastTurn.text.slice(0, 80), prompt: lastTurn.text, variables: variablesOf(lastTurn.text) })
+                skillCommands.create.mutate(
+                  { name, description: lastTurn.text.slice(0, 80), prompt: lastTurn.text, variables: variablesOf(lastTurn.text) },
+                  { onError: (e) => setError(skillFailure(e)) },
+                )
             : undefined
         }
         agents={agents.data?.items ?? []}
