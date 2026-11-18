@@ -3,6 +3,7 @@
 // Settings come from ./settings, the agent's chats and runs from ./agent.
 
 import { agentRoutes } from './agent'
+import { commerceRoutes } from './commerce'
 import { settingsRoutes } from './settings-routes'
 
 export const unmocked = Symbol('unmocked')
@@ -11,7 +12,7 @@ export type Handler = (match: RegExpMatchArray, body: unknown, query: URLSearchP
 
 export type Route = [method: string, pattern: RegExp, handler: Handler]
 
-const routes: Route[] = [...settingsRoutes, ...agentRoutes]
+const routes: Route[] = [...settingsRoutes, ...agentRoutes, ...commerceRoutes]
 
 /** A short wait, so pending states show as they would against the server. */
 const settle = () => new Promise((r) => setTimeout(r, 120))

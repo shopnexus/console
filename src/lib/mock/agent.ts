@@ -105,6 +105,8 @@ const SOURCES: Source[] = [
   { n: 7, kind: 'ticket', record_id: '01a1ef31-0000', label: 'Ticket 01a1ef31', quote: '“Bắt chuyển cọc trước rồi chặn mình”', call_id: 'c-t1', tool: 'tickets_list' },
   { n: 8, kind: 'member', record_id: 'm-lan', label: 'Nguyễn Thị Lan', meta: 'Moderator · suspended 2 accounts this week', quote: 'Suspended Đồ Cũ Gò Vấp for 30 days', call_id: 'c-g1', tool: 'console_actions' },
   { n: 9, kind: 'account', record_id: 'e5aa0000', label: 'Mỹ Phẩm Xách Tay Hà', meta: 'Seller · e5aa00 · active', quote: 'Hải Châu cosmetics · 1 suspended', call_id: 'c-a4', tool: 'account_get' },
+  { n: 10, kind: 'listing', record_id: '00000000-0000-4000-8000-00000000a113', label: 'iPhone 13 Pro Max 256GB', meta: '8,900,000 ₫ · for sale · 3 reports', quote: 'Chuyển cọc 500k mình giữ hàng', call_id: 'c-l1', tool: 'listing_get' },
+  { n: 11, kind: 'order', record_id: '00000000-0000-4000-8000-000000001042', label: 'Order SN-1042', meta: 'Completed · COD · GHTK', quote: 'Delivered yesterday 14:20, signed “Hằng”', call_id: 'c-o1', tool: 'order_get' },
 ]
 
 const answer: Block[] = [

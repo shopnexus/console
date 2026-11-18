@@ -68,6 +68,8 @@ export function sourceHref(s: Source, admin = false): string | undefined {
   // A report case is an account's, and opens under the account's id.
   if (kind === 'report') return `/reports/${s.record_id}`
   if (kind === 'ticket') return `/support/${s.record_id}`
+  if (kind === 'order') return `/orders/${s.record_id}`
+  if (kind === 'listing') return `/listings/${s.record_id}`
   return undefined
 }
 

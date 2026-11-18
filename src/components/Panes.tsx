@@ -1,7 +1,11 @@
 import type { ReactNode } from 'react'
+import { Link, useNavigate } from 'react-router'
+import IconBack from '~icons/material-symbols-light/arrow-back-rounded'
 import IconChevron from '~icons/material-symbols-light/chevron-right-rounded'
+import IconOpen from '~icons/material-symbols-light/north-east-rounded'
+import { ApiError } from '../lib/api'
 import { pickedRow } from '../lib/look'
-import { Kbd } from './ui'
+import { Card, Initial, Kbd } from './ui'
 
 /** The list beside a record (Support, Reports, Accounts): a faint column with its controls on top. */
 export function ListColumn({ head, children, foot, width = 'w-[310px]' }: { head: ReactNode; children: ReactNode; foot?: ReactNode; width?: string }) {
@@ -110,4 +114,63 @@ export function StatusPill({ suspended, children }: { suspended: boolean; childr
       {children}
     </span>
   )
+}
+
+/**
+ * The header of a record reached by a link, with no list of its own:
+ * Back (to where the member came from, else home) › kind › name, and its
+ * actions at the end.
+ */
+export function BackCrumbs({ kind, name, children }: { kind: string; name: ReactNode; children?: ReactNode }) {
+  const navigate = useNavigate()
+  return (
+    <header className="flex h-14 shrink-0 items-center gap-2 px-6 text-label-medium font-normal text-on-surface-variant">
+      <button
+        type="button"
+        onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/'))}
+        className="flex h-8 items-center gap-1 rounded-full px-2.5 hover:bg-on-surface/5 hover:text-on-surface"
+      >
+        <IconBack width={16} height={16} />
+        Back
+      </button>
+      <IconChevron width={16} height={16} />
+      {kind}
+      <IconChevron width={16} height={16} />
+      <span className="min-w-0 flex-1 truncate text-on-surface">{name}</span>
+      {children}
+    </header>
+  )
+}
+
+/** "Open ↗" on a card, to the record it names. */
+export function OpenLink({ to, label = 'Open' }: { to: string; label?: string }) {
+  return (
+    <Link to={to} className="flex h-9 shrink-0 items-center gap-1 rounded-full border border-hairline bg-surface-container-lowest px-3 text-label-medium text-primary hover:bg-surface-container-low">
+      {label}
+      <IconOpen width={14} height={14} />
+    </Link>
+  )
+}
+
+/** A buyer, seller or other account on a record: its initial with the state dot, name, a meta line, and Open. */
+export function PartyCard({ role, id, name, status, meta }: { role: string; id: string; name: string; status?: 'active' | 'suspended' | 'deleted'; meta?: ReactNode }) {
+  return (
+    <Card className="p-4">
+      <p className="text-label-small font-normal text-on-surface-variant">{role}</p>
+      <div className="mt-2 flex items-center gap-3">
+        <Initial name={name} id={id} size={40} status={status ?? 'active'} />
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="truncate text-title-small">{name}</p>
+          {meta && <p className="mt-0.5 tabular-nums text-body-small text-on-surface-variant">{meta}</p>}
+        </div>
+        <OpenLink to={`/accounts/${id}`} />
+      </div>
+    </Card>
+  )
+}
+
+/** A record's page that did not load: gone, or not reachable. */
+export function Missing({ error, what }: { error: unknown; what: string }) {
+  const gone = error instanceof ApiError && error.status === 404
+  return <div className="flex flex-1 items-center justify-center text-body-medium text-on-surface-variant">{gone ? `There is no such ${what}.` : `The ${what} did not load.`}</div>
 }

@@ -9,6 +9,8 @@ import IconPause from '~icons/material-symbols-light/pause-circle-outline-rounde
 import IconPerson from '~icons/material-symbols-light/person-outline-rounded'
 import IconPlay from '~icons/material-symbols-light/play-arrow-rounded'
 import IconRetry from '~icons/material-symbols-light/refresh-rounded'
+import IconOrder from '~icons/material-symbols-light/package-2-outline'
+import IconListing from '~icons/material-symbols-light/storefront-outline-rounded'
 import IconTicket from '~icons/material-symbols-light/package-2-outline'
 import IconBolt from '~icons/material-symbols-light/bolt-outline-rounded'
 import IconDown from '~icons/material-symbols-light/arrow-downward-rounded'
@@ -65,8 +67,8 @@ const attachIcon: Record<Attachment['kind'], ReactNode> = {
   ticket: <IconTicket width={13} height={13} />,
   account: <IconPerson width={13} height={13} />,
   report_case: <IconFlag width={13} height={13} />,
-  order: <IconTicket width={13} height={13} />,
-  listing: <IconFlag width={13} height={13} />,
+  order: <IconOrder width={13} height={13} />,
+  listing: <IconListing width={13} height={13} />,
   document: <IconBolt width={13} height={13} />,
 }
 
@@ -459,7 +461,11 @@ export function ChatView({
   const skills = useSkills()
   const skillCommands = useSkillCommands()
   const [draft, setDraft] = useState('')
-  const [attachments, setAttachments] = useState<Attachment[]>([])
+  // A record's page opens a new chat with the record attached: ?attach=order:<id>&label=Order SN-1042.
+  const [attachments, setAttachments] = useState<Attachment[]>(() => {
+    const [kind, id] = (params.get('attach') ?? '').split(':')
+    return !conversationId && id && (kind === 'order' || kind === 'listing') ? [{ kind, id, label: params.get('label') ?? undefined }] : []
+  })
   const [skill, setSkill] = useState<Skill>()
   const [agentId, setAgentId] = useState<string | undefined>(() => params.get('agent') ?? undefined)
   const [error, setError] = useState<string>()

@@ -24,6 +24,8 @@ describe('sources', () => {
     expect(sourceHref(src({ kind: 'ticket', record_id: 't' }))).toBe('/support/t')
     expect(sourceHref(src({ kind: 'member', record_id: 'm' }))).toBeUndefined()
     expect(sourceHref(src({ kind: 'member', record_id: 'm' }), true)).toBe('/settings/members')
+    expect(sourceHref(src({ kind: 'order', record_id: 'o' }))).toBe('/orders/o')
+    expect(sourceHref(src({ kind: 'listing', record_id: 'l' }))).toBe('/listings/l')
     expect(sourceHref(src({ kind: 'data', record_id: 'd' }))).toBeUndefined()
   })
 })

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
+import { listingStatus } from '../lib/commerce'
 import IconSpark from '~icons/material-symbols/auto-awesome-outline-rounded'
 import IconCheckCircle from '~icons/material-symbols-light/check-circle-outline-rounded'
 import IconGavel from '~icons/material-symbols-light/gavel-rounded'
@@ -37,16 +38,6 @@ const age = (iso: string, now: number) => {
   if (ms < HOUR) return `${Math.max(1, Math.round(ms / 60_000))} min`
   if (ms < DAY) return `${Math.round(ms / HOUR)} h`
   return `${Math.round(ms / DAY)} d`
-}
-
-const listingStatus: Record<string, string> = {
-  active: 'For sale',
-  hidden: 'Hidden',
-  reserved: 'Reserved',
-  sold: 'Sold',
-  rejected: 'Rejected',
-  deleted: 'Deleted',
-  processing: 'Posting',
 }
 
 const reasonTag: Record<ReportReason, string> = {
@@ -299,7 +290,7 @@ function CaseHero({ c }: { c: ReportCaseDetail }) {
 
 function ListingCard({ l, reports }: { l: ReportedListing; reports?: number }) {
   return (
-    <article className="flex items-center gap-3 rounded-3xl border border-hairline bg-surface-container-lowest p-3 shadow-soft">
+    <Link to={`/listings/${l.id}`} className="flex items-center gap-3 rounded-3xl border border-hairline bg-surface-container-lowest p-3 shadow-soft hover:border-primary/30">
       {l.photo_url ? (
         <img src={l.photo_url} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />
       ) : (
@@ -315,7 +306,7 @@ function ListingCard({ l, reports }: { l: ReportedListing; reports?: number }) {
           {reports !== undefined && reports > 0 && <span>· {reports === 1 ? '1 report' : `${reports} reports`}</span>}
         </span>
       </span>
-    </article>
+    </Link>
   )
 }
 

@@ -6,6 +6,8 @@ import { RouteError } from './components/Unreachable'
 import { Accounts } from './routes/Accounts'
 import { Agent } from './routes/Agent'
 import { DashboardOpen } from './routes/DashboardOpen'
+import { Listing } from './routes/Listing'
+import { Order } from './routes/Order'
 import { Reports } from './routes/Reports'
 import { SignIn } from './routes/SignIn'
 import { Support } from './routes/Support'
@@ -41,6 +43,8 @@ const router = createBrowserRouter([
       { path: '/reports/:id', element: <Reports /> },
       { path: '/accounts', element: <Accounts /> },
       { path: '/accounts/:id', element: <Accounts /> },
+      { path: '/orders/:id', element: <Order /> },
+      { path: '/listings/:id', element: <Listing /> },
       { path: '/settings', element: <Overview /> },
       { path: '/settings/members', element: <Members /> },
       { path: '/settings/agents', element: <Agents /> },

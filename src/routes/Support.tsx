@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
+import IconOpen from '~icons/material-symbols-light/north-east-rounded'
+import { shipmentStatus } from '../lib/commerce'
 import IconBolt from '~icons/material-symbols/bolt-rounded'
 import IconSend from '~icons/material-symbols-light/arrow-upward-rounded'
 import IconCheck from '~icons/material-symbols-light/check-rounded'
@@ -123,13 +125,6 @@ function Queue({
 }
 
 const personStatus = { active: 'Active', suspended: 'Suspended', deleted: 'Deleted' }
-const shipmentStatus: Record<string, string> = {
-  pending_pickup: 'Waiting for pickup',
-  in_transit: 'In transit',
-  delivered: 'Delivered',
-  failed: 'Delivery failed',
-}
-
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex justify-between gap-3 py-1 text-body-small">
@@ -164,13 +159,19 @@ function Details({ d }: { d: ConsoleTicketDetail }) {
       </section>
       {d.order && (
         <Card className="p-4">
-          <p className="truncate text-title-small">{d.order.title}</p>
+          <Link to={`/orders/${d.order.id}`} className="group flex items-center gap-1">
+            <span className="min-w-0 truncate text-title-small group-hover:underline">{d.order.title}</span>
+            <IconOpen width={14} height={14} className="shrink-0 text-primary" />
+          </Link>
           <p className="tabular-nums text-body-small text-tertiary">
             {vnd(d.order.price)} <span className="text-on-surface-variant">· COD with inspection</span>
           </p>
           <div className="mt-3">
             <Fact label="Seller">
-              {d.order.seller.display_name} <span className="tabular-nums text-on-surface-variant">{d.order.seller.id.slice(0, 8)}</span>
+              <Link to={`/accounts/${d.order.seller.id}`} className="hover:underline">
+                {d.order.seller.display_name}
+              </Link>{' '}
+              <span className="tabular-nums text-on-surface-variant">{d.order.seller.id.slice(0, 8)}</span>
             </Fact>
             {d.order.carrier && (
               <Fact label={d.order.carrier.toUpperCase()}>
