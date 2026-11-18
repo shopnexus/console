@@ -378,6 +378,70 @@ def account(state="active", popover=False):
     return frame("Accounts", acc_list(name) + center, page="accounts")
 
 
+# --- Order and Listing (opened from links: sources, accounts, tickets) ---
+
+def detail_shell(crumb, title_html, body, actions=""):
+    return f"""<section class="relative flex min-w-0 flex-1 flex-col bg-surface-container-low/40">
+  <header class="flex h-14 shrink-0 items-center gap-2 px-6 text-[13.5px] text-on-surface-variant">{crumb}<span class="flex-1"></span>{actions}</header>
+  <div class="min-h-0 flex-1 space-y-4 overflow-hidden px-6 pb-6">{title_html}{body}</div></section>"""
+
+
+def party(role, ch, name, meta, status="active"):
+    return card(f"""<p class="text-[12px] font-medium text-on-surface-variant">{role}</p>
+<div class="mt-2 flex items-center gap-3">{avatar(ch, 40, status=status, key=name)}<div class="min-w-0 flex-1 leading-tight"><p class="truncate text-[15px] font-semibold">{name}</p><p class="tnum mt-0.5 text-[12.5px] text-on-surface-variant">{meta}</p></div>
+  <a id="open-{role}" href="#acc" class="hov flex h-9 items-center gap-1 rounded-full border hair bg-white px-3 text-[13px] font-medium text-primary">Open{gi("north-east-rounded", 14)}</a></div>""", "p-4")
+
+
+def order():
+    events = [("Delivered", "Yesterday 14:20", "Reception, building B · signed “Hằng”", "done"), ("Out for delivery", "Yesterday 08:05", "Bình Thạnh hub", "done"),
+              ("Picked up", "Mon 16:40", "From Hoàng Nam, District 3", "done"), ("Order placed", "Mon 09:12", "COD with inspection", "done")]
+    tl = "".join(f"""<div class="relative flex gap-3 pb-4 last:pb-0"><span class="relative z-10 mt-1 h-3 w-3 shrink-0 rounded-full {"bg-primary ring-4 ring-primary/15" if i == 0 else "bg-outline-variant"}"></span>
+  <div class="min-w-0 flex-1 leading-tight"><div class="flex gap-2"><p class="flex-1 text-[14px] {"font-semibold" if i == 0 else ""}">{t}</p><p class="tnum text-[12.5px] text-on-surface-variant">{w}</p></div><p class="mt-0.5 text-[13px] text-on-surface-variant">{d}</p></div></div>"""
+                 for i, (t, w, d, _) in enumerate(events))
+    facts = "".join(f'<div class="flex justify-between gap-4 py-1.5 text-[13.5px]"><span class="text-on-surface-variant">{k}</span><span class="text-right">{v}</span></div>'
+                    for k, v in [("Carrier", "GHTK · linked to the seller's account"), ("Tracking", "S1.A1.17373471"), ("Shipping fee", "32,000 ₫"), ("Carrier says now", '<span class="text-primary">Delivered · 14:21</span>'), ("Completed by", "System, after the carrier reported delivery")])
+    hero = f"""<section class="hero relative overflow-hidden rounded-[22px] border hair p-5"><div class="hdots pointer-events-none absolute inset-0"></div>
+  <div class="relative flex items-center gap-5"><span class="flex h-16 w-16 items-center justify-center rounded-[18px] bg-white text-primary soft">{gi("package-2-outline", 30)}</span>
+    <div class="min-w-0 flex-1"><div class="flex items-center gap-2"><h1 class="tight text-[24px] font-semibold">Order SN-1042</h1>{pill("Completed", "bg-primary")}</div>
+      <p class="tnum mt-0.5 text-[13px] text-on-surface-variant">Placed Mon 09:12 · shipped Mon 16:40 · closed yesterday 14:30</p>
+      <div class="mt-3 flex flex-wrap gap-2">{tag(gi("payments-outline-rounded", 13) + "COD with inspection", "bg-white border hair text-on-surface")}{tag(gi("local-shipping-outline-rounded", 13) + "GHTK", "bg-white border hair text-on-surface")}</div></div>
+    <div class="text-right"><p class="tnum tight text-[26px] font-semibold text-tertiary">3,800,000 ₫</p><p class="text-[12.5px] text-on-surface-variant">paid at the door</p></div></div></section>"""
+    listing = card(f"""<div class="flex items-center gap-3"><img src="{PHOTO}" alt="" class="h-16 w-16 rounded-[12px] object-cover"><div class="min-w-0 flex-1 leading-tight"><p class="text-[12px] font-medium text-on-surface-variant">Listing</p><p class="mt-0.5 truncate text-[15px] font-semibold">iPhone X 64GB, battery 86%</p><p class="mt-0.5 text-[12.5px] text-on-surface-variant">Sold · Phones · Good condition</p></div>
+  <a id="open-listing" href="#listing" class="hov flex h-9 items-center gap-1 rounded-full border hair bg-white px-3 text-[13px] font-medium text-primary">Open{gi("north-east-rounded", 14)}</a></div>""", "p-4")
+    tickets = card(card_head("Tickets about this order", tag("1", "bg-surface-container text-on-surface")) + f"""<a id="t1" href="#ticket" class="hov -mx-2 flex items-center gap-3 rounded-[12px] px-2 py-2">{avatar("K", 30, key="Khánh Linh")}<div class="min-w-0 flex-1 leading-tight"><p class="text-[14px] font-medium">Khánh Linh · not received</p><p class="mt-0.5 truncate text-[12.5px] text-on-surface-variant">“Mình hỏi bảo vệ rồi, không ai nhận giúp cả.”</p></div>{tag("Open", "bg-primary/[.08] text-primary")}</a>""", "p-4")
+    body = f"""<div class="grid grid-cols-[1fr_380px] gap-4">
+  <div class="space-y-4">{card(card_head("Delivery") + f'<div class="relative before:absolute before:bottom-2 before:left-[5px] before:top-2 before:w-px before:bg-outline-variant/70">{tl}</div>')}{card(card_head("Shipment") + facts)}</div>
+  <div class="space-y-4">{listing}{party("Buyer", "K", "Khánh Linh", "7b1c22e0 · since 03/2025")}{party("Seller", "H", "Hoàng Nam", "5e8a01 · 38 orders · 4.8 ★")}{tickets}</div></div>"""
+    crumb = f'<a id="back" href="#back" class="hov flex h-8 items-center gap-1 rounded-full px-2.5">{gi("arrow-back-rounded", 16)}Back</a>{gi("chevron-right-rounded", 16)}Orders{gi("chevron-right-rounded", 16)}<span class="text-on-surface">SN-1042</span>'
+    acts = btn("Ask the agent", "material-symbols:auto-awesome-outline-rounded", aid="ask") + f'<a id="copy-code" href="#copy" title="Copy code" class="hov flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant">{gi("content-copy-outline-rounded", 17)}</a>'
+    return frame("Order", detail_shell(crumb, hero, body, acts), page="accounts")
+
+
+def listing(hidden=False):
+    thumbs = "".join(f'<span class="h-14 w-14 shrink-0 rounded-[10px] bg-cover bg-center {"ring-2 ring-primary" if i == 0 else "opacity-80"}" style="background-image:url({PHOTO})"></span>' for i in range(4))
+    specs = "".join(f'<div class="flex justify-between gap-4 py-1.5 text-[13.5px]"><span class="text-on-surface-variant">{k}</span><span class="text-right">{v}</span></div>'
+                    for k, v in [("Category", "Phones"), ("Condition", "Good"), ("Storage", "256 GB"), ("Battery", "88%"), ("Offers", "Allowed"), ("Area", "Gò Vấp, HCMC")])
+    status = pill("Hidden", "bg-error") if hidden else pill("Active", "bg-primary")
+    hero = f"""<section class="{"" if hidden else "hero"} relative overflow-hidden rounded-[22px] border hair p-5" style="{'background: radial-gradient(70% 140% at 0% 0%, color-mix(in srgb, var(--md-error) 10%, transparent), transparent 60%);' if hidden else ''}"><div class="hdots pointer-events-none absolute inset-0"></div>
+  <div class="relative flex gap-5"><div class="w-[300px] shrink-0"><img src="{PHOTO}" alt="" class="h-[200px] w-full rounded-[16px] object-cover soft"><div class="mt-2 flex gap-2">{thumbs}</div></div>
+    <div class="min-w-0 flex-1"><div class="flex items-center gap-2"><h1 class="tight text-[24px] font-semibold">iPhone 13 Pro Max 256GB</h1>{status}</div>
+      <p class="tnum mt-1 text-[26px] font-semibold text-tertiary">8,900,000 ₫</p>
+      <p class="tnum mt-1 text-[13px] text-on-surface-variant">Created Nov 10 · published Nov 10 · {"hidden today 09:58 by Lan" if hidden else "3 reports"}</p>
+      <div class="mt-3 flex flex-wrap gap-2">{tag(gi("flag-outline-rounded", 13) + "3 reports · scam", "bg-error-container text-error")}{tag(gi("sell-outline-rounded", 13) + "58% under the price guide", "bg-tertiary-fixed text-on-tertiary-fixed-variant")}</div>
+      <p class="mt-4 max-w-[560px] border-l-2 border-primary/40 pl-3 text-[14px] leading-[22px] text-on-surface-variant">Máy zin, pin 88%, fullbox. Chuyển cọc 500k mình giữ hàng, ship toàn quốc.</p></div></div></section>"""
+    seller = party("Seller", "Đ", "Đồ Cũ Gò Vấp", "a1f0c3 · 14 listings", "active")
+    reports = card(card_head("Reports on this listing", tag("3", "bg-error-container text-error")) + "".join(
+        f'<div class="flex items-start gap-3 py-2">{avatar(c, 30, key=n)}<div class="min-w-0 flex-1 leading-tight"><p class="text-[14px] font-medium">{n} <span class="tnum font-normal text-on-surface-variant">· {w}</span></p><p class="mt-0.5 text-[13px] text-on-surface-variant">“{t}”</p></div></div>'
+        for c, n, w, t in [("Q", "Quang Huy", "Yesterday", "Bắt chuyển cọc trước rồi chặn mình"), ("M", "Minh Thư", "09:31", "Ảnh lấy trên mạng, hỏi video thì không gửi")]) +
+        '<a id="open-case" href="#case" class="mt-1 inline-flex items-center gap-1 text-[13px] font-medium text-primary">Open report case' + gi("north-east-rounded", 14) + "</a>", "p-4")
+    body = f"""<div class="grid grid-cols-[1fr_380px] gap-4"><div class="space-y-4">{card(card_head("Details") + specs)}</div><div class="space-y-4">{seller}{reports}</div></div>"""
+    crumb = f'<a id="back" href="#back" class="hov flex h-8 items-center gap-1 rounded-full px-2.5">{gi("arrow-back-rounded", 16)}Back</a>{gi("chevron-right-rounded", 16)}Listings{gi("chevron-right-rounded", 16)}<span class="text-on-surface">iPhone 13 Pro Max 256GB</span>'
+    act = (f'<a id="unhide" href="#unhide" class="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-[14px] font-medium text-on-primary">{gi("visibility-outline", 16)}Unhide</a>' if hidden else
+           f'<a id="hide" href="#hide" class="inline-flex h-9 items-center gap-1.5 rounded-full border border-error/40 px-4 text-[14px] font-medium text-error">{gi("visibility-off-outline", 16)}Hide listing</a>')
+    acts = btn("Ask the agent", "material-symbols:auto-awesome-outline-rounded", aid="ask") + act
+    return frame("Listing", detail_shell(crumb, hero, body, acts), page="accounts")
+
+
 SCREENS = {
     "soft-signin": ("Sign in", signin), "soft-first-password": ("First sign-in · New password", first_password),
     "soft-tool-opening": ("Tools · Opening", lambda: tool()), "soft-tool-forbidden": ("Tools · Admins only", lambda: tool(True)),
@@ -386,6 +450,7 @@ SCREENS = {
     "soft-reports-case": ("Reports · Case", reports),
     "soft-accounts-active": ("Accounts · Active", lambda: account()), "soft-accounts-suspend": ("Accounts · Suspend", lambda: account(popover=True)),
     "soft-accounts-suspended": ("Accounts · Suspended", lambda: account("suspended")),
+    "soft-order": ("Order", order), "soft-listing": ("Listing", lambda: listing()), "soft-listing-hidden": ("Listing · Hidden", lambda: listing(True)),
 }
 
 if __name__ == "__main__":

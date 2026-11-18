@@ -15,9 +15,15 @@ holds the shared pieces for the mockups: the nav, `avatar` with its tints,
 
 ## Tokens
 
-- Colour: the app's M3 roles (seed #066A61, tertiary from #924628).
-  `primary` is the one main action per view; `error` marks actions that take
-  a right away from someone; `tertiary` appears only for a listing's price.
+- Colour: the app's M3 roles (seed #066A61), used as teal and neutrals only
+  since 2026-11-18. No red (`error`) or brown/orange (`tertiary`,
+  `tertiaryFixed`, orange chart colours) unless truly needed: prices are
+  `onSurface`; fact chips are neutral with teal for the one thing to notice;
+  washes are teal and neutral; charts use teal shades and greys. `error` stays
+  for real errors and for a state that blocks someone now (a Suspended or
+  Hidden pill), and for the final confirm button of a destructive action;
+  the action's own button on the page is a neutral outline. `primary` is the
+  one main action per view.
   The page is `surfaceContainer`; the work area is one `surfaceContainerLowest`
   card with 12 px corners and a hairline ring.
 - Type: Be Vietnam Pro since 2026-11-18 (Geist before), for all text, ids,
