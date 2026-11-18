@@ -36,7 +36,8 @@ const btnLook: Record<BtnKind, string> = {
   primary: 'bg-primary text-on-primary',
   plain: 'border border-hairline bg-surface-container-lowest hover:bg-surface-container-low',
   ghost: 'text-primary hover:bg-surface-container-low',
-  danger: 'border border-error/40 text-error hover:bg-error/5',
+  // A destructive action on the page is a neutral outline; only the confirm inside its popover is danger-fill.
+  danger: 'border border-hairline text-on-surface hover:bg-on-surface/5',
   'danger-fill': 'bg-error text-on-error',
   dark: 'bg-on-surface text-surface',
 }

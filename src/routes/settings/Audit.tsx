@@ -26,10 +26,10 @@ type Look = [string, ReactNode, string]
 
 // What each action reads as in the log: the verb, its icon and its tint.
 const looks: Record<string, Look> = {
-  'account.suspend': ['suspended', <IconLock key="a" width={17} height={17} />, 'bg-error-container text-error'],
+  'account.suspend': ['suspended', <IconLock key="a" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
   'account.unsuspend': ['lifted the suspension of', <IconUnlock key="b" width={17} height={17} />, 'bg-primary/8 text-primary'],
   'member.create': ['added', <IconPerson key="c" width={17} height={17} />, 'bg-secondary-container text-on-secondary-container'],
-  'member.disable': ['disabled', <IconPersonOff key="d" width={17} height={17} />, 'bg-error-container text-error'],
+  'member.disable': ['disabled', <IconPersonOff key="d" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
   'member.enable': ['enabled', <IconPerson key="e" width={17} height={17} />, 'bg-secondary-container text-on-secondary-container'],
   'member.reset_password': ['reset the password of', <IconKey key="f" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
   'member.reset_totp': ['reset two-step sign-in of', <IconKey key="g" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
@@ -37,7 +37,7 @@ const looks: Record<string, Look> = {
   'report.dismiss': ['found no violation by', <IconCheck key="i" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
   'report.resolve': ['resolved the case of', <IconFlag key="j" width={17} height={17} />, 'bg-primary/8 text-primary'],
   'report.reopen': ['reopened the case of', <IconFlag key="k" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
-  'listing.hide': ['hid listing', <IconHide key="l" width={17} height={17} />, 'bg-tertiary-fixed text-on-tertiary-fixed-variant'],
+  'listing.hide': ['hid listing', <IconHide key="l" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
   'listing.unhide': ['restored listing', <IconShow key="m" width={17} height={17} />, 'bg-primary/8 text-primary'],
 }
 

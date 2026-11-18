@@ -33,7 +33,7 @@ function ContextMeter({ used, window }: { used: number; window: number }) {
   const pct = Math.min(100, (used / window) * 100)
   const r = 7
   const c = 2 * Math.PI * r
-  const tone = pct >= 80 ? 'text-error' : pct >= 60 ? 'text-tertiary' : 'text-primary'
+  const tone = pct >= 60 ? 'text-on-surface' : 'text-primary'
   return (
     <span title={`Context ${Math.round(pct)}% full · ${compact(used)} of ${compact(window)} tokens`} className="flex h-9 items-center gap-1 px-1 text-label-small font-normal tabular-nums text-on-surface-variant">
       <svg width={18} height={18} viewBox="0 0 18 18" className="-rotate-90" aria-hidden>
@@ -101,9 +101,9 @@ function AgentPicker({ agents, value, onChange, up }: { agents: PickableAgent[];
 
 const skillTones = [
   'bg-primary text-on-primary',
-  'bg-error-container text-error',
+  'bg-surface-container-high text-on-surface',
   'bg-secondary-container text-on-secondary-container',
-  'bg-tertiary-fixed text-on-tertiary-fixed-variant',
+  'bg-surface-container text-on-surface-variant',
   'bg-inverse-primary/40 text-primary-container',
 ]
 

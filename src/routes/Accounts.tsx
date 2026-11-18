@@ -101,7 +101,7 @@ export function Accounts() {
                     <>
                       Suspended
                       {count !== undefined && count > 0 && (
-                        <span className="rounded-full bg-error px-1.5 tabular-nums text-label-small text-on-error">{count}</span>
+                        <span className="rounded-full bg-primary px-1.5 tabular-nums text-label-small text-on-primary">{count}</span>
                       )}
                     </>
                   ),
@@ -233,7 +233,7 @@ function AccountPane({ id, onMove }: { id: string; onMove: (step: 1 | -1) => voi
         </button>
       </Crumbs>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-6">
-        <Hero error={locked}>
+        <Hero>
           <div className="flex items-center gap-5">
             <Initial name={a.display_name} id={a.id} size={72} status={a.status} />
             <div className="min-w-0 flex-1">
@@ -284,11 +284,10 @@ function AccountPane({ id, onMove }: { id: string; onMove: (step: 1 | -1) => voi
                   </Btn>
                   <div ref={suspendBox} className="relative">
                     <Btn
-                      kind="danger"
                       icon={<IconLock width={16} height={16} />}
                       onClick={() => setSuspending((s) => !s)}
                       aria-expanded={suspending}
-                      className={suspending ? 'border-error bg-error/6 ring-4 ring-error/10' : ''}
+                      className={suspending ? 'bg-on-surface/5 ring-4 ring-on-surface/5' : ''}
                     >
                       Suspend
                     </Btn>
@@ -344,16 +343,16 @@ function TermCard({ a, last, now }: { a: Account; last?: Action; now: number }) 
   return (
     <Card className="p-4">
       <div className="flex items-center gap-2.5">
-        <IconTile tone="bg-error-container text-error">
+        <IconTile tone="bg-surface-container text-on-surface-variant">
           <IconLockClock width={18} height={18} />
         </IconTile>
         <p className="flex-1 text-title-small">{last ? `Suspended for ${term(last)}` : 'Suspended'}</p>
-        {until && <p className="tabular-nums text-title-small text-error">{daysLeft(until, now)} days left</p>}
+        {until && <p className="tabular-nums text-title-small">{daysLeft(until, now)} days left</p>}
       </div>
-      {a.suspend_reason && <p className="mt-2 border-l-2 border-error/40 pl-2.5 text-body-small text-on-surface-variant">{a.suspend_reason}</p>}
+      {a.suspend_reason && <p className="mt-2 border-l-2 border-outline-variant pl-2.5 text-body-small text-on-surface-variant">{a.suspend_reason}</p>}
       {served !== undefined && (
         <div className="mt-3">
-          <Meter pct={served} tone="bg-error" />
+          <Meter pct={served} tone="bg-on-surface-variant" />
         </div>
       )}
       <div className="mt-2 flex justify-between text-body-small text-on-surface-variant">
@@ -377,7 +376,7 @@ function History({ d }: { d: AccountDetail }) {
           <li key={x.id} className="relative flex gap-3 pb-4 last:pb-0">
             <span
               className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-4 ring-surface-container-lowest ${
-                suspend ? 'bg-error-container text-error' : 'bg-primary/8 text-primary'
+                suspend ? 'bg-surface-container text-on-surface-variant' : 'bg-primary/8 text-primary'
               }`}
             >
               {suspend ? <IconLock width={16} height={16} /> : <IconUnlock width={16} height={16} />}
@@ -433,7 +432,7 @@ function SuspendPopover({ a, onClose, suspend }: { a: Account; onClose: () => vo
       className="absolute right-0 top-full z-30 mt-2 w-[400px] origin-top-right animate-pop overflow-hidden rounded-5xl border border-hairline bg-surface-container-lowest shadow-float"
     >
       <div className="flex items-center gap-3 p-4">
-        <IconTile size={40} tone="bg-error-container text-error">
+        <IconTile size={40} tone="bg-surface-container text-on-surface-variant">
           <IconLock width={20} height={20} />
         </IconTile>
         <p className="min-w-0 flex-1 truncate text-title-medium">Suspend {a.display_name}</p>
@@ -446,9 +445,9 @@ function SuspendPopover({ a, onClose, suspend }: { a: Account; onClose: () => vo
             role="radio"
             aria-checked={days === n}
             onClick={() => setDays(n)}
-            className={`rounded-2xl border p-3 text-left ${days === n ? 'border-error bg-error/4' : 'border-hairline hover:bg-surface-container-low'}`}
+            className={`rounded-2xl border p-3 text-left ${days === n ? 'border-primary bg-primary/4' : 'border-hairline hover:bg-surface-container-low'}`}
           >
-            <span className={`block text-title-small ${days === n ? 'text-error' : ''}`}>{text}</span>
+            <span className={`block text-title-small ${days === n ? 'text-primary' : ''}`}>{text}</span>
             <span className="mt-0.5 block tabular-nums text-label-small font-normal text-on-surface-variant">
               {n === null ? 'until lifted' : `until ${day(now + n * DAY)}`}
             </span>

@@ -47,8 +47,8 @@
  * its tokens mapped to ours: text-strong-950 → on-surface, text-sub-600 →
  * on-surface-variant, text-soft-400 → outline, stroke-soft-200 → hairline,
  * bg-weak-50 → surface-container-low, bg-soft-200 → surface-container-high,
- * bg-white-0 → surface-container-lowest, success → primary, the egress
- * orange → tertiary.
+ * bg-white-0 → surface-container-lowest, success → primary. A failed step
+ * is a real failure, in error; the egress orange has no place here.
  *
  *   trigger   .act-trigger : icon · label (shimmer while live) · meta · chevron
  *   rows      .act-list > .act-step* ; each step = .act-rail + body
@@ -64,8 +64,8 @@
 :root {
   --act-ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
   --act-line: var(--md-hairline);
-  --act-warn: var(--md-tertiary);
-  --act-warn-bg: color-mix(in srgb, var(--md-tertiary) 10%, transparent);
+  --act-warn: var(--md-error);
+  --act-warn-bg: var(--md-surface-container-low);
 }
 
 .act-trigger {
@@ -129,7 +129,7 @@
   color: var(--act-warn);
 }
 .act-step[data-state="ask"] > .act-rail {
-  color: var(--md-tertiary);
+  color: var(--md-primary);
 }
 .act-dot {
   width: 5px;

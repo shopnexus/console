@@ -161,7 +161,7 @@ type PhaseState = 'active' | 'warn' | 'done'
 
 function Rail({ state }: { state: PhaseState }) {
   if (state === 'active') return <span role="img" aria-label="In progress" className="mt-0.5 size-3.5 animate-spin rounded-full border-[1.8px] border-hairline border-t-on-surface" />
-  if (state === 'warn') return <IconWarnFill role="img" aria-label="A step failed" width={16} height={16} className="text-tertiary" />
+  if (state === 'warn') return <IconWarnFill role="img" aria-label="A step failed" width={16} height={16} className="text-error" />
   return <IconDoneFill role="img" aria-label="Done" width={16} height={16} className="text-primary" />
 }
 
@@ -277,7 +277,7 @@ export function RunCard({ run }: { run: RunState; turnId: string }) {
     <div className="flex w-full flex-col">
       <button type="button" aria-expanded={expanded} onClick={() => setTouched(!expanded)} className="act-trigger w-fit rounded-md">
         <span role="status" className="contents">
-          {asking ? <IconQuestion width={16} height={16} className="shrink-0 text-tertiary" aria-hidden /> : <IconReason width={16} height={16} className="shrink-0" aria-hidden />}
+          {asking ? <IconQuestion width={16} height={16} className="shrink-0 text-primary" aria-hidden /> : <IconReason width={16} height={16} className="shrink-0" aria-hidden />}
           {live ? (
             <>
               <Shimmer>{liveLabel}</Shimmer>

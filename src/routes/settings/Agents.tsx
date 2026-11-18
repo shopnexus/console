@@ -107,7 +107,7 @@ export function Agents() {
                     <span className="font-medium tabular-nums">{usd(spent)}</span>
                     <span className="tabular-nums text-on-surface-variant">{a.monthly_budget_usd !== undefined ? `of $${a.monthly_budget_usd} a month` : 'No budget'}</span>
                   </div>
-                  {a.monthly_budget_usd ? <Meter pct={(spent / a.monthly_budget_usd) * 100} tone={spent / a.monthly_budget_usd >= 0.8 ? 'bg-chart-2' : fillAt(i)} className="mt-1.5 h-1.5" /> : null}
+                  {a.monthly_budget_usd ? <Meter pct={(spent / a.monthly_budget_usd) * 100} tone={spent / a.monthly_budget_usd >= 0.8 ? 'bg-on-surface' : fillAt(i)} className="mt-1.5 h-1.5" /> : null}
                 </div>
               )}
             </Card>

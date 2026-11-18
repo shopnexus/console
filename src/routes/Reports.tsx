@@ -41,10 +41,10 @@ const age = (iso: string, now: number) => {
 }
 
 const reasonTag: Record<ReportReason, string> = {
-  scam: 'bg-error-container text-error',
-  banned: 'bg-error-container text-error',
-  fake: 'bg-tertiary-fixed text-on-tertiary-fixed-variant',
-  other: 'bg-surface-container text-on-surface-variant',
+  scam: 'border border-hairline bg-surface-container-lowest text-on-surface',
+  banned: 'border border-hairline bg-surface-container-lowest text-on-surface',
+  fake: 'border border-hairline bg-surface-container-lowest text-on-surface-variant',
+  other: 'border border-hairline bg-surface-container-lowest text-on-surface-variant',
 }
 
 /** Reports: the case queue, and the case of the account in the URL beside it. */
@@ -90,7 +90,7 @@ export function Reports() {
                   <>
                     Waiting
                     {!!open.total && (
-                      <span key={open.total} className="animate-badge rounded-full bg-error px-1.5 tabular-nums text-label-small text-on-error">
+                      <span key={open.total} className="animate-badge rounded-full bg-primary px-1.5 tabular-nums text-label-small text-on-primary">
                         {open.total}
                       </span>
                     )}
@@ -145,7 +145,7 @@ function CaseInitial({ name, id, reports, size = 38 }: { name: string; id: strin
       <Initial name={name} id={id} size={size} />
       <span
         className={`absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 tabular-nums text-label-small ring-2 ring-surface-container-lowest ${
-          reports > 2 ? 'bg-error text-on-error' : 'bg-surface-container-high text-on-surface'
+          reports > 2 ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface'
         }`}
       >
         {reports}
@@ -163,7 +163,7 @@ function QueueRow({ c, on, now, onClick }: { c: ReportCase; on: boolean; now: nu
       onClick={onClick}
       avatar={<CaseInitial name={c.account.display_name} id={c.account.id} reports={c.reports} />}
       name={c.account.display_name}
-      when={r ? `${firstName(r.by.display_name)} · ${when(r.at, now)}` : <span className={overdue ? 'text-error' : ''}>{age(c.last_at, now)}</span>}
+      when={r ? `${firstName(r.by.display_name)} · ${when(r.at, now)}` : <span className={overdue ? 'font-medium text-primary' : ''}>{age(c.last_at, now)}</span>}
       line={c.listing?.title ?? 'Account'}
       foot={
         <>
@@ -174,7 +174,7 @@ function QueueRow({ c, on, now, onClick }: { c: ReportCase; on: boolean; now: nu
                 {reasonLabel[k]}
               </DotFact>
             ))}
-          {r && <span className={`ml-auto ${r.outcome === 'actioned' ? 'text-error' : 'text-on-surface-variant'}`}>{r.outcome === 'actioned' ? 'Actioned' : 'No violation'}</span>}
+          {r && <span className={`ml-auto ${r.outcome === 'actioned' ? 'text-on-surface' : 'text-on-surface-variant'}`}>{r.outcome === 'actioned' ? 'Actioned' : 'No violation'}</span>}
         </>
       }
     />
@@ -257,7 +257,7 @@ function CaseHero({ c }: { c: ReportCaseDetail }) {
   const locked = a.status === 'suspended'
   const top = c.listings[0]
   return (
-    <Hero error={locked}>
+    <Hero>
       <div className="flex gap-5">
         <Initial name={a.display_name} id={a.id} size={72} status={a.status} />
         <div className="min-w-0 flex-1">
@@ -300,9 +300,9 @@ function ListingCard({ l, reports }: { l: ReportedListing; reports?: number }) {
       )}
       <span className="min-w-0 flex-1 leading-tight">
         <span className="block truncate text-title-small">{l.title}</span>
-        <span className="mt-0.5 block tabular-nums text-body-small text-tertiary">{vnd(l.price)}</span>
+        <span className="mt-0.5 block tabular-nums text-body-small font-medium text-on-surface">{vnd(l.price)}</span>
         <span className="mt-0.5 flex items-center gap-1.5 text-label-small font-normal text-on-surface-variant">
-          <span className={l.status === 'hidden' ? 'text-error' : ''}>{listingStatus[l.status] ?? l.status}</span>
+          <span className={l.status === 'hidden' ? 'font-medium text-on-surface' : ''}>{listingStatus[l.status] ?? l.status}</span>
           {reports !== undefined && reports > 0 && <span>· {reports === 1 ? '1 report' : `${reports} reports`}</span>}
         </span>
       </span>
@@ -367,7 +367,7 @@ function DecisionBar({ c }: { c: ReportCaseDetail }) {
                   label="Term"
                   value={days === null ? 'none' : String(days)}
                   onChange={(v) => setDays(v === 'none' ? null : Number(v))}
-                  tone="border-error/40 bg-surface-container-lowest text-error"
+                  tone="border-hairline bg-surface-container-lowest text-on-surface"
                   options={terms.map(([n, t]) => ({ value: n === null ? 'none' : String(n), label: t }))}
                 />
               </span>

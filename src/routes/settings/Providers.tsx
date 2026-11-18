@@ -159,7 +159,7 @@ function ProviderHealthCell({ h, now }: { h?: ProviderHealth; now: number }) {
         <span>24h requests · {int(h.requests_24h)}</span>
         <span className="tabular-nums">{h.share_pct}%</span>
       </div>
-      <Meter pct={h.share_pct} tone={cooling ? 'bg-error' : 'bg-primary'} className="mt-1.5 h-2" />
+      <Meter pct={h.share_pct} tone={cooling ? 'bg-outline' : 'bg-primary'} className="mt-1.5 h-2" />
       <p className={`mt-1.5 truncate tabular-nums text-body-small ${cooling ? 'text-error' : 'text-on-surface-variant'}`} title={h.last_error}>
         {cooling ? `Paused until ${time(h.cooling_until!)}${h.last_error ? ` · ${h.last_error}` : ''}` : h.requests_24h ? `${h.success_pct}% · p50 ${duration(h.p50_ms)}` : (h.last_error ?? 'No calls')}
       </p>
@@ -514,11 +514,11 @@ function ProviderModelsCard({ provider }: { provider: Provider }) {
                 {x?.tags.map((t) => (
                   <ModelTag key={t} name={t} small />
                 ))}
-                {x && x.tags.length === 0 && <span className="text-body-small text-error">No tags yet</span>}
+                {x && x.tags.length === 0 && <span className="text-body-small text-on-surface-variant">No tags yet</span>}
               </span>
               <span className="w-[90px] tabular-nums text-body-small">{price(x?.input_cost_per_mtok, x?.output_cost_per_mtok)}</span>
               {!sync && (
-                <IconBtn title={`Remove from ${provider.name}`} className="hover:text-error" onClick={() => commands.removeProviderModel.mutate({ id: provider.id, model: m })}>
+                <IconBtn title={`Remove from ${provider.name}`} className="hover:text-on-surface" onClick={() => commands.removeProviderModel.mutate({ id: provider.id, model: m })}>
                   <IconClose width={18} height={18} />
                 </IconBtn>
               )}

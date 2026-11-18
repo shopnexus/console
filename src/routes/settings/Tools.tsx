@@ -27,9 +27,9 @@ import { type ToolGroup, toolInfo, tools } from '../../lib/tools'
 const groupLook: Record<ToolGroup, [ReactNode, string]> = {
   ticket: [<IconSupport key="t" width={20} height={20} />, 'bg-primary/8 text-primary'],
   account: [<IconPerson key="a" width={20} height={20} />, 'bg-secondary-container text-on-secondary-container'],
-  order: [<IconOrder key="o" width={20} height={20} />, 'bg-tertiary-fixed text-on-tertiary-fixed-variant'],
+  order: [<IconOrder key="o" width={20} height={20} />, 'bg-surface-container text-on-surface-variant'],
   listing: [<IconListing key="l" width={20} height={20} />, 'bg-inverse-primary/40 text-primary-container'],
-  report: [<IconReport key="r" width={20} height={20} />, 'bg-error-container text-error'],
+  report: [<IconReport key="r" width={20} height={20} />, 'bg-surface-container-high text-on-surface'],
   log: [<IconHistory key="h" width={20} height={20} />, 'bg-surface-container text-on-surface-variant'],
   data: [<IconData key="d" width={20} height={20} />, 'bg-surface-container text-on-surface-variant'],
 }
@@ -111,7 +111,7 @@ export function Tools() {
                     <>
                       <p className="text-title-medium tabular-nums">{int(u.calls)}</p>
                       <p className="text-label-small font-normal text-on-surface-variant">
-                        {u.failed ? <span className="text-error">{int(u.failed)} failed · </span> : null}p50 {duration(u.p50_ms)}
+                        {u.failed ? <span className="font-medium text-on-surface">{int(u.failed)} failed · </span> : null}p50 {duration(u.p50_ms)}
                       </p>
                     </>
                   ) : (

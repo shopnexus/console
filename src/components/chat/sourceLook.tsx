@@ -11,12 +11,12 @@ import type { SourceKind } from '../../lib/run'
 import { kindOf } from '../../lib/sources'
 
 const looks: Record<SourceKind, [string, (s: number) => ReactNode, string]> = {
-  report: ['Report case', (s) => <IconReport width={s} height={s} />, 'bg-error-container text-error'],
+  report: ['Report case', (s) => <IconReport width={s} height={s} />, 'bg-surface-container-high text-on-surface'],
   account: ['Account', (s) => <IconAccount width={s} height={s} />, 'bg-primary/8 text-primary'],
   ticket: ['Ticket', (s) => <IconTicket width={s} height={s} />, 'bg-secondary-container text-on-secondary-container'],
-  order: ['Order', (s) => <IconOrder width={s} height={s} />, 'bg-tertiary-fixed text-on-tertiary-fixed-variant'],
+  order: ['Order', (s) => <IconOrder width={s} height={s} />, 'bg-surface-container text-on-surface-variant'],
   listing: ['Listing', (s) => <IconListing width={s} height={s} />, 'bg-inverse-primary/40 text-primary-container'],
-  data: ['Data', (s) => <IconData width={s} height={s} />, 'bg-tertiary-fixed text-on-tertiary-fixed-variant'],
+  data: ['Data', (s) => <IconData width={s} height={s} />, 'bg-surface-container text-on-surface-variant'],
   log: ['Audit log', (s) => <IconLog width={s} height={s} />, 'bg-surface-container text-on-surface-variant'],
   member: ['Member', (s) => <IconMember width={s} height={s} />, 'bg-secondary-container text-on-secondary-container'],
 }
@@ -36,8 +36,8 @@ export function SourceBadge({ kind, size = 20, tile = false }: { kind: SourceKin
   )
 }
 
-/** The letter marks' inks, after AI Portal's source-avatar palette, in our colours. */
-const avatarInks = ['--md-primary', '--md-tertiary', '--md-chart-2', '--md-chart-3']
+/** The letter marks' inks, after AI Portal's source-avatar palette, in teal and greys. */
+const avatarInks = ['--md-primary', '--md-secondary', '--md-chart-2', '--md-on-surface-variant']
 
 /** A source's letter mark: its first letter on a tint picked from its name, so one source keeps one colour. */
 export function SourceAvatar({ seed, size = 24, ring = false }: { seed: string; size?: number; ring?: boolean }) {

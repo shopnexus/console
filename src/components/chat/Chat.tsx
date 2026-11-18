@@ -75,8 +75,8 @@ const attachIcon: Record<Attachment['kind'], ReactNode> = {
 const attachTone: Record<Attachment['kind'], string> = {
   ticket: 'bg-secondary-container/60',
   account: 'bg-primary/7',
-  report_case: 'bg-error-container/60',
-  order: 'bg-tertiary-fixed/60',
+  report_case: 'bg-surface-container',
+  order: 'bg-surface-container',
   listing: 'bg-inverse-primary/30',
   document: 'bg-primary/7',
 }
@@ -154,9 +154,9 @@ function OutcomeNotice({ run, last, onContinue, busy }: { run: RunState; last: b
   if (g === 'budget') {
     const c = counts(run)
     return (
-      <section className="overflow-hidden rounded-4xl border border-error/25 bg-surface-container-lowest shadow-soft">
+      <section className="overflow-hidden rounded-4xl border border-hairline bg-surface-container-lowest shadow-soft">
         <div className="flex items-start gap-3 p-4">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-error-container text-error">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-container text-on-surface-variant">
             <IconPause width={22} height={22} />
           </span>
           <div className="min-w-0 flex-1">
@@ -174,7 +174,7 @@ function OutcomeNotice({ run, last, onContinue, busy }: { run: RunState; last: b
   const cont = last && canContinue(run)
   return (
     <div className="flex animate-rise items-center gap-3 rounded-3xl border border-hairline px-4 py-3" role="status">
-      <span className={g === 'stopped' ? 'text-on-surface-variant' : 'text-error'}>{g === 'stopped' ? <IconPause width={19} height={19} /> : <IconError width={19} height={19} />}</span>
+      <span className={g === 'broken' ? 'text-error' : 'text-on-surface-variant'}>{g === 'stopped' ? <IconPause width={19} height={19} /> : <IconError width={19} height={19} />}</span>
       <div className="min-w-0 flex-1 leading-tight">
         <p className="text-title-small">{title}</p>
         {(help || run.outcome?.failure) && <p className="mt-0.5 text-body-small text-on-surface-variant">{g === 'blocked' ? run.outcome?.failure : help}</p>}

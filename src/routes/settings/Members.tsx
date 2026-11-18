@@ -105,7 +105,7 @@ export function Members() {
                   {m.status === 'disabled' ? (
                     <Tag tone="bg-error-container text-error">Disabled</Tag>
                   ) : locked(m) ? (
-                    <Tag tone="bg-tertiary-fixed/70 text-on-tertiary-fixed-variant">Locked until {time(m.locked_until!)}</Tag>
+                    <Tag tone="bg-surface-container text-on-surface">Locked until {time(m.locked_until!)}</Tag>
                   ) : (
                     <Tag>
                       <Dot />
@@ -188,7 +188,7 @@ function MemberActions({ m, locked }: { m: Member; locked: boolean }) {
                 Reset password
               </button>
               {m.status === 'active' ? (
-                <button className={`${item} text-error`} disabled={commands.disable.isPending} onClick={() => commands.disable.mutate(m.id, { onSuccess: close })}>
+                <button className={item} disabled={commands.disable.isPending} onClick={() => commands.disable.mutate(m.id, { onSuccess: close })}>
                   Disable
                 </button>
               ) : (

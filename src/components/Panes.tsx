@@ -86,10 +86,10 @@ export function Crumbs({ parent, onParent, name, children }: { parent: string; o
   )
 }
 
-/** A record's hero: two soft washes under a dotted grid, in `error` for a suspended account. */
-export function Hero({ error = false, children, className = 'p-5' }: { error?: boolean; children: ReactNode; className?: string }) {
+/** A record's hero: a soft teal wash under a dotted grid. A suspended or hidden record says so with its status pill, not a wash. */
+export function Hero({ children, className = 'p-5' }: { children: ReactNode; className?: string }) {
   return (
-    <section className={`relative overflow-hidden rounded-5xl border border-hairline ${error ? 'band-error' : 'band'} ${className}`}>
+    <section className={`relative overflow-hidden rounded-5xl border border-hairline band ${className}`}>
       <div aria-hidden className="dots pointer-events-none absolute inset-0" />
       <div className="relative">{children}</div>
     </section>

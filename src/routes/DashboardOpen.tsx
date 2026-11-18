@@ -76,7 +76,7 @@ export function DashboardOpen() {
               </span>
               <span
                 className={`flex h-16 w-16 items-center justify-center rounded-4xl [&>svg]:h-[30px] [&>svg]:w-[30px] ${
-                  bad ? 'bg-error-container text-error' : 'bg-tertiary-fixed text-on-tertiary-fixed-variant'
+                  bad ? 'bg-surface-container text-on-surface-variant' : 'bg-primary/8 text-primary'
                 }`}
               >
                 {bad ? <IconLock /> : d?.icon}

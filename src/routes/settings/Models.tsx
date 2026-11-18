@@ -109,7 +109,7 @@ export function Models() {
                   <span className="min-w-0 leading-tight">
                     <span className="block truncate text-title-small">{m.model}</span>
                     {m.tags.length === 0 ? (
-                      <span className="block text-body-small text-error">No tags yet</span>
+                      <span className="block text-body-small text-on-surface-variant">No tags yet</span>
                     ) : (
                       m.context_tokens !== undefined && <span className="block text-body-small text-on-surface-variant">{contextSize(m.context_tokens)} context</span>
                     )}

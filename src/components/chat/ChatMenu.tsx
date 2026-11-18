@@ -65,7 +65,7 @@ export function ChatMenu({ c, className = '' }: { c: Conversation; className?: s
                     <IconEdit width={17} height={17} />
                     Rename
                   </button>
-                  <button type="button" className={`${item} text-error`} onClick={() => setView('delete')}>
+                  <button type="button" className={item} onClick={() => setView('delete')}>
                     <IconDelete width={17} height={17} />
                     Delete
                   </button>

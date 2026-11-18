@@ -92,7 +92,7 @@ function ReportPick({ onPick }: { onPick: (a: Attachment) => void }) {
       <p className="px-2 pb-1 pt-2 text-label-small text-on-surface-variant">Waiting</p>
       {items.map((c) => (
         <button key={c.account.id} type="button" onClick={() => onPick({ kind: 'report_case', id: c.account.id, label: `Report · ${c.account.display_name}` })} className={row}>
-          <IconFlag width={16} height={16} className="shrink-0 text-error" />
+          <IconFlag width={16} height={16} className="shrink-0 text-on-surface-variant" />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-body-medium">{c.account.display_name}</span>
             <span className="block text-label-small font-normal tabular-nums text-on-surface-variant">

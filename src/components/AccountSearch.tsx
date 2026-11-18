@@ -28,7 +28,7 @@ export function AccountRow({ a, right, selected, onClick }: { a: Account; right?
           <span className="truncate text-label-large">{a.display_name}</span>
           <span className="tabular-nums text-body-small text-on-surface-variant">{shortId(a.id)}</span>
         </span>
-        <span className={`block truncate text-body-small ${a.status === 'suspended' ? 'text-error' : 'text-on-surface-variant'}`}>
+        <span className={`block truncate text-body-small text-on-surface-variant`}>
           {accountLine(a)}
         </span>
       </span>

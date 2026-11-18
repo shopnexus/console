@@ -35,7 +35,7 @@ export function AgentIcon({ name, size = 18 }: { name: string; size?: number }) 
 const tagLook: Record<string, [Icon, string]> = {
   Chat: [IconChat, 'bg-primary text-on-primary'],
   Embedding: [IconHub, 'bg-on-surface text-surface'],
-  Vision: [IconVision, 'bg-tertiary-fixed/80 text-on-tertiary-fixed-variant'],
+  Vision: [IconVision, 'bg-surface-container text-on-surface-variant'],
   'Tool use': [IconBuild, 'bg-primary/8 text-primary'],
   'Long context': [IconNotes, 'bg-secondary-container/80 text-on-secondary-container'],
   Reasoning: [IconReason, 'bg-inverse-primary/40 text-primary-container'],

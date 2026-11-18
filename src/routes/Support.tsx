@@ -35,7 +35,7 @@ import {
   useTicketCommands,
 } from '../lib/support'
 
-const kindDot: Record<TicketKind, string> = { not_received: 'bg-primary', carrier_request: 'bg-tertiary', other: 'bg-outline' }
+const kindDot: Record<TicketKind, string> = { not_received: 'bg-primary', carrier_request: 'bg-on-surface-variant', other: 'bg-outline' }
 
 /** The month an account joined, as "03/2025". */
 function joined(iso: string): string {
@@ -141,7 +141,7 @@ function Details({ d }: { d: ConsoleTicketDetail }) {
   const suspended = d.person_status === 'suspended'
   return (
     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 pb-3">
-      <section className={`relative overflow-hidden rounded-4xl border border-hairline p-4 ${suspended ? 'band-error' : 'band'}`}>
+      <section className={`relative overflow-hidden rounded-4xl border border-hairline p-4 band`}>
         <div aria-hidden className="dots pointer-events-none absolute inset-0" />
         <div className="relative flex items-center gap-3">
           <Initial name={p.display_name} id={p.id} size={44} status={d.person_status} />
@@ -163,7 +163,7 @@ function Details({ d }: { d: ConsoleTicketDetail }) {
             <span className="min-w-0 truncate text-title-small group-hover:underline">{d.order.title}</span>
             <IconOpen width={14} height={14} className="shrink-0 text-primary" />
           </Link>
-          <p className="tabular-nums text-body-small text-tertiary">
+          <p className="tabular-nums text-body-small font-medium text-on-surface">
             {vnd(d.order.price)} <span className="text-on-surface-variant">· COD with inspection</span>
           </p>
           <div className="mt-3">

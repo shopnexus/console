@@ -231,7 +231,8 @@ export function Markdown({ md, turnId, sources, big = false, streaming = false }
   )
 }
 
-const figureTone = { good: 'text-primary', bad: 'text-error', neutral: 'text-primary' }
+// A bad change reads by its arrow, in plain ink; teal marks the good one.
+const figureTone = { good: 'text-primary', bad: 'text-on-surface', neutral: 'text-on-surface-variant' }
 
 /** A figure's value, counted up from zero when it arrives. */
 function FigureValue({ value, animate }: { value: string; animate: boolean }) {
@@ -292,8 +293,8 @@ export function Table({ columns, rows }: { columns: string[]; rows: (string | nu
   )
 }
 
-const seriesFill = ['bg-error', 'bg-chart-2', 'bg-chart-5', 'bg-chart-3', 'bg-chart-1']
-const seriesText = ['text-error', 'text-chart-2', 'text-chart-5', 'text-chart-3', 'text-chart-1']
+const seriesFill = ['bg-chart-1', 'bg-chart-2', 'bg-chart-3', 'bg-chart-4', 'bg-chart-5']
+const seriesText = ['text-chart-1', 'text-chart-2', 'text-chart-3', 'text-chart-4', 'text-chart-5']
 
 /** A bar, stacked bar or line chart drawn in CSS and SVG, with its legend. */
 export function Chart({ kind, labels, series, title, h = 96 }: { kind: 'bar' | 'stacked_bar' | 'line'; labels: string[]; series: ChartSeries[]; title?: string; h?: number }) {

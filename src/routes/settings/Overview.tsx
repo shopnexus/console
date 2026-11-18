@@ -69,7 +69,7 @@ export function Overview() {
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-2.5">
-            <IconTile tone="bg-tertiary-fixed text-on-tertiary-fixed-variant">
+            <IconTile tone="bg-primary/8 text-primary">
               <IconForum width={18} height={18} />
             </IconTile>
             <span className="text-body-small text-on-surface-variant">Agent questions</span>
@@ -121,10 +121,10 @@ export function Overview() {
         </Card>
         <div className="space-y-4">
           <Card className="p-5 pb-3">
-            <CardHead title="Needs a look" right={toSee.data?.length ? <Tag tone="bg-error-container text-error">{toSee.data.length}</Tag> : undefined} />
+            <CardHead title="Needs a look" right={toSee.data?.length ? <Tag tone="bg-primary text-on-primary">{toSee.data.length}</Tag> : undefined} />
             {toSee.data?.map((m) => (
               <Link key={m.id} to="/settings/members" className="-mx-2 flex items-center gap-3 rounded-xl px-2 py-2 text-body-medium hover:bg-on-surface/5">
-                <IconTile size={32} round tone="bg-tertiary-fixed text-on-tertiary-fixed-variant">
+                <IconTile size={32} round tone="bg-surface-container text-on-surface-variant">
                   <IconKey width={17} height={17} />
                 </IconTile>
                 <span className="min-w-0 flex-1">
@@ -163,7 +163,7 @@ export function Overview() {
                         {usd(b.spent_usd)} / ${b.monthly_budget_usd}
                       </span>
                     </div>
-                    <Meter pct={(b.spent_usd / b.monthly_budget_usd!) * 100} tone={b.spent_usd / b.monthly_budget_usd! >= 0.8 ? 'bg-chart-2' : 'bg-primary/70'} className="mt-1 h-1.5" />
+                    <Meter pct={(b.spent_usd / b.monthly_budget_usd!) * 100} tone={b.spent_usd / b.monthly_budget_usd! >= 0.8 ? 'bg-on-surface' : 'bg-primary/70'} className="mt-1 h-1.5" />
                   </div>
                 ))}
             </Card>

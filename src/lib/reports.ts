@@ -7,7 +7,7 @@ export type CaseStatus = 'open' | 'resolved'
 
 export const reasonLabel: Record<ReportReason, string> = { scam: 'Scam', fake: 'Fake', banned: 'Banned', other: 'Other' }
 /** A reason's dot and pill colours; scam and banned goods are the gravest. */
-export const reasonDot: Record<ReportReason, string> = { scam: 'bg-error', fake: 'bg-tertiary', banned: 'bg-on-surface', other: 'bg-outline' }
+export const reasonDot: Record<ReportReason, string> = { scam: 'bg-on-surface', fake: 'bg-outline', banned: 'bg-on-surface', other: 'bg-outline-variant' }
 export const reasonOrder: ReportReason[] = ['scam', 'banned', 'fake', 'other']
 
 export interface ReportedListing {

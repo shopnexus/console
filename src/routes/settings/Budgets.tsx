@@ -57,7 +57,7 @@ export function Budgets() {
           {b && (
             <Card>
               <div className="flex gap-6">
-                <Donut parts={cap ? [{ pct: (month / cap) * 100, tone: b.alerting ? 'text-chart-2' : 'text-primary' }] : []} size={168} stroke={18}>
+                <Donut parts={cap ? [{ pct: (month / cap) * 100, tone: b.alerting ? 'text-on-surface' : 'text-primary' }] : []} size={168} stroke={18}>
                   <span className="text-label-small font-normal text-on-surface-variant">Used</span>
                   <span className="text-headline-large tabular-nums">${Math.round(month)}</span>
                   {cap && <span className="text-label-small font-normal tabular-nums text-on-surface-variant">of ${cap}</span>}
@@ -65,12 +65,12 @@ export function Budgets() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <h2 className="flex-1 text-title-medium">This month</h2>
-                    {b.alerting && <Tag tone="bg-tertiary-fixed text-on-tertiary-fixed-variant">Past the alert</Tag>}
+                    {b.alerting && <Tag tone="bg-primary/8 text-primary">Past the alert</Tag>}
                   </div>
                   {cap && (
                     <div className="relative mt-4">
-                      <Meter pct={(month / cap) * 100} tone={b.alerting ? 'bg-chart-2' : 'bg-primary'} className="h-3" />
-                      {b.alert_pct !== undefined && <span className="absolute -top-1 h-5 w-0.5 rounded-full bg-chart-2" style={{ left: `${b.alert_pct}%` }} title={`Alert at ${b.alert_pct}%`} />}
+                      <Meter pct={(month / cap) * 100} tone={b.alerting ? 'bg-on-surface' : 'bg-primary'} className="h-3" />
+                      {b.alert_pct !== undefined && <span className="absolute -top-1 h-5 w-0.5 rounded-full bg-on-surface" style={{ left: `${b.alert_pct}%` }} title={`Alert at ${b.alert_pct}%`} />}
                     </div>
                   )}
                   <div className="mt-5 grid grid-cols-3 gap-3 border-t border-hairline pt-4">
@@ -132,7 +132,7 @@ export function Budgets() {
                         <span className="tabular-nums">{usd(x.spent_usd)}</span>
                         {x.monthly_budget_usd !== undefined && <span className="tabular-nums text-on-surface-variant">{Math.round(pct)}%</span>}
                       </div>
-                      {x.monthly_budget_usd !== undefined && <Meter pct={pct} tone={pct >= 80 ? 'bg-chart-2' : fillAt(i)} className="mt-1.5 h-2" />}
+                      {x.monthly_budget_usd !== undefined && <Meter pct={pct} tone={pct >= 80 ? 'bg-on-surface' : fillAt(i)} className="mt-1.5 h-2" />}
                     </div>
                     <MoneyField
                       key={`${x.agent_id}-${x.monthly_budget_usd}`}

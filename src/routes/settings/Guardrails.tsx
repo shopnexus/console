@@ -19,8 +19,8 @@ import { type SpendRange, useGuardrails, useMembers } from '../../lib/settings'
 // same guardrail events.
 const rules: { rule?: string; icon: ReactNode; tone: string; title: string; detail: string }[] = [
   { rule: 'pii_masked', icon: <IconBadge width={20} height={20} />, tone: 'bg-primary/8 text-primary', title: 'Mask personal data', detail: 'Phone numbers, emails, card and ID numbers are masked in answers' },
-  { rule: 'off_topic', icon: <IconBlock width={20} height={20} />, tone: 'bg-tertiary-fixed text-on-tertiary-fixed-variant', title: 'Block off-topic', detail: 'Refuses requests unrelated to tickets, reports and accounts' },
-  { rule: 'loop_stopped', icon: <IconLoop width={20} height={20} />, tone: 'bg-error-container text-error', title: 'Loop detection', detail: 'Stops a run that calls one tool the same way three times' },
+  { rule: 'off_topic', icon: <IconBlock width={20} height={20} />, tone: 'bg-surface-container text-on-surface-variant', title: 'Block off-topic', detail: 'Refuses requests unrelated to tickets, reports and accounts' },
+  { rule: 'loop_stopped', icon: <IconLoop width={20} height={20} />, tone: 'bg-surface-container text-on-surface-variant', title: 'Loop detection', detail: 'Stops a run that calls one tool the same way three times' },
   { rule: 'rate_limited', icon: <IconSpeed width={20} height={20} />, tone: 'bg-secondary-container text-on-secondary-container', title: 'Rate limit', detail: '30 questions a minute per member' },
   { icon: <IconLog width={20} height={20} />, tone: 'bg-surface-container text-on-surface-variant', title: 'Tool call log', detail: 'Who asked, which tool, which record' },
 ]

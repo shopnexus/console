@@ -4,7 +4,7 @@
 const tints = [
   'bg-primary/10 text-primary',
   'bg-secondary-container text-on-secondary-container',
-  'bg-tertiary-fixed text-on-tertiary-fixed-variant',
+  'bg-surface-container-high text-on-surface-variant',
   'bg-inverse-primary/40 text-primary-container',
 ]
 

@@ -17,12 +17,29 @@ shadows and breakpoints are off.
 
 ## Tokens
 
-- **Colour.** The app's M3 roles. `primary` is the one main action per
-  view; `error` marks an action that takes a right away from someone;
-  `tertiary` appears only for a listing's price. The page is
-  `surface-container-lowest` (white) and the sidebar `surface`. Charts take
-  `chart-1` to `chart-5` by an agent's or provider's place in its list; raw
-  JSON takes the `code-*` colours.
+- **Colour.** Teal and neutrals. `primary` is the one main action per view
+  and the one thing on it to notice. The page is `surface-container-lowest`
+  (white) and the sidebar `surface`. Raw JSON takes the `code-*` colours.
+  - Red (`error`) and the browns and oranges (`tertiary`, `tertiary-fixed`)
+    stay out of the UI unless they are needed. `error` is kept for real
+    errors (a failed request, an invalid field, a run or tool call that
+    failed) and for a small dot or pill on a state that blocks someone
+    right now (Suspended, Hidden, Disabled), never as a wash or a block of
+    red text. `tertiary` is not used.
+  - Prices are `on-surface`, semibold, `tabular-nums`.
+  - Chips, tags and badges for facts (report counts, the price guide,
+    reasons, kinds, "Past the alert") are neutral: `surface-container` or a
+    hairline border with `on-surface-variant` text, teal only for the one
+    to notice, and icons that carry the meaning.
+  - Hero bands are a teal wash and a neutral one. A suspended account or a
+    hidden listing keeps the same band and says so with its status pill.
+  - A destructive action on the page (Suspend, Hide listing, Delete chat)
+    is a neutral outline button; only the confirm inside its popover is
+    filled `error`.
+  - Charts take `chart-1` to `chart-5`, teal shades and greys (primary,
+    primary at 60 %, inverse-primary, secondary, outline-variant), by an
+    agent's or provider's place in its list. A bad change reads by its
+    arrow in `on-surface`, not in red; a limit passed fills `on-surface`.
 - **Type.** Be Vietnam Pro for all text. Ids, codes, keys and version tags
   stay in Be Vietnam Pro with `tabular-nums`. Text keeps the face's own
   spacing, because negative tracking closes its narrow word spaces; titles run
@@ -107,17 +124,19 @@ after the mascot.
   four tints picked from the record's id (`tintOf` in `lib/look.ts`), so an
   account has the same colour on every page. With `status`, a dot at the
   bottom end shows `primary` for active and `error` for suspended. A
-  member's initial is filled `primary` (`member`).
+  member's initial is filled `primary` (`member`). The tints are teal and
+  neutral.
 - A picked row in any list takes `pickedRow(on)` from `lib/look.ts`: a
   white card with the soft shadow and a faint `primary` ring.
-- The person at the top of a side column sits on a `band` (`band-error`
-  when suspended) with a `dots` layer, both utilities in `tokens.css`.
+- The person at the top of a side column sits on a `band` with a `dots`
+  layer, both utilities in `tokens.css`; a suspended person shows it by
+  the status dot.
 
 ## Reports
 
 - `/reports` and `/reports/:account_id`: the 310 px queue beside the case.
   Waiting lists open cases by their latest report, with the open count from
-  the server's `total` in an `error` badge here and beside Reports in the
+  the server's `total` in a `primary` badge here and beside Reports in the
   sidebar; Resolved lists resolved cases, newest first.
 - The case opens on a hero with the account, its reasons as pills and the
   most reported listing; then the reported listings and the people who
@@ -136,7 +155,7 @@ after the mascot.
 
 - `/accounts` and `/accounts/:id`: the 330 px list beside the account. All
   lists every account newest first; Suspended lists the suspended ones whose
-  term ends first, with their count in an `error` badge. The search finds
+  term ends first, with their count in a `primary` badge. The search finds
   one account by id or phone number on Enter; on this page `/` focuses it.
 - The account opens on a hero: the 72 px initial, the name, the status, the
   id with a copy button, chips for a verified phone and earlier
@@ -148,7 +167,7 @@ after the mascot.
   300 px column beside it.
 - Suspend opens a popover: 1 day, 7 days, 30 days or No end as cards with
   their end dates, then the reason (up to 500 characters) the person sees,
-  and "Suspend 7 days" in `error`.
+  and "Suspend 7 days" filled `error`; Suspend itself is a neutral outline.
 
 ## Motion
 

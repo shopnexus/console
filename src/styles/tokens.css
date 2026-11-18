@@ -55,11 +55,12 @@
   --md-hairline: color-mix(in srgb, var(--md-outline-variant) 70%, var(--md-surface-container-lowest));
   --md-lift-ring: rgb(16 24 22 / 0.06);
   /* Charts: one colour per agent or provider, in a fixed order. */
+  /* Series in teal shades and greys: primary, primary at 60 %, inverse-primary, secondary, outline-variant. */
   --md-chart-1: #005049;
-  --md-chart-2: #b3542e;
-  --md-chart-3: #2e9c8e;
-  --md-chart-4: #85d5c9;
-  --md-chart-5: #e8b8a4;
+  --md-chart-2: #4d8a83;
+  --md-chart-3: #85d5c9;
+  --md-chart-4: #47645f;
+  --md-chart-5: #bec9c6;
   /* Raw JSON in the tool panel. */
   --md-code-key: #7a3e9d;
   --md-code-string: #1e7145;
@@ -95,10 +96,10 @@
     --md-inverse-primary: #066a61;
     --md-lift-ring: rgb(255 255 255 / 0.07);
     --md-chart-1: #85d5c9;
-    --md-chart-2: #ffb59a;
-    --md-chart-3: #4fb8a9;
-    --md-chart-4: #2e6b64;
-    --md-chart-5: #b3542e;
+    --md-chart-2: #5fa79d;
+    --md-chart-3: #066a61;
+    --md-chart-4: #aecdc7;
+    --md-chart-5: #3e4947;
     --md-code-key: #d4a5f0;
     --md-code-string: #8fd6a6;
     --md-code-number: #ffb59a;
@@ -133,10 +134,10 @@
   --md-inverse-primary: #066a61;
   --md-lift-ring: rgb(255 255 255 / 0.07);
   --md-chart-1: #85d5c9;
-  --md-chart-2: #ffb59a;
-  --md-chart-3: #4fb8a9;
-  --md-chart-4: #2e6b64;
-  --md-chart-5: #b3542e;
+  --md-chart-2: #5fa79d;
+  --md-chart-3: #066a61;
+  --md-chart-4: #aecdc7;
+  --md-chart-5: #3e4947;
   --md-code-key: #d4a5f0;
   --md-code-string: #8fd6a6;
   --md-code-number: #ffb59a;
@@ -631,19 +632,15 @@
 }
 
 /*
- * The records look (DESIGN.md, "Records"): a record opens on a band of two
- * soft washes under a dotted grid that fades down. `band-error` is the
- * band of a suspended account. Put `dots` on an absolute layer inside it.
+ * The records look (DESIGN.md, "Records"): a record opens on a band of a
+ * soft teal wash and a neutral one under a dotted grid that fades down. A
+ * suspended or hidden record keeps it and says so with its status pill.
+ * Put `dots` on an absolute layer inside it.
  */
 @utility band {
   background:
     radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--md-primary) 9%, transparent), transparent 60%),
-    radial-gradient(80% 120% at 100% 0%, color-mix(in srgb, var(--md-tertiary-fixed) 45%, transparent), transparent 55%);
-}
-@utility band-error {
-  background:
-    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--md-error) 10%, transparent), transparent 60%),
-    radial-gradient(80% 120% at 100% 0%, color-mix(in srgb, var(--md-error-container) 70%, transparent), transparent 55%);
+    radial-gradient(80% 120% at 100% 0%, color-mix(in srgb, var(--md-surface-container-high) 70%, transparent), transparent 55%);
 }
 @utility dots {
   background-image: radial-gradient(circle, color-mix(in srgb, var(--md-on-surface) 7%, transparent) 1px, transparent 1px);
