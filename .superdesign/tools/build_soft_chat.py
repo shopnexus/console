@@ -211,24 +211,67 @@ def brief():
     return frame("Agent", f'<div class="flex min-w-0 flex-1">{inner}</div>', bare=True)
 
 
+# The sources panel, grouped by kind. A row is the record's real name, its
+# kind and one fact, the quoted line and where it is cited. Clicking a row
+# opens it in place with the record's facts and its actions: open the record
+# in the console, see the tool call that read it, copy its id.
+SRC_GROUPS = [
+    ("Accounts", "account", [
+        (3, "T", "Trần Đức Anh", "Seller · 7d22e9 · active", "4 listings reuse Gò Vấp's photos at 97%", [3],
+         [("Listings", "14"), ("Reports", "4 · scam"), ("Pickup address", "41 Lê Văn Thọ"), ("Joined", "Aug 14")], "Open account", "account_get · 38 ms"),
+        (6, "P", "Phạm Quốc Bảo", "Seller · c90b14 · suspended", "Same deposit message as Gò Vấp", [6], [], "Open account", "account_get · 41 ms"),
+    ]),
+    ("Report cases", "report", [
+        (2, "Đ", "Đồ Cũ Gò Vấp", "3 reports · scam · open", "Shares a pickup address with Trần Đức Anh", [2], [], "Open case", "report_cases_list · 52 ms"),
+        (4, "T", "Thủ Đức AirPods resellers", "14 reports · scam · open", "Same AirPods photo set since Monday", [4], [], "Open case", "report_cases_list · 52 ms"),
+    ]),
+    ("Members", "member", [
+        (8, "L", "Nguyễn Thị Lan", "Moderator · suspended 2 accounts this week", "Suspended Đồ Cũ Gò Vấp for 30 days", [8], [], "Open audit log", "console_actions · 29 ms"),
+    ]),
+    ("Data", "data", [
+        (1, "", "Reports, last 7 days", "reports_search · 86 rows", "86 reports: 66 scam, 23 fake, 8 banned", [1], [], "View result", "reports_search · 61 ms"),
+        (5, "", "Report reasons", "reports_search · 35 matches", "“Chuyển cọc trước” in 35 of 86 reports", [5], [], "View result", "reports_search · 47 ms"),
+    ]),
+]
+SRC_KIND["member"] = ("badge-outline", "bg-secondary-container text-on-secondary-container")
+
+
 def sources_panel(on=3):
-    filt = "".join(f'<a id="sf-{i}" href="#sf-{i}" class="flex h-8 items-center gap-1 rounded-full border px-3 text-[13px] {"border-primary/40 bg-primary/[.06] font-medium text-primary" if i == 0 else "hair bg-white text-on-surface-variant"}">{t}</a>'
-                   for i, t in enumerate(["All · 9", "Reports · 2", "Accounts · 3", "Data · 2", "Tickets · 1"]))
-    items = ""
-    for n, k, t, q, kind in SOURCES:
-        ic, tone = SRC_KIND[k]
-        hot = n == on
-        items += f"""<a id="source-{n}" href="#source-{n}" class="{"bg-white ring-2 ring-primary/40 soft" if hot else "hov"} flex gap-3 rounded-[16px] p-3">
-  <span class="flex h-6 min-w-6 items-center justify-center rounded-[7px] px-1 text-[12px] font-semibold {"bg-primary text-on-primary" if hot else "bg-surface-container text-on-surface-variant"}">{n}</span>
-  <span class="min-w-0 flex-1 leading-tight"><span class="flex items-center gap-2"><span class="flex h-5 w-5 items-center justify-center rounded-full {tone}">{gi(ic, 12)}</span><span class="truncate text-[14px] font-semibold">{t}</span></span>
-    <span class="mt-1 block text-[12px] text-on-surface-variant">{kind}</span>
-    <span class="mt-1.5 block {"rounded-[10px] border-l-2 border-primary bg-primary/[.05] px-2.5 py-1.5" if hot else ""} text-[13px] text-on-surface">{q}</span></span>
-  {gi("north-east-rounded", 15, "mt-1 text-on-surface-variant")}</a>"""
-    return f"""<aside class="flex w-[400px] shrink-0 flex-col border-l hair bg-surface-container-low/50">
+    filt = "".join(f'<a id="sf-{i}" href="#sf-{i}" class="flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 text-[13px] {"border-primary/40 bg-primary/[.06] font-medium text-primary" if i == 0 else "hair bg-white text-on-surface-variant"}">{t}</a>'
+                   for i, t in enumerate(["All · 7", "Accounts · 2", "Cases · 2", "Members · 1", "Data · 2"]))
+    groups = ""
+    for title, kind, rows in SRC_GROUPS:
+        ic, tone = SRC_KIND[kind]
+        items = ""
+        for n, ch, name, meta, quote, cited, facts, open_label, call in rows:
+            hot = n == on
+            lead = (avatar(ch, 32, "bg-primary text-on-primary" if kind == "member" else None, "suspended" if "suspended" in meta and kind == "account" else ("active" if kind == "account" else None), key=name)
+                    if ch else f'<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] {tone}">{gi(ic, 17)}</span>')
+            cites = "".join(f'<span class="inline-flex h-5 min-w-5 items-center justify-center rounded-[6px] px-1 text-[11px] font-semibold {"bg-primary text-on-primary" if hot else "bg-primary/10 text-primary"}">{c}</span>' for c in cited)
+            body = ""
+            if hot:
+                fact_rows = "".join(f'<div class="flex justify-between gap-3 py-1 text-[13px]"><span class="text-on-surface-variant">{k}</span><span class="text-right">{v}</span></div>' for k, v in facts)
+                body = f"""<div class="mt-3 space-y-3">
+    <p class="rounded-[10px] border-l-2 border-primary bg-primary/[.05] px-2.5 py-1.5 text-[13px]">{quote}</p>
+    {f'<div class="rounded-[12px] bg-surface-container-low px-3 py-1.5">{fact_rows}</div>' if fact_rows else ""}
+    <div class="flex flex-wrap items-center gap-1.5">
+      <a id="src-open-{n}" href="#open" class="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-[13px] font-medium text-on-primary">{open_label}{gi("north-east-rounded", 15)}</a>
+      <a id="src-call-{n}" href="#call" class="hov inline-flex h-8 items-center gap-1.5 rounded-full border hair bg-white px-3 text-[13px]">{gi("build-outline-rounded", 15)}View tool call</a>
+      <a id="src-copy-{n}" href="#copy" title="Copy id" class="hov flex h-8 w-8 items-center justify-center rounded-full text-on-surface-variant">{gi("content-copy-outline-rounded", 15)}</a>
+      <span class="ml-auto text-[11.5px] text-on-surface-variant">{call}</span></div></div>"""
+            items += f"""<div id="source-{n}" class="{"bg-white ring-1 ring-primary/30 soft" if hot else "hov cursor-pointer"} rounded-[16px] p-3">
+  <div class="flex items-start gap-3">{lead}
+    <div class="min-w-0 flex-1 leading-tight"><div class="flex items-center gap-2"><p class="min-w-0 flex-1 truncate text-[14.5px] font-semibold">{name}</p><span class="flex gap-1">{cites}</span></div>
+      <p class="mt-0.5 truncate text-[12.5px] text-on-surface-variant">{meta}</p>
+      {"" if hot else f'<p class="mt-1.5 line-clamp-1 text-[13px] text-on-surface-variant">{quote}</p>'}</div>
+    {gi("expand-less-rounded" if hot else "chevron-right-rounded", 18, "mt-1.5 text-on-surface-variant")}</div>{body}</div>"""
+        groups += f'<p class="flex items-center gap-2 px-2 pb-1.5 pt-3 text-[12px] font-medium text-on-surface-variant">{gi(ic, 14)}{title}<span class="tnum opacity-70">{len(rows)}</span></p><div class="space-y-1">{items}</div>'
+    return f"""<aside class="absolute inset-y-3 right-3 z-30 flex w-[420px] flex-col rounded-[22px] border hair bg-surface-container-lowest shadow-[0_18px_44px_rgba(16,24,22,.16)]">
   <div class="flex h-14 shrink-0 items-center gap-2 px-4"><p class="flex-1 text-[15px] font-semibold">Sources</p>
+    <span class="text-[12px] text-on-surface-variant">Esc to close</span>
     <a id="close-src" href="#close" class="hov flex h-8 w-8 items-center justify-center rounded-full text-on-surface-variant">{gi("close-rounded", 18)}</a></div>
-  <div class="flex flex-wrap gap-1.5 px-4 pb-3">{filt}</div>
-  <div class="min-h-0 flex-1 space-y-1 overflow-hidden px-2">{items}</div></aside>"""
+  <div class="flex gap-1.5 overflow-hidden px-4 pb-1">{filt}</div>
+  <div class="min-h-0 flex-1 overflow-hidden px-2 pb-3">{groups}</div></aside>"""
 
 
 def sources():
@@ -237,11 +280,12 @@ def sources():
   <span class="mt-2 block rounded-[10px] border-l-2 border-primary bg-primary/[.05] px-2.5 py-1.5 text-[13px]">4 listings reuse Gò Vấp's photos at 97%</span>
   <span class="mt-2 inline-flex items-center gap-1 text-[13px] font-medium text-primary">Open account{gi("north-east-rounded", 14)}</span></span>"""
     global POP
-    POP = pop
+    POP = ""  # the panel shows the cited source; no popover over it
     body = mine(Q) + answer(cited=3, compact=True)
     POP = ""
     col = chat_col("Weekly scam brief", body, ask_box(), "max-w-[740px]")
-    return frame("Agent", col + sources_panel(), thread="g1")
+    col = col.replace('<main class="flex min-w-0 flex-1 flex-col">', '<main class="relative flex min-w-0 flex-1 flex-col">', 1).replace("</main>", sources_panel() + "</main>", 1)
+    return frame("Agent", col, thread="g1")
 
 
 def option(t, sub, on, multi=False):
