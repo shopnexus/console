@@ -16,7 +16,7 @@ import { Shell } from '../components/Shell'
 import { Initial, Kbd, Notice, PickedBar } from '../components/ui'
 import { useOpenConversation } from '../lib/agent'
 import { ApiError } from '../lib/api'
-import { pickedRow } from '../lib/look'
+import { pickedRow, segment as segmentLook } from '../lib/look'
 import {
   type CaseStatus,
   type Decision,
@@ -90,9 +90,7 @@ export function Reports() {
   const segment = (s: CaseStatus, label: ReactNode) => (
     <button
       onClick={() => setStatus(s)}
-      className={`flex flex-1 items-center justify-center gap-1.5 rounded-xs px-2 ${
-        s === status ? 'bg-surface-container-lowest text-on-surface shadow-lift' : 'text-on-surface-variant hover:text-on-surface'
-      }`}
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-xs px-2 ${segmentLook(s === status)}`}
     >
       {label}
     </button>
@@ -108,7 +106,7 @@ export function Reports() {
               <>
                 Chờ xử lý
                 {!!open.total && (
-                  <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-error px-1 tabular-nums text-label-small text-on-error">
+                  <span key={open.total} className="flex h-[18px] min-w-[18px] animate-badge items-center justify-center rounded-full bg-error px-1 tabular-nums text-label-small text-on-error">
                     {open.total}
                   </span>
                 )}
@@ -117,7 +115,7 @@ export function Reports() {
             {segment('resolved', 'Đã xử lý')}
           </div>
         </div>
-        <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">
+        <div key={status} className="rise-list min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">
           {rows.map((c) => (
             <QueueRow key={c.account.id + (c.resolution?.at ?? '')} c={c} on={c.account.id === id} now={now} onClick={() => go(c)} />
           ))}
@@ -236,7 +234,7 @@ function CasePane({ id, now, onMove }: { id: string; now: number; onMove: (step:
   }
 
   return (
-    <section className="relative flex min-w-0 flex-1 flex-col">
+    <section className="relative flex min-w-0 flex-1 animate-pane flex-col">
       <header className="flex h-[52px] shrink-0 items-center gap-2 border-b border-hairline px-5 text-body-medium">
         <button onClick={() => navigate('/reports')} className="text-on-surface-variant hover:text-on-surface">
           Báo cáo
@@ -267,7 +265,7 @@ function CasePane({ id, now, onMove }: { id: string; now: number; onMove: (step:
           {c.listings.length > 0 && (
             <section>
               <h3 className="mb-2.5 text-label-medium text-on-surface-variant">Tin bị báo</h3>
-              <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+              <div className="rise-list grid grid-cols-1 gap-3 xl:grid-cols-2">
                 {c.listings.map((l) => (
                   <ListingCard key={l.id} l={l} reports={c.reports.filter((r) => r.listing_id === l.id).length} />
                 ))}
@@ -276,7 +274,7 @@ function CasePane({ id, now, onMove }: { id: string; now: number; onMove: (step:
           )}
           <section>
             <h3 className="mb-2.5 text-label-medium text-on-surface-variant">{c.reports.length} người báo</h3>
-            <ul className="divide-y divide-hairline rounded-xl border border-hairline bg-surface-container-lowest px-3.5">
+            <ul className="rise-list divide-y divide-hairline rounded-xl border border-hairline bg-surface-container-lowest px-3.5">
               {c.reports.map((r) => (
                 <li key={r.id} className="flex items-center gap-3 py-2.5">
                   <Initial name={r.reporter.display_name} id={r.reporter.id} size={28} />
@@ -424,7 +422,7 @@ function DecisionBar({ c }: { c: ReportCaseDetail }) {
   const toggle = (id: string) => setHide((h) => (h.includes(id) ? h.filter((x) => x !== id) : [...h, id]))
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-surface-container-lowest from-60% to-transparent px-6 pb-5 pt-10">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 animate-rise bg-gradient-to-t from-surface-container-lowest from-60% to-transparent px-6 pb-5 pt-10">
       {failure && (
         <div className="pointer-events-auto mb-2">
           <Notice>{caseFailure(failure)}</Notice>
@@ -508,7 +506,7 @@ function DoneBar({ c, now }: { c: ReportCaseDetail; now: number }) {
       ? ['Không vi phạm']
       : [hidden > 0 && (hidden === 1 ? 'Đã ẩn tin' : `Đã ẩn ${hidden} tin`), c.account.status === 'suspended' && 'Đã khoá tài khoản'].filter(Boolean) as string[]
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-surface-container-lowest from-60% to-transparent px-6 pb-5 pt-10">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 animate-rise bg-gradient-to-t from-surface-container-lowest from-60% to-transparent px-6 pb-5 pt-10">
       {commands.undo.error && (
         <div className="pointer-events-auto mb-2">
           <Notice>{caseFailure(commands.undo.error)}</Notice>

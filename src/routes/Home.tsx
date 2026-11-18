@@ -55,7 +55,7 @@ export function Home() {
   const admin = me.role === 'admin'
   return (
     <Shell title="Trang chủ">
-      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[1fr_280px]">
+      <div className="rise-list grid grid-cols-1 items-start gap-4 xl:grid-cols-[1fr_280px]">
         {admin ? <ActionsCard /> : <RecentCard />}
         {admin ? <MembersCard /> : <ShortcutsCard />}
       </div>
@@ -65,7 +65,7 @@ export function Home() {
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-xl border border-hairline px-4 pb-2 pt-3">
+    <section className="rise-list rounded-xl border border-hairline px-4 pb-2 pt-3">
       <h2 className="mb-2 text-title-small">{title}</h2>
       {children}
     </section>

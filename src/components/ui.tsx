@@ -1,10 +1,11 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, MouseEvent, ReactNode } from 'react'
+import { flushSync } from 'react-dom'
 import IconCheck from '~icons/material-symbols/check-rounded'
 import IconComputer from '~icons/material-symbols-light/computer-outline-rounded'
 import IconDark from '~icons/material-symbols-light/dark-mode-outline-rounded'
 import IconLight from '~icons/material-symbols-light/light-mode-outline-rounded'
 import { type ShapeName, shapes } from '../lib/shapes'
-import { tintOf } from '../lib/look'
+import { segment, tintOf } from '../lib/look'
 import { type ThemeChoice, useTheme } from '../lib/theme'
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -47,6 +48,17 @@ const themes: [ThemeChoice, string, ReactNode][] = [
 /** System, light or dark, as in the app's Tôi: a segmented control. */
 export function ThemeSwitch() {
   const [choice, setChoice] = useTheme()
+  // The new theme opens as a circle from the pressed segment.
+  function pick(value: ThemeChoice, e: MouseEvent<HTMLButtonElement>) {
+    const root = document.documentElement
+    if (!document.startViewTransition || value === choice) return setChoice(value)
+    root.style.setProperty('--reveal-x', `${e.clientX}px`)
+    root.style.setProperty('--reveal-y', `${e.clientY}px`)
+    root.classList.add('theme-reveal')
+    document
+      .startViewTransition(() => flushSync(() => setChoice(value)))
+      .finished.finally(() => root.classList.remove('theme-reveal'))
+  }
   return (
     <div role="radiogroup" aria-label="Giao diện" className="flex h-8 rounded-sm bg-surface-container p-0.5">
       {themes.map(([value, label, icon]) => (
@@ -55,10 +67,8 @@ export function ThemeSwitch() {
           role="radio"
           aria-checked={choice === value}
           title={label}
-          onClick={() => setChoice(value)}
-          className={`flex flex-1 items-center justify-center rounded-xs px-2.5 ${
-            choice === value ? 'bg-surface-container-lowest text-on-surface shadow-lift' : 'text-on-surface-variant hover:text-on-surface'
-          }`}
+          onClick={(e) => pick(value, e)}
+          className={`flex flex-1 items-center justify-center rounded-xs px-2.5 ${segment(choice === value)}`}
         >
           {icon}
         </button>
@@ -105,7 +115,7 @@ export function Kbd({ children }: { children: ReactNode }) {
 /** A refusal or a lock, in the error colours. */
 export function Notice({ children }: { children: ReactNode }) {
   return (
-    <p role="alert" className="rounded-lg bg-error-container px-3 py-2.5 text-body-medium text-error">
+    <p role="alert" className="animate-rise rounded-lg bg-error-container px-3 py-2.5 text-body-medium text-error">
       {children}
     </p>
   )
@@ -149,5 +159,5 @@ export function Initial({
 
 /** The bar at the start of a picked row; the row's classes come from pickedRow in lib/look. */
 export function PickedBar({ on }: { on: boolean }) {
-  return on ? <span aria-hidden className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-primary" /> : null
+  return on ? <span aria-hidden className="absolute inset-y-2 left-0 w-[3px] animate-bar rounded-full bg-primary" /> : null
 }

@@ -18,3 +18,8 @@ export function tintOf(id: string): string {
 export function pickedRow(on: boolean): string {
   return on ? 'relative bg-primary/6' : 'relative hover:bg-surface-container-low'
 }
+
+/** A segmented control's segment: the picked one is the white thumb, which settles in when picked. */
+export function segment(on: boolean): string {
+  return on ? 'animate-thumb bg-surface-container-lowest text-on-surface shadow-lift' : 'text-on-surface-variant hover:text-on-surface'
+}

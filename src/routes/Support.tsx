@@ -118,7 +118,7 @@ function Queue({
         s === status ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'
       }`}
     >
-      {s === status && <IconCheck width={16} height={16} />}
+      {s === status && <IconCheck width={16} height={16} className="animate-badge" />}
       {label}
       {n !== undefined && ` · ${n}`}
     </button>
@@ -133,7 +133,7 @@ function Queue({
         k === kind ? 'bg-secondary-container text-on-secondary-container' : 'border border-hairline text-on-surface-variant'
       }`}
     >
-      {k === kind && <IconCheck width={14} height={14} />}
+      {k === kind && <IconCheck width={14} height={14} className="animate-badge" />}
       {label}
     </button>
   )
@@ -148,7 +148,7 @@ function Queue({
           {(Object.keys(kindChip) as TicketKind[]).map((k) => chip(k, kindChip[k]))}
         </div>
       </div>
-      <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-1.5 pb-1.5">
+      <div key={`${status}-${kind}`} className="rise-list min-h-0 flex-1 space-y-0.5 overflow-y-auto px-1.5 pb-1.5">
         {queue.items?.map((t) => <QueueRow key={t.ticket.id} t={t} on={t.ticket.id === active} status={status} />)}
         {queue.items && queue.items.length === 0 && (
           <p className="px-3 py-6 text-body-medium text-on-surface-variant">Không có ticket nào.</p>
@@ -459,7 +459,7 @@ function Panel({ id }: { id: string }) {
   }
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
+    <section className="flex min-w-0 flex-1 animate-pane flex-col overflow-hidden">
       <header className="flex items-center gap-2.5 border-b border-hairline px-3 py-2">
         <KindBadge kind={t.kind} size={32} />
         <div className="min-w-0 flex-1">

@@ -77,7 +77,7 @@ export function AccountSearch({
           className="h-full min-w-0 flex-1 bg-transparent text-body-medium text-on-surface outline-none placeholder:text-on-surface-variant"
         />
       </form>
-      <div className="mt-1">
+      <div key={asked} className="rise-list mt-1">
         {asked !== '' ? (
           result.isPending ? null : result.data?.items.length ? (
             result.data.items.map(row)

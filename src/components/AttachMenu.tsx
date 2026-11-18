@@ -40,7 +40,7 @@ export function AttachMenu({
             type="button"
             onClick={() => setTab(k)}
             className={`flex flex-1 items-center justify-center rounded-xs px-2 ${
-              tab === k ? 'bg-surface-container-lowest shadow-lift' : 'text-on-surface-variant'
+              tab === k ? 'animate-thumb bg-surface-container-lowest shadow-lift' : 'text-on-surface-variant'
             }`}
           >
             {label}

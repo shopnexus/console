@@ -34,7 +34,7 @@ export function AnswerView({ turn, onRetry }: { turn: Turn; onRetry?: () => void
     }
   }
   return (
-    <div className="space-y-2">
+    <div className="animate-rise space-y-2">
       <SourceChips sources={turn.sources} />
       <div className="space-y-2 text-body-large">
         {text
@@ -64,8 +64,8 @@ export function AnswerView({ turn, onRetry }: { turn: Turn; onRetry?: () => void
 export function WaitingLines() {
   return (
     <div className="space-y-2 py-1" aria-busy>
-      <span className="block h-2.5 w-[86%] animate-pulse rounded-full bg-surface-container" />
-      <span className="block h-2.5 w-[58%] animate-pulse rounded-full bg-surface-container" />
+      <span className="shimmer block h-2.5 w-[86%] rounded-full" />
+      <span className="shimmer block h-2.5 w-[58%] rounded-full [animation-delay:120ms]" />
     </div>
   )
 }
@@ -74,7 +74,7 @@ export function WaitingLines() {
 export function TurnNotice({ failure, onRetry }: { failure: Failure; onRetry?: () => void }) {
   const retry = onRetry && failure !== 'budget' && failure !== 'closed' && failure !== 'not_found'
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-hairline px-3 py-2" role="status">
+    <div className="flex animate-rise items-center gap-2 rounded-lg border border-hairline px-3 py-2" role="status">
       <span className="text-error">
         {failure === 'timeout' ? <IconTimer width={18} height={18} /> : <IconError width={18} height={18} />}
       </span>
@@ -142,7 +142,7 @@ export function MessageList({
         </div>
       ))}
       {waiting && (
-        <div className="space-y-4">
+        <div className="origin-bottom-right animate-pop space-y-4">
           <Question text={waiting.text} by={by(memberId, waiting.at)} />
           <WaitingLines />
         </div>

@@ -64,7 +64,7 @@ export function DashboardOpen() {
         </Link>
       </header>
       <main className="relative flex flex-1 items-center justify-center px-6 pb-10">
-        <section className="w-full max-w-[600px] rounded-2xl bg-surface-container-lowest px-8 py-10 md:px-12 md:py-12">
+        <section className="w-full max-w-[600px] animate-rise rounded-2xl bg-surface-container-lowest px-8 py-10 md:px-12 md:py-12">
           <div className="flex items-center gap-4">
             <img src="/favicon.svg" alt="" className="h-16 w-16 rounded-xl" />
             {forbidden || failed ? (

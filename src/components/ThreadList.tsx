@@ -46,7 +46,7 @@ export function ThreadList({ items, onNew, fresh }: { items: Conversation[]; onN
           className="h-full min-w-0 flex-1 bg-transparent text-body-medium text-on-surface outline-none placeholder:text-on-surface-variant"
         />
       </label>
-      <nav className="min-h-0 flex-1 overflow-y-auto" aria-label="Cuộc trò chuyện">
+      <nav className="rise-list min-h-0 flex-1 overflow-y-auto" aria-label="Cuộc trò chuyện">
         {[...groups].map(([day, rows]) => (
           <div key={day}>
             <p className="px-2 pb-1 pt-4 text-label-small text-on-surface-variant">{day}</p>

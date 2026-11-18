@@ -139,7 +139,7 @@ export function Agent() {
       {!id ? (
         <section className="flex min-w-0 flex-1 flex-col">
           <div className="flex flex-1 justify-center px-6 pt-[240px]">
-            <div className="h-fit w-full max-w-[680px] space-y-3">
+            <div className="h-fit w-full max-w-[680px] animate-rise space-y-3">
               {askBox}
               {openFailure && openFailure.at === id && <TurnNotice failure={openFailure.failure} />}
             </div>

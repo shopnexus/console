@@ -276,11 +276,175 @@
   --duration-effects-slow: 300ms; /* 800: skeleton to content */
 }
 
+/*
+ * Entrances. Every one is short (160 to 240 ms) so a desk tool used for
+ * hours never waits on its own motion: the work is there at once and only
+ * settles in. Spatial ones may overshoot a hair; effects never do.
+ *   animate-rise    a row, card or chat turn: up 6 px and in
+ *   animate-pane    the detail beside a list: in from 10 px to the right
+ *   animate-pop     a menu or popover: from 96 % where it is anchored
+ *   animate-thumb   the picked segment of a segmented control
+ *   animate-bar     the picked row's bar, grown from its middle
+ *   animate-badge   a count badge, on mount and when its number changes
+ *   animate-grow    a progress bar filling from the start
+ *   animate-fade    plain fade, for labels that appear with the nav
+ *   animate-shimmer a waiting line's sweep
+ * `stagger` with style --i: 0, 1, 2 … delays an item 18 ms a step, capped;
+ * `rise-list` on a list does the same for its rows without the index.
+ */
+@theme {
+  --animate-rise: sn-rise 220ms var(--ease-spatial) backwards;
+  --animate-pane: sn-pane 200ms var(--ease-spatial) backwards;
+  --animate-pop: sn-pop 160ms var(--ease-spatial-fast) backwards;
+  --animate-thumb: sn-thumb 200ms var(--ease-spatial-fast) backwards;
+  --animate-bar: sn-bar 200ms var(--ease-spatial-fast) backwards;
+  --animate-badge: sn-badge 240ms var(--ease-spatial-fast) backwards;
+  --animate-grow: sn-grow 420ms var(--ease-effects) backwards;
+  --animate-fade: sn-fade 160ms var(--ease-effects) backwards;
+  --animate-shimmer: sn-shimmer 1.1s linear infinite;
+
+  @keyframes sn-rise {
+    from { opacity: 0; translate: 0 6px; }
+  }
+  @keyframes sn-pane {
+    from { opacity: 0; translate: 10px 0; }
+  }
+  @keyframes sn-pop {
+    from { opacity: 0; scale: 0.96; }
+  }
+  @keyframes sn-thumb {
+    from { opacity: 0.4; scale: 0.88 0.8; }
+  }
+  @keyframes sn-bar {
+    from { scale: 1 0; }
+  }
+  @keyframes sn-badge {
+    from { scale: 0.5; opacity: 0; }
+  }
+  @keyframes sn-grow {
+    from { scale: 0 1; }
+  }
+  @keyframes sn-fade {
+    from { opacity: 0; }
+  }
+  @keyframes sn-shimmer {
+    from { background-position: 100% 0; }
+    to { background-position: -100% 0; }
+  }
+}
+
+@utility stagger {
+  animation-delay: calc(min(var(--i, 0), 10) * 18ms);
+}
+
+/* A list whose rows rise in one after another, 18 ms apart; rows past the
+   tenth come with the tenth. Only rows that mount animate, so a refetch
+   leaves the list still and "Xem thêm" brings the new page in. */
+@utility rise-list {
+  & > * {
+    animation: var(--animate-rise);
+    animation-delay: 180ms;
+  }
+  & > :nth-child(1) {
+    animation-delay: 0ms;
+  }
+  & > :nth-child(2) {
+    animation-delay: 18ms;
+  }
+  & > :nth-child(3) {
+    animation-delay: 36ms;
+  }
+  & > :nth-child(4) {
+    animation-delay: 54ms;
+  }
+  & > :nth-child(5) {
+    animation-delay: 72ms;
+  }
+  & > :nth-child(6) {
+    animation-delay: 90ms;
+  }
+  & > :nth-child(7) {
+    animation-delay: 108ms;
+  }
+  & > :nth-child(8) {
+    animation-delay: 126ms;
+  }
+  & > :nth-child(9) {
+    animation-delay: 144ms;
+  }
+  & > :nth-child(10) {
+    animation-delay: 162ms;
+  }
+}
+
+/* The waiting lines: a soft light sweeping across the grey. */
+@utility shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--md-surface-container) 0%,
+    var(--md-surface-container) 35%,
+    var(--md-surface-container-highest) 50%,
+    var(--md-surface-container) 65%,
+    var(--md-surface-container) 100%
+  );
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+
+/*
+ * Route changes go through a view transition (NavLink viewTransition): the
+ * nav's white pill slides to the new row, the work card's old page drops
+ * out in 90 ms and the new one rises in. The rest of the screen holds still.
+ */
+/* Names only outside a theme change, which reveals the whole screen at once. */
+:root:not(.theme-reveal) .vt-work {
+  view-transition-name: work;
+}
+:root:not(.theme-reveal) .vt-pill {
+  view-transition-name: nav-pill;
+}
+::view-transition-group(*) {
+  animation-duration: 220ms;
+  animation-timing-function: var(--ease-spatial);
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 120ms;
+}
+::view-transition-old(work) {
+  animation: sn-out 90ms var(--ease-effects) both;
+}
+::view-transition-new(work) {
+  animation: sn-rise 200ms var(--ease-spatial) both;
+}
+@keyframes sn-out {
+  to { opacity: 0; }
+}
+
+/* A theme change opens from where it was clicked (--reveal-x/y on <html>). */
+:root.theme-reveal::view-transition-old(root) {
+  animation: none;
+}
+:root.theme-reveal::view-transition-new(root) {
+  animation: sn-reveal 340ms var(--ease-effects) both;
+}
+:root.theme-reveal::view-transition-group(*) {
+  animation: none;
+}
+@keyframes sn-reveal {
+  from { clip-path: circle(0 at var(--reveal-x, 100%) var(--reveal-y, 100%)); }
+  to { clip-path: circle(150vmax at var(--reveal-x, 100%) var(--reveal-y, 100%)); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
-  *::after {
+  *::after,
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
     animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
     transition-duration: 1ms !important;
   }
 }
@@ -307,6 +471,20 @@
   :focus-visible {
     outline: 2px solid var(--md-primary);
     outline-offset: 2px;
+  }
+
+  /* Controls answer a press: colours ease and the control sinks 2 %, then
+     springs back. Utilities that set their own transition win. */
+  :where(button, a[href], [role="button"], label:has(input)) {
+    transition-property: color, background-color, border-color, box-shadow, opacity, scale;
+    transition-duration: var(--duration-effects-fast), var(--duration-effects-fast), var(--duration-effects-fast),
+      var(--duration-effects-fast), var(--duration-effects-fast), var(--duration-spatial-fast);
+    transition-timing-function: var(--ease-effects), var(--ease-effects), var(--ease-effects), var(--ease-effects),
+      var(--ease-effects), var(--ease-spatial-fast);
+  }
+  :where(button, a[href], [role="button"]):where(:active:not(:disabled)) {
+    scale: 0.98;
+    transition-duration: 80ms;
   }
 
   ::selection {

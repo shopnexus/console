@@ -164,7 +164,7 @@ export function SignIn() {
       <main className="flex flex-1 flex-col px-6 py-8 lg:px-16 lg:py-10">
         <div className="flex justify-end"><ThemeSwitch /></div>
         <div className="flex flex-1 items-center justify-center py-10">
-          <div className="w-full max-w-[400px]">{form}</div>
+          <div key={step} className="w-full max-w-[400px] animate-pane">{form}</div>
         </div>
       </main>
     </div>
@@ -175,13 +175,13 @@ export function SignIn() {
 function BrandPanel() {
   return (
     <aside className="relative hidden w-[40%] max-w-[576px] shrink-0 flex-col overflow-hidden rounded-r-2xl bg-primary-container px-14 py-12 lg:flex">
-      <Shape name="Cookie9Sided" size={520} className="absolute -right-40 top-28 text-inverse-primary opacity-[.16]" />
-      <Shape name="Clover4Leaf" size={120} className="absolute right-16 top-12 text-on-primary-container opacity-30" />
+      <Shape name="Cookie9Sided" size={520} className="absolute -right-40 top-28 animate-[sn-spin_90s_linear_infinite] text-inverse-primary opacity-[.16]" />
+      <Shape name="Clover4Leaf" size={120} className="absolute right-16 top-12 animate-[sn-spin_40s_linear_infinite_reverse] text-on-primary-container opacity-30" />
       <Shape name="Sunny" size={76} className="absolute left-[300px] top-[300px] text-tertiary-fixed opacity-50" />
       <Shape name="Flower" size={150} className="absolute -left-12 bottom-24 text-primary opacity-60" />
       <img src="/favicon.svg" alt="ShopNexus" className="relative h-10 w-10 rounded-md ring-2 ring-on-primary-container/40" />
       <div className="relative mb-10 mt-auto">
-        <img src="/mascot-shield.webp" alt="" className="-ml-4 mb-4 h-72 w-72 drop-shadow-[0_12px_24px_rgb(0_0_0/0.18)]" />
+        <img src="/mascot-shield.webp" alt="" className="-ml-4 mb-4 h-72 w-72 animate-[sn-float_4s_ease-in-out_infinite] drop-shadow-[0_12px_24px_rgb(0_0_0/0.18)]" />
         <h2 className="text-display-medium text-white">ShopNexus Console</h2>
       </div>
     </aside>

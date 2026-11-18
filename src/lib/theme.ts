@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 export type ThemeChoice = 'system' | 'light' | 'dark'
 
@@ -35,5 +35,10 @@ export function useTheme(): [ThemeChoice, (c: ThemeChoice) => void] {
       // Private windows may refuse storage; the choice lasts the page.
     }
   }, [choice])
-  return [choice, setChoice]
+  // Applied at once as well, so a view transition sees the new colours.
+  const set = useCallback((c: ThemeChoice) => {
+    apply(c)
+    setChoice(c)
+  }, [])
+  return [choice, set]
 }

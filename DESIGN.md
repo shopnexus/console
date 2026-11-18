@@ -125,6 +125,32 @@ is doing or can do.
   its end date, then the reason (up to 500 characters) that the person
   sees, and "Tạm khoá 7 ngày" in `error`.
 
+## Motion
+
+The utilities are in `src/styles/tokens.css`, on the app's springs. Each
+entrance takes 160 to 240 ms and starts at once, and every control works
+while it runs.
+
+- A route change from the nav is a view transition: the white pill slides
+  to the new row (`vt-pill`), the work card's old page fades out in 90 ms
+  and the new one rises in (`vt-work`).
+- A list takes `rise-list`: its rows rise 6 px into place 18 ms apart, and
+  rows past the tenth come with the tenth. Rows animate only when they
+  mount, so a refetch leaves the list still.
+- The detail beside a list takes `animate-pane` and is keyed by the
+  record's id, so `j`/`k` slides each record in from 10 px.
+- Menus and popovers take `animate-pop` from their anchor corner. The
+  picked segment takes `animate-thumb` through `segment(on)` in
+  `lib/look.ts`, the picked row's bar `animate-bar`, a count badge
+  `animate-badge` keyed by its number, and a suspension's bar
+  `animate-grow`.
+- A press sinks a button or link to 98 % and its fill eases in 138 ms.
+- A theme change opens as a circle from the pressed segment.
+- The agent's waiting lines shimmer; an answer rises in when it arrives.
+- On sign-in the mascot floats and the shapes turn slowly; each step slides
+  in.
+- With reduced motion every animation and transition takes 1 ms.
+
 ## Density and keyboard
 
 Pages are lists of records: 32 to 40 px rows, `hairline` dividers, opaque

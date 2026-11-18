@@ -130,8 +130,8 @@ export function AskBox({
       )}
       {open && menu && (
         <div
-          className={`absolute left-0 z-20 w-[340px] rounded-xl bg-surface-container-lowest p-1.5 shadow-float ${
-            menuUp ? 'bottom-full mb-2' : 'top-full mt-2'
+          className={`absolute left-0 z-20 w-[340px] animate-pop rounded-xl bg-surface-container-lowest p-1.5 shadow-float ${
+            menuUp ? 'bottom-full mb-2 origin-bottom-left' : 'top-full mt-2 origin-top-left'
           }`}
         >
           {menu(close)}

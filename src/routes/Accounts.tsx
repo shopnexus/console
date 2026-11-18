@@ -33,7 +33,7 @@ import {
 import { useOpenConversation } from '../lib/agent'
 import { type Account, type Action, ApiError } from '../lib/api'
 import { useDismiss } from '../lib/dom'
-import { pickedRow } from '../lib/look'
+import { pickedRow, segment as segmentLook } from '../lib/look'
 
 const DAY = 86_400_000
 const day = new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit' })
@@ -106,9 +106,7 @@ export function Accounts() {
   const segment = (t: AccountTab, label: ReactNode) => (
     <button
       onClick={() => setTab(t)}
-      className={`flex flex-1 items-center justify-center gap-1.5 rounded-xs px-2 ${
-        t === tab ? 'bg-surface-container-lowest text-on-surface shadow-lift' : 'text-on-surface-variant hover:text-on-surface'
-      }`}
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-xs px-2 ${segmentLook(t === tab)}`}
     >
       {label}
     </button>
@@ -155,7 +153,7 @@ export function Accounts() {
             <Kbd>/</Kbd>
           </form>
         </div>
-        <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">
+        <div key={asked ? 'found' : tab} className="rise-list min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">
           {rows.map((a) => (
             <ListRow key={a.id} a={a} on={a.id === id} now={now} onClick={() => open(a)} />
           ))}
@@ -242,7 +240,7 @@ function AccountPane({ id, onMove }: { id: string; onMove: (step: 1 | -1) => voi
   }
 
   return (
-    <section className="relative flex min-w-0 flex-1 flex-col">
+    <section className="relative flex min-w-0 flex-1 animate-pane flex-col">
       <header className="flex h-[52px] shrink-0 items-center gap-2 border-b border-hairline px-5 text-body-medium">
         <button onClick={() => navigate('/accounts')} className="text-on-surface-variant hover:text-on-surface">
           Tài khoản
@@ -428,7 +426,7 @@ function TermCard({ a, last, now }: { a: Account; last?: Action; now: number }) 
         {a.suspend_reason && <p className="mt-1 text-body-medium">{a.suspend_reason}</p>}
         {served !== undefined && (
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-error-container">
-            <span className="block h-full rounded-full bg-error" style={{ width: `${served}%` }} />
+            <span className="block h-full origin-left animate-grow rounded-full bg-error" style={{ width: `${served}%` }} />
           </div>
         )}
         {last && (
@@ -450,7 +448,7 @@ function TermCard({ a, last, now }: { a: Account; last?: Action; now: number }) 
 function History({ d }: { d: AccountDetail }) {
   const rows = d.actions.filter((x) => x.action === 'account.suspend' || x.action === 'account.unsuspend')
   return (
-    <ul className="relative before:absolute before:bottom-4 before:left-[13px] before:top-4 before:w-px before:bg-outline-variant">
+    <ul className="rise-list relative before:absolute before:bottom-4 before:left-[13px] before:top-4 before:w-px before:bg-outline-variant">
       {rows.map((x) => {
         const suspend = x.action === 'account.suspend'
         const who = x.actor.display_name ?? 'CLI'
@@ -523,7 +521,7 @@ function SuspendPopover({
   return (
     <form
       onSubmit={submit}
-      className="absolute right-0 top-full z-30 mt-2 w-[400px] overflow-hidden rounded-2xl bg-surface-container-lowest shadow-float"
+      className="absolute right-0 top-full z-30 mt-2 w-[400px] origin-top-right animate-pop overflow-hidden rounded-2xl bg-surface-container-lowest shadow-float"
     >
       <div className="flex items-center gap-3 px-4 pt-4">
         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-error-container text-error">

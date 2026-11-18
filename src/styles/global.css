@@ -12,3 +12,13 @@
   0% { left: -40% }
   100% { left: 100% }
 }
+
+/* The sign-in mascot breathes on its panel. */
+@keyframes sn-float {
+  0%, 100% { translate: 0 0 }
+  50% { translate: 0 -8px }
+}
+/* Its shapes turn, very slowly. */
+@keyframes sn-spin {
+  to { rotate: 360deg }
+}

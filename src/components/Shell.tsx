@@ -55,7 +55,7 @@ export function Shell({
   // One row shape for every entry: 32 px with the label, or a 32 px square
   // with the label as its title on the rail.
   const row = `flex h-8 items-center gap-2.5 rounded-sm text-label-large ${rail ? 'w-8 justify-center' : 'px-2'}`
-  const label = (text: string) => (rail ? null : <span className="min-w-0 flex-1 truncate">{text}</span>)
+  const label = (text: string) => (rail ? null : <span className="min-w-0 flex-1 animate-fade truncate">{text}</span>)
 
   return (
     <div className="flex h-dvh bg-surface-container text-on-surface">
@@ -69,8 +69,8 @@ export function Shell({
             <img src="/favicon.svg" alt="ShopNexus" className="h-6 w-6 shrink-0 rounded-sm" />
             {!rail && (
               <>
-                <span className="text-title-medium">ShopNexus</span>
-                <span className="text-body-medium text-on-surface-variant">Console</span>
+                <span className="animate-fade text-title-medium">ShopNexus</span>
+                <span className="animate-fade text-body-medium text-on-surface-variant">Console</span>
               </>
             )}
           </NavLink>
@@ -101,25 +101,35 @@ export function Shell({
                 key={n.to}
                 to={n.to}
                 end={n.to === '/'}
+                viewTransition
                 title={rail ? n.label : undefined}
                 className={({ isActive }) =>
-                  `relative ${row} ${
-                    isActive
-                      ? 'bg-surface-container-lowest text-on-surface shadow-lift [&>svg]:text-primary'
-                      : 'text-on-surface-variant hover:bg-surface-container-low'
+                  `relative isolate ${row} ${
+                    isActive ? 'text-on-surface [&>svg]:text-primary' : 'text-on-surface-variant hover:bg-surface-container-low'
                   }`
                 }
               >
-                {n.icon}
-                {label(n.label)}
-                {count > 0 &&
-                  (rail ? (
-                    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-label-small tabular-nums text-on-primary">
-                      {count}
-                    </span>
-                  ) : (
-                    <span className="text-body-small tabular-nums text-on-surface-variant">{count}</span>
-                  ))}
+                {({ isActive }) => (
+                  <>
+                    {/* The white pill slides between rows on a route change (vt-pill in tokens.css). */}
+                    {isActive && <span aria-hidden className="vt-pill absolute inset-0 -z-10 rounded-sm bg-surface-container-lowest shadow-lift" />}
+                    {n.icon}
+                    {label(n.label)}
+                    {count > 0 &&
+                      (rail ? (
+                        <span
+                          key={count}
+                          className="absolute -right-1 -top-1 flex h-4 min-w-4 animate-badge items-center justify-center rounded-full bg-primary px-1 text-label-small tabular-nums text-on-primary"
+                        >
+                          {count}
+                        </span>
+                      ) : (
+                        <span key={count} className="animate-badge text-body-small tabular-nums text-on-surface-variant">
+                          {count}
+                        </span>
+                      ))}
+                  </>
+                )}
               </NavLink>
             )
           })}
@@ -160,7 +170,7 @@ export function Shell({
         <span className="flex-1" />
         <MemberMenu rail={rail} />
       </nav>
-      <div className="my-2 mr-2 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-surface-container-lowest shadow-lift">
+      <div className="vt-work my-2 mr-2 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-surface-container-lowest shadow-lift">
         {title && (
           <header className="flex h-[52px] shrink-0 items-center gap-3 border-b border-hairline px-5">
             <h1 className="min-w-0 flex-1 truncate text-title-medium">{title}</h1>
@@ -218,7 +228,7 @@ function NavSearch({ rail }: { rail: boolean }) {
         )}
       </button>
       {open && (
-        <div style={at} className="fixed z-30 w-[340px] rounded-xl bg-surface-container-lowest p-1.5 shadow-float">
+        <div style={at} className="fixed z-30 w-[340px] origin-top-left animate-pop rounded-xl bg-surface-container-lowest p-1.5 shadow-float">
           <AccountSearch
             onPick={(a) => {
               rememberAccount(a)
@@ -267,7 +277,7 @@ function MemberMenu({ rail }: { rail: boolean }) {
         )}
       </button>
       {open && (
-        <div style={at} className="fixed z-30 w-[208px] rounded-xl bg-surface-container-lowest p-1.5 shadow-float">
+        <div style={at} className="fixed z-30 w-[208px] origin-bottom-left animate-pop rounded-xl bg-surface-container-lowest p-1.5 shadow-float">
           <ThemeSwitch />
           <button
             onClick={signOut}

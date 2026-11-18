@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createBrowserRouter, Outlet, RouterProvider } from 'react-router'
+import { createBrowserRouter, Outlet } from 'react-router'
+import { RouterProvider } from 'react-router/dom'
 import { RequireSession } from './components/RequireSession'
 import { Accounts } from './routes/Accounts'
 import { Agent } from './routes/Agent'
