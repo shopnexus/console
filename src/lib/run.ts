@@ -204,7 +204,11 @@ export const emptyRun = (): RunState => ({
 })
 
 /** What the console does to a run without the agent: a steer it sent, before the agent reads it. */
-export type LocalAction = { type: 'local.steer'; steer_id: string; text: string; at: string } | { type: 'local.resume' }
+export type LocalAction =
+  | { type: 'local.steer'; steer_id: string; text: string; at: string }
+  | { type: 'local.resume' }
+  /** The turn view, read when the stream ended without saying how the run ended. */
+  | { type: 'local.view'; view: TurnView; lastSeq: number }
 
 function openStep(s: RunState): Step | undefined {
   for (let i = s.steps.length - 1; i >= 0; i--) if (!s.steps[i].done) return s.steps[i]
@@ -232,6 +236,29 @@ export function reduceRun(s: RunState, ev: RunEvent | LocalAction): RunState {
   if (ev.type === 'local.steer') {
     if (s.steers.some((x) => x.id === ev.steer_id)) return s
     return { ...s, steers: [...s.steers, { id: ev.steer_id, text: ev.text, at: ev.at, state: 'waiting' }] }
+  }
+  if (ev.type === 'local.view') {
+    const v = runFromView(ev.view)
+    if (v.phase !== 'finished') return s.phase === 'running' && v.phase !== 'running' ? { ...s, phase: v.phase, clarify: v.clarify ?? s.clarify } : s
+    // A finished turn: what the stream gave stays, the view fills in the rest and how it ended.
+    return {
+      ...s,
+      lastSeq: Math.max(s.lastSeq, ev.lastSeq),
+      phase: 'finished',
+      agent: s.agent ?? v.agent,
+      provider: s.provider ?? v.provider,
+      startedAt: s.startedAt ?? v.startedAt,
+      finishedAt: s.finishedAt ?? s.startedAt ?? v.startedAt,
+      blocks: s.blocks.length ? s.blocks : v.blocks,
+      sources: mergeSources(s.sources, v.sources),
+      usage: s.usage.input || s.usage.output ? s.usage : v.usage,
+      firstTokenMs: s.firstTokenMs ?? v.firstTokenMs,
+      steers: s.steers.length ? s.steers.map((x) => (x.state === 'waiting' ? { ...x, state: 'unread' } : x)) : v.steers,
+      rateUntil: undefined,
+      pause: undefined,
+      clarify: undefined,
+      outcome: s.outcome ?? v.outcome,
+    }
   }
   if (ev.type === 'local.resume') {
     // Continue: the run goes on with the same id; its outcome clears when the agent says so.
@@ -430,6 +457,9 @@ export interface TurnView {
   questions?: ClarifyQuestion[]
   created_at: string
 }
+
+/** The turn statuses that are final: the run will not write again. */
+export const finalStatuses: ReadonlySet<string> = new Set(['succeeded', 'failed', 'cancelled', 'timed_out', 'budget'])
 
 const viewStatus: Record<string, TurnStatus> = {
   succeeded: 'SUCCEEDED',

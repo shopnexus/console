@@ -19,6 +19,7 @@ import { navigation, useNavCollapsed } from '../lib/navigation'
 import { useCases } from '../lib/reports'
 import { useForgetMe, useMe } from '../lib/session'
 import { useOpenCount } from '../lib/support'
+import { ChatMenu } from './chat/ChatMenu'
 import { SearchMenu } from './SearchMenu'
 import { Initial, Kbd, ThemeSwitch } from './ui'
 
@@ -184,16 +185,20 @@ function Chats() {
           <div key={day}>
             <p className="px-2.5 pb-1 pt-4 text-label-small font-normal text-on-surface-variant/80">{day}</p>
             {rows.map((c) => (
-              <NavLink
-                key={c.id}
-                to={`/agent/${c.id}`}
-                title={threadTitle(c)}
-                className={({ isActive }) =>
-                  `block truncate rounded-lg px-2.5 py-2 text-label-medium font-normal ${isActive ? 'bg-on-surface/6 font-medium' : 'hover:bg-on-surface/5'}`
-                }
-              >
-                {threadTitle(c)}
-              </NavLink>
+              <div key={c.id} className="group relative">
+                <NavLink
+                  to={`/agent/${c.id}`}
+                  title={threadTitle(c)}
+                  className={({ isActive }) =>
+                    `block truncate rounded-lg py-2 pl-2.5 pr-9 text-label-medium font-normal ${isActive ? 'bg-on-surface/6 font-medium' : 'hover:bg-on-surface/5'}`
+                  }
+                >
+                  {threadTitle(c)}
+                </NavLink>
+                <span className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
+                  <ChatMenu c={c} />
+                </span>
+              </div>
             ))}
           </div>
         ))}

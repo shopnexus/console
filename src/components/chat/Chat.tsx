@@ -1,4 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router'
 import IconCheck from '~icons/material-symbols-light/check-rounded'
 import IconCopy from '~icons/material-symbols-light/content-copy-outline-rounded'
@@ -21,7 +22,6 @@ import {
   endTurn,
   failureOf,
   failureText,
-  openConversation,
   pauseTurn,
   runOf,
   type Skill,
@@ -33,7 +33,15 @@ import {
   useRun,
   useSkillCommands,
   useSkills,
-  useStartTurn,
+  pendingTurn,
+  postTurn,
+  putTurn,
+  dropTurn,
+  startChat,
+  isTempChat,
+  detailKey,
+  type ConversationDetail,
+  type TurnRequest,
   skillFailure,
   variablesOf,
 } from '../../lib/agent'
@@ -42,7 +50,7 @@ import { useDismiss, useNow } from '../../lib/dom'
 import { markThreadOpened, useArrival, useSmoothReveal } from '../../lib/motion'
 import { compact, duration, time, usd } from '../../lib/format'
 import { type Panel, PanelContext, type PanelApi } from '../../lib/panel'
-import { answerBlocks, canContinue, counts, elapsed, isLive, outcomeGroup, runFromView, type RunState } from '../../lib/run'
+import { answerBlocks, canContinue, counts, elapsed, isLive, outcomeGroup, type RunState } from '../../lib/run'
 import { plain } from '../../lib/markdown'
 import { useMe } from '../../lib/session'
 import { usePickableAgents } from '../../lib/settings'
@@ -228,13 +236,17 @@ function TurnView({
   last,
   by,
   onAsk,
+  onRetry,
+  onDismiss,
 }: {
   turn: Turn
   last: boolean
   by?: string
   onAsk?: (text: string) => void
+  onRetry?: (turn: Turn) => void
+  onDismiss?: (turn: Turn) => void
 }) {
-  const { run, missing } = useRun(turn.id)
+  const { run } = useRun(turn.id, turn)
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
   const act = async (f: () => Promise<unknown>) => {
@@ -246,9 +258,7 @@ function TurnView({
     }
   }
 
-  // A turn whose events the server does not stream draws from its turn view.
-  const shown = missing ? runFromView(turn) : run
-  return <RunTurn turn={turn} run={shown} last={last} by={by} onAsk={onAsk} busy={busy} act={act} copied={copied} setCopied={setCopied} />
+  return <RunTurn turn={turn} run={run} last={last} by={by} onAsk={onAsk} onRetry={onRetry} onDismiss={onDismiss} busy={busy} act={act} copied={copied} setCopied={setCopied} />
 }
 
 /** A turn with its run: the waiting word, the activity, the answer revealed as it arrives, and its footer. */
@@ -258,6 +268,8 @@ function RunTurn({
   last,
   by,
   onAsk,
+  onRetry,
+  onDismiss,
   busy,
   act,
   copied,
@@ -268,6 +280,8 @@ function RunTurn({
   last: boolean
   by?: string
   onAsk?: (text: string) => void
+  onRetry?: (turn: Turn) => void
+  onDismiss?: (turn: Turn) => void
   busy: boolean
   act: (f: () => Promise<unknown>) => Promise<void>
   copied: boolean
@@ -281,18 +295,35 @@ function RunTurn({
   const textBlock = blocks.find((b) => b.type === 'text') as { markdown: string } | undefined
   const answerText = textBlock?.markdown ?? (run && run.phase !== 'finished' ? run.draft : '')
   const reveal = useSmoothReveal(answerText, stream)
-  const quiet = !run || (isLive(run) && run.steps.length === 0 && run.toolOrder.length === 0 && !run.draft && blocks.length === 0 && run.thinking.length === 0)
+  const quiet = turn.failed ? false : !run || (isLive(run) && run.steps.length === 0 && run.toolOrder.length === 0 && !run.draft && blocks.length === 0 && run.thinking.length === 0)
   const textOf = blocks.filter((b) => b.type === 'text').map((b) => plain((b as { markdown: string }).markdown)).join('\n\n')
   return (
     <div className="space-y-4">
       <div className={arrived ? 'animate-rise' : ''}>
         <Bubble turn={turn} by={by} />
       </div>
+      {turn.failed && (
+        <div role="alert" className="flex animate-fade items-center justify-end gap-2 text-body-small">
+          <IconError width={15} height={15} className="text-error" />
+          <span className="text-error">{turn.failed}</span>
+          {onRetry && (
+            <button type="button" onClick={() => onRetry(turn)} className="font-medium text-primary">
+              Retry
+            </button>
+          )}
+          {onDismiss && (
+            <button type="button" onClick={() => onDismiss(turn)} className="text-on-surface-variant hover:text-on-surface">
+              Remove
+            </button>
+          )}
+        </div>
+      )}
       {run && <Steers run={run} onAsk={onAsk} />}
       <div className="flex gap-3">
         <Mascot />
         <div className="min-w-0 flex-1 space-y-4">
           {quiet && (!run || isLive(run)) && <Waiting />}
+          {turn.failed && !run && <p className="text-body-small text-on-surface-variant">Not sent.</p>}
           {run?.compactions.map((c, i) => (
             <CompactionDivider key={i} summary={c.summary} before={c.before} after={c.after} />
           ))}
@@ -373,8 +404,8 @@ export function ChatView({
   const conversation = useConversation(conversationId)
   const turns = useMemo(() => conversation.data?.turns ?? [], [conversation.data])
   const lastTurn = turns[turns.length - 1]
-  const { run: lastRun } = useRun(lastTurn?.id)
-  const starter = useStartTurn(me.id)
+  const { run: lastRun } = useRun(lastTurn?.id, lastTurn)
+  const client = useQueryClient()
   const agents = usePickableAgents()
   const skills = useSkills()
   const skillCommands = useSkillCommands()
@@ -437,36 +468,56 @@ export function ChatView({
 
   async function ask(text: string) {
     setError(undefined)
-    // The box clears and keeps focus at once; a refusal puts the text back.
+    // The box clears and keeps its focus at once; the question shows as a pending turn.
     const keep = { attachments, skill }
     setDraft('')
     setAttachments([])
     setSkill(undefined)
     setAtBottom(true)
-    let target = conversationId
-    try {
-      if (!target) target = (await openConversation(subject ? { kind: subject.kind, id: subject.id } : undefined)).id
-      const req = { text, agent_id: chosenAgent, attachments: keep.attachments.length ? keep.attachments : undefined, skill_id: keep.skill?.id }
-      const sent = starter.mutateAsync({ conversationId: target, req })
-      if (!conversationId) {
-        await Promise.resolve()
-        if (onCreated) onCreated(target)
-        else navigate(`/agent/${target}`)
-      }
-      requestAnimationFrame(() => toBottom(true))
-      await sent
-    } catch (e) {
-      const f = failureOf(e)
-      // A turn already running or paused takes the message as a steer.
-      if (f === 'busy' && lastTurn && lastRun && (isLive(lastRun) || lastRun.phase === 'paused')) {
-        await steerTurn(lastTurn.id, text).catch(() => undefined)
-        return
-      }
-      setDraft((d) => d || text)
-      setAttachments(keep.attachments)
-      setSkill(keep.skill)
-      setError(failureText[f] || undefined)
+    const req: TurnRequest = { text, agent_id: chosenAgent, attachments: keep.attachments.length ? keep.attachments : undefined, skill_id: keep.skill?.id }
+    const pending = pendingTurn(me.id, req)
+    if (!conversationId) {
+      // A new chat moves at once under a temporary id; the conversation and the turn are made in the background.
+      const temp = `new-${crypto.randomUUID()}`
+      putTurn(client, temp, pending)
+      if (onCreated) onCreated(temp)
+      else navigate(`/agent/${temp}`)
+      void startChat(client, temp, pending, req, subject ? { kind: subject.kind, id: subject.id } : undefined, (id) => {
+        if (location.pathname.endsWith(temp)) navigate(`/agent/${id}`, { replace: true })
+      })
+      return
     }
+    requestAnimationFrame(() => toBottom(true))
+    await send2(pending, req)
+  }
+
+  /** Posts a pending turn in this chat; a turn already open takes the text as a steer instead. */
+  async function send2(pending: Turn, req: TurnRequest) {
+    const target = isTempChat(conversationId) ? conversation.data?.real_id : conversationId
+    if (isTempChat(conversationId) && !target) {
+      // The conversation was never made: try the whole new chat again.
+      void startChat(client, conversationId!, pending, req, subject ? { kind: subject.kind, id: subject.id } : undefined, (id) => {
+        if (location.pathname.endsWith(conversationId!)) navigate(`/agent/${id}`, { replace: true })
+      })
+      return
+    }
+    try {
+      await postTurn(client, conversationId!, target!, pending, req)
+      if (isTempChat(conversationId)) {
+        const d = client.getQueryData<ConversationDetail>(detailKey(conversationId!))
+        if (d) client.setQueryData(detailKey(target!), { ...d, id: target, real_id: undefined })
+        navigate(`/agent/${target}`, { replace: true })
+      }
+    } catch (e) {
+      if (failureOf(e) === 'busy' && lastTurn && lastRun && (isLive(lastRun) || lastRun.phase === 'paused')) {
+        dropTurn(client, conversationId!, pending.client_key!)
+        await steerTurn(lastTurn.id, req.text).catch(() => undefined)
+      }
+    }
+  }
+
+  function retry(t: Turn) {
+    void send2(t, { text: t.text, agent_id: t.agent_id, attachments: t.attachments, skill_id: t.skill_id })
   }
 
   async function send(text: string) {
@@ -603,7 +654,15 @@ export function ChatView({
               <div className="mx-auto w-full max-w-[800px] space-y-7 px-8 py-6">
                 {notFound && <p className="text-body-medium text-on-surface-variant">{failureText.not_found}</p>}
                 {turns.map((t, i) => (
-                  <TurnView key={t.client_key ?? t.id} turn={t} last={i === turns.length - 1} by={by(t)} onAsk={(text) => void send(text)} />
+                  <TurnView
+                    key={t.client_key ?? t.id}
+                    turn={t}
+                    last={i === turns.length - 1}
+                    by={by(t)}
+                    onAsk={(text) => void send(text)}
+                    onRetry={retry}
+                    onDismiss={(x) => x.client_key && dropTurn(client, conversationId!, x.client_key)}
+                  />
                 ))}
               </div>
             </div>

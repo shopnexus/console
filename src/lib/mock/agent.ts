@@ -453,6 +453,27 @@ export const agentRoutes: Route[] = [
   ],
   ['GET', new RegExp(`${A}/conversations/([^/]+)$`), (m) => detailOf(conversation(m[1]))],
   [
+    'PATCH',
+    new RegExp(`${A}/conversations/([^/]+)$`),
+    (m, body) => {
+      const c = conversation(m[1])
+      const title = String((body as { title?: string }).title ?? '').trim().slice(0, 80)
+      if (!title) throw new MockError(422, 'agent_title_invalid')
+      c.title = title
+      return summary(c)
+    },
+  ],
+  [
+    'DELETE',
+    new RegExp(`${A}/conversations/([^/]+)$`),
+    (m) => {
+      const c = conversation(m[1])
+      if (c.asks.some((a) => phaseOf(turns.get(a.turnId)!) !== 'finished')) throw new MockError(409, 'agent_turn_in_progress')
+      conversations.delete(c.id)
+      return undefined
+    },
+  ],
+  [
     'GET',
     new RegExp(`${A}/turns/([^/]+)$`),
     (m) => {

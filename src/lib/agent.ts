@@ -1,8 +1,8 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useSyncExternalStore } from 'react'
+import { type QueryClient, useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo, useSyncExternalStore } from 'react'
 import { useAccount } from './accounts'
-import { ApiError, api, apiUrl, del, post, shortId } from './api'
-import { type Block, type ClarifyQuestion, emptyRun, type LocalAction, type Outcome, reduceRun, type RunEvent, type RunState, type Source } from './run'
+import { ApiError, api, apiUrl, del, patch, post, shortId } from './api'
+import { type Block, type ClarifyQuestion, emptyRun, finalStatuses, type LocalAction, type Outcome, reduceRun, runFromView, type RunEvent, type RunState, type Source } from './run'
 import { SseParser } from './sse'
 import { useTicket } from './support'
 
@@ -56,6 +56,8 @@ export interface Turn {
   created_at: string
   /** The console's own fields for a turn it sent: what it was asked with, and a key kept when the server's id replaces the pending one. */
   client_key?: string
+  /** Why a question the console sent did not reach the agent; the bubble offers Retry. */
+  failed?: string
   attachments?: Attachment[]
   skill_id?: string
   agent_id?: string
@@ -63,6 +65,8 @@ export interface Turn {
 
 export interface ConversationDetail extends Conversation {
   turns: Turn[]
+  /** For a temporary chat whose send failed: the conversation the agent made, which Retry posts to. */
+  real_id?: string
 }
 
 /** The longest question the server takes (agent_input_rejected above it). */
@@ -137,7 +141,8 @@ export function useThreads() {
 export function useConversation(id: string | undefined) {
   return useQuery({
     queryKey: detailKey(id ?? ''),
-    enabled: !!id,
+    // A temporary chat lives in the cache only until the agent has the conversation.
+    enabled: !!id && !isTempChat(id),
     queryFn: () => api<ConversationDetail>(`/console/agent/conversations/${id}`),
     retry: (n, e) => !(e instanceof ApiError && e.status === 404) && n < 1,
   })
@@ -170,51 +175,132 @@ export function startTurn(conversationId: string, req: TurnRequest) {
   })
 }
 
+/** A pending turn for a question the console is about to send: it shows at once. */
+export function pendingTurn(memberId: string, req: TurnRequest): Turn {
+  const key = `pending-${crypto.randomUUID()}`
+  return {
+    id: key,
+    client_key: key,
+    member_id: memberId,
+    text: req.text,
+    status: 'pending',
+    blocks: [],
+    sources: [],
+    continuable: false,
+    steers: [],
+    last_seq: 0,
+    created_at: new Date().toISOString(),
+    agent_id: req.agent_id,
+    skill_id: req.skill_id,
+    attachments: req.attachments,
+  }
+}
+
+/** Puts a turn into the conversation cached under cacheId, or replaces the one with the same client key. */
+export function putTurn(client: QueryClient, cacheId: string, turn: Turn) {
+  client.setQueryData<ConversationDetail>(detailKey(cacheId), (d) => {
+    if (!d) return { id: cacheId, updated_at: turn.created_at, title: turn.text.slice(0, 80), turns: [turn] }
+    const at = d.turns.findIndex((t) => t.client_key && t.client_key === turn.client_key)
+    return { ...d, turns: at < 0 ? [...d.turns, turn] : d.turns.map((t, i) => (i === at ? turn : t)) }
+  })
+}
+
 /**
- * Asking: the question shows in the conversation at once as a pending
- * turn, then the post replaces it with the turn the agent stored and starts
- * following its events. A refusal takes the pending turn out again and
- * comes back as the error.
+ * Posts a pending turn's question to conversationId and swaps the pending
+ * turn in the cache under cacheId for the stored one, then follows its
+ * events. A refusal leaves the turn in the cache marked failed, for Retry.
  */
-export function useStartTurn(memberId: string) {
+export async function postTurn(client: QueryClient, cacheId: string, conversationId: string, pending: Turn, req: TurnRequest): Promise<string | undefined> {
+  putTurn(client, cacheId, { ...pending, failed: undefined, status: 'pending' })
+  try {
+    if (req.text.length > maxQuestion) throw new ApiError(422, 'agent_input_rejected', 'too long')
+    const { turn_id } = await startTurn(conversationId, req)
+    putTurn(client, cacheId, { ...pending, id: turn_id, status: 'running', failed: undefined })
+    followTurn(turn_id)
+    void client.invalidateQueries({ queryKey: listKey })
+    return turn_id
+  } catch (e) {
+    putTurn(client, cacheId, { ...pending, failed: failureText[failureOf(e)] || failureText.other })
+    throw e
+  }
+}
+
+/** Takes a turn the console sent out of the cached conversation, as after a failed send is dismissed. */
+export function dropTurn(client: QueryClient, cacheId: string, clientKey: string) {
+  client.setQueryData<ConversationDetail>(detailKey(cacheId), (d) => (d ? { ...d, turns: d.turns.filter((t) => t.client_key !== clientKey) } : d))
+}
+
+/** A new chat's address before the conversation exists; it is replaced once the agent has it. */
+export const isTempChat = (id: string | undefined) => !!id?.startsWith('new-')
+
+/**
+ * A new chat, optimistically: the caller has already shown the chat under a
+ * temporary id. This opens the conversation and posts the turn in the
+ * background, then moves the cache to the real id and calls onReady with it.
+ */
+export async function startChat(
+  client: QueryClient,
+  temp: string,
+  pending: Turn,
+  req: TurnRequest,
+  subject: { kind: SubjectKind; id: string } | undefined,
+  onReady: (id: string) => void,
+) {
+  let conversationId: string
+  try {
+    conversationId = (await openConversation(subject)).id
+  } catch (e) {
+    putTurn(client, temp, { ...pending, failed: failureText[failureOf(e)] || failureText.other })
+    return
+  }
+  try {
+    await postTurn(client, temp, conversationId, pending, req)
+  } catch {
+    // The temporary chat keeps the failed turn, whose Retry posts to the conversation that now exists.
+    client.setQueryData<ConversationDetail>(detailKey(temp), (d) => (d ? { ...d, real_id: conversationId } : d))
+    return
+  }
+  const d = client.getQueryData<ConversationDetail>(detailKey(temp))
+  if (d) client.setQueryData<ConversationDetail>(detailKey(conversationId), { ...d, id: conversationId })
+  onReady(conversationId)
+  client.removeQueries({ queryKey: detailKey(temp) })
+  void client.invalidateQueries({ queryKey: listKey })
+}
+
+/** Renames a conversation; the list shows the new title at once. */
+export function useRenameConversation() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: async ({ conversationId, req }: { conversationId: string; req: TurnRequest }) => {
-      const key = `pending-${crypto.randomUUID()}`
-      const pending: Turn = {
-        id: key,
-        client_key: key,
-        member_id: memberId,
-        text: req.text,
-        status: 'pending',
-        blocks: [],
-        sources: [],
-        continuable: false,
-        steers: [],
-        last_seq: 0,
-        created_at: new Date().toISOString(),
-        agent_id: req.agent_id,
-        skill_id: req.skill_id,
-        attachments: req.attachments,
-      }
-      client.setQueryData<ConversationDetail>(detailKey(conversationId), (d) =>
-        d ? { ...d, turns: [...d.turns, pending] } : { id: conversationId, updated_at: pending.created_at, title: req.text.slice(0, 80), turns: [pending] },
-      )
-      try {
-        if (req.text.length > maxQuestion) throw new ApiError(422, 'agent_input_rejected', 'too long')
-        const { turn_id } = await startTurn(conversationId, req)
-        client.setQueryData<ConversationDetail>(detailKey(conversationId), (d) =>
-          d ? { ...d, turns: d.turns.map((t) => (t.id === key ? { ...t, id: turn_id, status: 'running' } : t)) } : d,
-        )
-        followTurn(turn_id)
-        void client.invalidateQueries({ queryKey: listKey })
-        return turn_id
-      } catch (e) {
-        client.setQueryData<ConversationDetail>(detailKey(conversationId), (d) => (d ? { ...d, turns: d.turns.filter((t) => t.id !== key) } : d))
-        throw e
-      }
+    mutationFn: ({ id, title }: { id: string; title: string }) => patch<Conversation>(`/console/agent/conversations/${id}`, { title }),
+    onMutate: ({ id, title }) => {
+      client.setQueriesData<{ items: Conversation[] }>({ queryKey: listKey }, (l) => (l ? { items: l.items.map((c) => (c.id === id ? { ...c, title } : c)) } : l))
+      client.setQueryData<ConversationDetail>(detailKey(id), (d) => (d ? { ...d, title } : d))
     },
+    onSettled: () => client.invalidateQueries({ queryKey: listKey }),
   })
+}
+
+/** Deletes a conversation; it leaves the list at once and comes back if the agent refuses. */
+export function useDeleteConversation() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => del(`/console/agent/conversations/${id}`),
+    onMutate: (id) => {
+      client.setQueriesData<{ items: Conversation[] }>({ queryKey: listKey }, (l) => (l ? { items: l.items.filter((c) => c.id !== id) } : l))
+    },
+    onSuccess: (_, id) => client.removeQueries({ queryKey: detailKey(id) }),
+    onSettled: () => client.invalidateQueries({ queryKey: listKey }),
+  })
+}
+
+/** What a member reads when a rename or delete is refused. */
+export function conversationFailure(e: unknown): string {
+  if (e instanceof ApiError) {
+    if (e.code === 'agent_turn_in_progress') return 'A turn is still open in this chat. End it first.'
+    if (e.code === 'agent_forbidden') return "A ticket's or an account's chat is an admin's to change."
+    if (e.code === 'agent_title_invalid') return 'A title has 1 to 80 characters.'
+  }
+  return 'That did not go through. Try again.'
 }
 
 // ------------------------------------------------------------------ runs --
@@ -224,8 +310,6 @@ export function useStartTurn(memberId: string) {
 const runs = new Map<string, RunState>()
 const listeners = new Map<string, Set<() => void>>()
 const streams = new Map<string, AbortController>()
-/** Turns whose stream the server does not have (phase-1 turns): they show their stored answer. */
-const missing = new Set<string>()
 
 function emit(id: string) {
   listeners.get(id)?.forEach((f) => f())
@@ -260,7 +344,7 @@ async function readEvents(id: string, after: number, onEvent: (ev: RunEvent) => 
     for await (const ev of mockEvents(id, after, signal)) onEvent(ev)
     return
   }
-  const res = await fetch(apiUrl(`/console/agent/turns/${id}/events`), {
+  const res = await fetch(apiUrl(`/console/agent/turns/${id}/events${after ? `?after=${after}` : ''}`), {
     credentials: 'include',
     signal,
     headers: { accept: 'text/event-stream', 'x-requested-with': 'shopnexus-console', ...(after ? { 'last-event-id': String(after) } : {}) },
@@ -281,14 +365,27 @@ async function readEvents(id: string, after: number, onEvent: (ev: RunEvent) => 
   }
 }
 
+/** Reads the turn view and applies it: how a run ended when its stream did not say. */
+async function readView(id: string): Promise<RunState | undefined> {
+  try {
+    const view = await api<Turn>(`/console/agent/turns/${id}`)
+    dispatchRun(id, { type: 'local.view', view, lastSeq: view.last_seq })
+  } catch {
+    // Without the view the stream is tried again.
+  }
+  return runs.get(id)
+}
+
 /**
- * Follows a turn's events: replays from its last seen seq, reconnects with
- * backoff when the stream drops, and stops at turn.finished, at a pause and
- * while it waits for an answer (Continue, a steer or the answer opens it
- * again). Closing the tab ends the stream, not the run.
+ * Follows a running turn's events: replays from its last seen seq,
+ * reconnects with backoff, and stops at turn.finished, at a pause and while
+ * it waits for an answer (Continue, a steer or the answer opens it again).
+ * A stream that ends or is refused without saying how the run ended is
+ * settled by the turn view, so a finished turn never waits. Closing the tab
+ * ends the stream, not the run.
  */
 export function followTurn(id: string) {
-  if (streams.has(id) || missing.has(id) || id.startsWith('pending-')) return
+  if (streams.has(id) || id.startsWith('pending-')) return
   const st = runs.get(id)
   if (st?.phase === 'finished') return
   const controller = new AbortController()
@@ -297,19 +394,19 @@ export function followTurn(id: string) {
     let backoff = 500
     try {
       while (!controller.signal.aborted) {
+        let refused = false
         try {
           await readEvents(id, runs.get(id)?.lastSeq ?? 0, (ev) => dispatchRun(id, ev), controller.signal)
           backoff = 500
         } catch (e) {
           if (controller.signal.aborted) return
-          if (e instanceof ApiError && (e.status === 404 || e.status === 403)) {
-            missing.add(id)
-            emit(id)
-            return
-          }
+          refused = e instanceof ApiError && e.status >= 400 && e.status < 500
         }
-        const phase = runs.get(id)?.phase
+        let phase = runs.get(id)?.phase
         if (phase === 'finished' || phase === 'paused' || phase === 'awaiting_input') return
+        phase = (await readView(id))?.phase
+        if (phase !== 'running' && phase !== 'pausing') return
+        if (refused) return
         await sleep(backoff, controller.signal)
         backoff = Math.min(backoff * 2, 8000)
       }
@@ -319,9 +416,24 @@ export function followTurn(id: string) {
   })()
 }
 
-/** A turn's run, following its stream while it is not finished. undefined until the first event, or for a phase-1 turn. */
-export function useRun(id: string | undefined): { run?: RunState; missing: boolean } {
-  const run = useSyncExternalStore(
+/**
+ * Puts a turn the conversation listed into the store: a finished one, a
+ * paused one and one waiting for answers from its turn view at once (a
+ * finished turn opens no stream); a running one is followed from its first
+ * event.
+ */
+export function seedTurn(turn: Turn) {
+  if (turn.status === 'pending' || turn.failed) return
+  if (!runs.has(turn.id) && turn.status !== 'running') {
+    runs.set(turn.id, { ...runFromView(turn), lastSeq: turn.last_seq })
+    emit(turn.id)
+  }
+  if (turn.status === 'running') followTurn(turn.id)
+}
+
+/** A turn's run: from the store, else drawn from the turn view for a turn that is not running. */
+export function useRun(id: string | undefined, turn?: Turn): { run?: RunState } {
+  const stored = useSyncExternalStore(
     (f) => {
       if (!id) return () => undefined
       const set = listeners.get(id) ?? new Set()
@@ -331,21 +443,17 @@ export function useRun(id: string | undefined): { run?: RunState; missing: boole
     },
     () => (id ? runs.get(id) : undefined),
   )
-  const gone = useSyncExternalStore(
-    (f) => {
-      if (!id) return () => undefined
-      const set = listeners.get(id) ?? new Set()
-      set.add(f)
-      listeners.set(id, set)
-      return () => set.delete(f)
-    },
-    () => (id ? missing.has(id) : false),
-  )
+  // Until the effect seeds the store, a turn that is not running draws from its view, so it never shows the waiting word.
+  const view = useMemo(() => (turn && !stored && turn.status !== 'running' && turn.status !== 'pending' && !turn.failed ? runFromView(turn) : undefined), [turn, stored])
   useEffect(() => {
-    if (id) followTurn(id)
-  }, [id])
-  return { run, missing: gone }
+    if (!id) return
+    if (turn) seedTurn(turn)
+    else followTurn(id)
+  }, [id, turn])
+  return { run: stored ?? view }
 }
+
+export const isFinal = (status: string) => finalStatuses.has(status)
 
 // -------------------------------------------------------------- controls --
 

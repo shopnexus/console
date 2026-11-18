@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import IconOpen from '~icons/material-symbols-light/north-east-rounded'
 import { ChatView } from '../components/chat/Chat'
+import { ChatMenu } from '../components/chat/ChatMenu'
 import { Shell } from '../components/Shell'
 import { SubjectIcon } from '../components/SubjectIcon'
-import { threadTitle, useConversation, useSubjectLabel, useThreads } from '../lib/agent'
+import { isTempChat, threadTitle, useConversation, useSubjectLabel, useThreads } from '../lib/agent'
 import { firstName, greeting, when } from '../lib/format'
 import { useMe } from '../lib/session'
 
@@ -34,6 +35,7 @@ export function Agent() {
         header={
           <header className="flex h-14 shrink-0 items-center gap-3 px-6">
             <p className="min-w-0 flex-1 truncate text-title-small">{c ? threadTitle(c) : ''}</p>
+            {c && !isTempChat(c.id) && <ChatMenu c={c} />}
             {href && subject && (
               <Link
                 to={href}

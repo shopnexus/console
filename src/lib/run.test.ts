@@ -170,3 +170,29 @@ describe('runFromView', () => {
     expect(outcomeGroup(runFromView({ ...view, status: 'budget', continuable: false }))).toBe('budget')
   })
 })
+
+describe('local.view', () => {
+  const view = { blocks: [{ type: 'text' as const, markdown: 'Rose 31%' }], sources: [{ n: 1, kind: 'data' as const, label: 'A' }], continuable: false, steers: [], created_at: at(0) }
+
+  it('finishes a run whose stream ended without turn.finished, keeping what the stream gave', () => {
+    seq = 0
+    const s = reduceRun(replay([started(), ev('step.started', { step_id: 's1', title: 'Read' }, 1)]), { type: 'local.view', view: { ...view, status: 'succeeded' }, lastSeq: 6 })
+    expect(s.phase).toBe('finished')
+    expect(s.steps).toHaveLength(1)
+    expect(s.blocks).toEqual(view.blocks)
+    expect(s.lastSeq).toBe(6)
+    expect(outcomeGroup(s)).toBe('done')
+  })
+
+  it('finishes a run that never had an event: no waiting word for a finished turn', () => {
+    const s = reduceRun(emptyRun(), { type: 'local.view', view: { ...view, status: 'succeeded' }, lastSeq: 0 })
+    expect(s.phase).toBe('finished')
+    expect(answerBlocks(s)).toEqual(view.blocks)
+  })
+
+  it('moves a running run to paused when the view says so, and leaves a running one alone', () => {
+    expect(reduceRun(emptyRun(), { type: 'local.view', view: { ...view, status: 'paused' }, lastSeq: 3 }).phase).toBe('paused')
+    const live = emptyRun()
+    expect(reduceRun(live, { type: 'local.view', view: { ...view, status: 'running' }, lastSeq: 0 })).toBe(live)
+  })
+})
