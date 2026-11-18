@@ -5,7 +5,7 @@ import { type Account, ApiError, api, type Page, post } from './api'
 export type ReportReason = 'scam' | 'fake' | 'banned' | 'other'
 export type CaseStatus = 'open' | 'resolved'
 
-export const reasonLabel: Record<ReportReason, string> = { scam: 'Lừa đảo', fake: 'Hàng giả', banned: 'Hàng cấm', other: 'Khác' }
+export const reasonLabel: Record<ReportReason, string> = { scam: 'Scam', fake: 'Fake', banned: 'Banned', other: 'Other' }
 /** A reason's dot and pill colours; scam and banned goods are the gravest. */
 export const reasonDot: Record<ReportReason, string> = { scam: 'bg-error', fake: 'bg-tertiary', banned: 'bg-on-surface', other: 'bg-outline' }
 export const reasonOrder: ReportReason[] = ['scam', 'banned', 'fake', 'other']
@@ -139,10 +139,10 @@ export function useCaseCommands(accountId: string) {
 /** What a member reads when a step on a case fails. */
 export function caseFailure(e: unknown): string {
   if (e instanceof ApiError) {
-    if (e.code === 'report_case_not_open') return 'Vụ này đã được xử lý. Đã tải lại.'
-    if (e.code === 'report_case_not_resolved') return 'Vụ này chưa được xử lý.'
-    if (e.code === 'account_is_system') return 'Đây là tài khoản ShopNexus.'
-    if (e.status === 409) return 'Trạng thái đã đổi. Đã tải lại.'
+    if (e.code === 'report_case_not_open') return 'This case was already resolved and was read again.'
+    if (e.code === 'report_case_not_resolved') return 'This case is not resolved.'
+    if (e.code === 'account_is_system') return 'This is a ShopNexus account.'
+    if (e.status === 409) return 'The status changed and was read again.'
   }
-  return 'Chưa làm xong. Thử lại.'
+  return 'Not all of it went through. Try again.'
 }

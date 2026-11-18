@@ -2,16 +2,16 @@ import { type ReactNode, type Ref, useState } from 'react'
 import IconSearch from '~icons/material-symbols-light/search-rounded'
 import { type Account, shortId } from '../lib/api'
 import { useAccountSearch, useRecentAccounts } from '../lib/accounts'
-import { Initial, PickedBar } from './ui'
+import { Initial } from './ui'
 import { pickedRow } from '../lib/look'
 
-const day = new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit' })
+const day = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' })
 
 /** The line under an account's name: since when, or how long it is suspended and why. */
 function accountLine(a: Account): string {
-  if (a.status !== 'suspended') return `Từ ${day.format(new Date(a.created_at))}`
-  const until = a.suspended_until ? `đến ${day.format(new Date(a.suspended_until))}` : 'không thời hạn'
-  return [`Tạm khoá ${until}`, a.suspend_reason].filter(Boolean).join(' · ')
+  if (a.status !== 'suspended') return `Since ${day.format(new Date(a.created_at))}`
+  const until = a.suspended_until ? `until ${day.format(new Date(a.suspended_until))}` : 'with no end'
+  return [`Suspended ${until}`, a.suspend_reason].filter(Boolean).join(' · ')
 }
 
 /** One account in a list: initial, name, short id and the status line. */
@@ -20,9 +20,8 @@ export function AccountRow({ a, right, selected, onClick }: { a: Account; right?
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left ${pickedRow(!!selected)}`}
+      className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left ${pickedRow(!!selected)}`}
     >
-      <PickedBar on={!!selected} />
       <Initial name={a.display_name} id={a.id} size={30} status={a.status} />
       <span className="min-w-0 flex-1">
         <span className="flex items-baseline gap-2">
@@ -64,7 +63,7 @@ export function AccountSearch({
           e.preventDefault()
           setAsked(q.trim())
         }}
-        className="flex h-8 items-center gap-2 rounded-sm border border-hairline px-2 text-on-surface-variant focus-within:border-outline"
+        className="flex h-10 items-center gap-2 rounded-xl bg-surface-container-low px-3 text-on-surface-variant"
       >
         <IconSearch width={16} height={16} />
         <input
@@ -72,8 +71,8 @@ export function AccountSearch({
           autoFocus
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Id, email hoặc số điện thoại"
-          aria-label="Tìm tài khoản"
+          placeholder="Id, email or phone number"
+          aria-label="Find an account"
           className="h-full min-w-0 flex-1 bg-transparent text-body-medium text-on-surface outline-none placeholder:text-on-surface-variant"
         />
       </form>
@@ -82,12 +81,12 @@ export function AccountSearch({
           result.isPending ? null : result.data?.items.length ? (
             result.data.items.map(row)
           ) : (
-            <p className="px-2 py-2 text-body-medium text-on-surface-variant">Không có tài khoản nào khớp.</p>
+            <p className="px-2 py-2 text-body-medium text-on-surface-variant">No account matches.</p>
           )
         ) : (
           recent.length > 0 && (
             <>
-              <p className="px-2 pb-1 pt-2 text-label-small text-on-surface-variant">Mở gần đây</p>
+              <p className="px-2 pb-1 pt-2 text-label-small text-on-surface-variant">Opened lately</p>
               {recent.slice(0, 5).map(row)}
             </>
           )

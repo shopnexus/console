@@ -96,11 +96,11 @@ describe('ask', () => {
 describe('dayGroup', () => {
   const now = new Date(2026, 10, 17, 10, 0)
   it.each([
-    [new Date(2026, 10, 17, 0, 5), 'Hôm nay'],
-    [new Date(2026, 10, 16, 23, 59), 'Hôm qua'],
-    [new Date(2026, 10, 12, 9, 0), '7 ngày trước'],
-    [new Date(2026, 10, 10, 9, 0), '7 ngày trước'],
-    [new Date(2026, 10, 9, 9, 0), 'Cũ hơn'],
+    [new Date(2026, 10, 17, 0, 5), 'Today'],
+    [new Date(2026, 10, 16, 23, 59), 'Yesterday'],
+    [new Date(2026, 10, 12, 9, 0), 'Previous 7 days'],
+    [new Date(2026, 10, 10, 9, 0), 'Previous 7 days'],
+    [new Date(2026, 10, 9, 9, 0), 'Older'],
   ])('puts %s in %s', (d, group) => {
     expect(dayGroup(d.toISOString(), now)).toBe(group)
   })

@@ -5,16 +5,17 @@ import IconError from '~icons/material-symbols-light/error-outline-rounded'
 import IconRetry from '~icons/material-symbols-light/refresh-rounded'
 import IconTimer from '~icons/material-symbols-light/timer-off-outline-rounded'
 import { shortId } from '../lib/api'
+import { time } from '../lib/format'
+import { Mascot } from './ui'
 import { type Failed, type Failure, type Turn, type Waiting, failureText } from '../lib/agent'
 import { SourceChips } from './SourceChip'
 
-const time = new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit' })
 
 /** A question the member asked, as a bubble at the end side; who asked and when under it in a shared chat. */
 export function Question({ text, by }: { text: string; by?: string }) {
   return (
     <div className="flex flex-col items-end gap-1">
-      <p className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-xs bg-surface-container px-3.5 py-2 text-body-large">{text}</p>
+      <p className="max-w-[80%] whitespace-pre-wrap rounded-4xl rounded-br-[6px] bg-primary/8 px-4 py-2.5 text-body-large">{text}</p>
       {by && <p className="px-1 text-label-small font-normal tabular-nums text-on-surface-variant">{by}</p>}
     </div>
   )
@@ -34,7 +35,9 @@ export function AnswerView({ turn, onRetry }: { turn: Turn; onRetry?: () => void
     }
   }
   return (
-    <div className="animate-rise space-y-2">
+    <div className="flex animate-rise gap-3">
+      <Mascot />
+      <div className="min-w-0 flex-1 space-y-3">
       <SourceChips sources={turn.sources} />
       <div className="space-y-2 text-body-large">
         {text
@@ -47,14 +50,15 @@ export function AnswerView({ turn, onRetry }: { turn: Turn; onRetry?: () => void
           ))}
       </div>
       <div className="flex items-center gap-0.5 text-on-surface-variant">
-        <button title="Chép" onClick={copy} className="flex h-7 w-7 items-center justify-center rounded-sm hover:bg-surface-container-low">
+        <button title="Copy" onClick={copy} className="flex h-7 w-7 items-center justify-center rounded-sm hover:bg-surface-container-low">
           {copied ? <IconCheck width={15} height={15} className="text-primary" /> : <IconCopy width={15} height={15} />}
         </button>
         {onRetry && (
-          <button title="Hỏi lại" onClick={onRetry} className="flex h-7 w-7 items-center justify-center rounded-sm hover:bg-surface-container-low">
+          <button title="Retry" onClick={onRetry} className="flex h-7 w-7 items-center justify-center rounded-sm hover:bg-surface-container-low">
             <IconRetry width={15} height={15} />
           </button>
         )}
+      </div>
       </div>
     </div>
   )
@@ -74,7 +78,7 @@ export function WaitingLines() {
 export function TurnNotice({ failure, onRetry }: { failure: Failure; onRetry?: () => void }) {
   const retry = onRetry && failure !== 'budget' && failure !== 'closed' && failure !== 'not_found'
   return (
-    <div className="flex animate-rise items-center gap-2 rounded-lg border border-hairline px-3 py-2" role="status">
+    <div className="flex animate-rise items-center gap-2 rounded-2xl border border-hairline px-3.5 py-2.5" role="status">
       <span className="text-error">
         {failure === 'timeout' ? <IconTimer width={18} height={18} /> : <IconError width={18} height={18} />}
       </span>
@@ -85,7 +89,7 @@ export function TurnNotice({ failure, onRetry }: { failure: Failure; onRetry?: (
           className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-sm px-3 text-label-large text-primary hover:bg-surface-container-low"
         >
           <IconRetry width={16} height={16} />
-          Hỏi lại
+          Retry
         </button>
       )}
     </div>
@@ -120,9 +124,9 @@ export function MessageList({
   }, [turns.length, waiting, failed])
   // The API names the asker by member id only; the console knows its own member.
   const by = (member: string, at: string) =>
-    shared ? `${member === memberId ? 'Bạn' : shortId(member)} · ${time.format(new Date(at))}` : undefined
+    shared ? `${member === memberId ? 'You' : shortId(member)} · ${time(at)}` : undefined
   return (
-    <div className="mx-auto w-full max-w-[680px] space-y-4 px-6 py-5">
+    <div className="mx-auto w-full max-w-[780px] space-y-7 px-8 py-6">
       {turns.map((t) => (
         <div key={t.id} className="space-y-4">
           <Question text={t.text} by={by(t.member_id, t.created_at)} />

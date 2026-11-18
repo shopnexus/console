@@ -57,11 +57,11 @@ export function useAccountCommands(id: string) {
 /** What a member reads when a suspension or its end fails. */
 export function accountFailure(e: unknown): string {
   if (e instanceof ApiError) {
-    if (e.code === 'account_is_system') return 'Đây là tài khoản ShopNexus, không khoá được.'
-    if (e.status === 409) return 'Tài khoản đã đổi trạng thái. Đã tải lại.'
-    if (e.status === 422 || e.status === 400) return 'Lý do chưa hợp lệ.'
+    if (e.code === 'account_is_system') return 'This is a ShopNexus account and cannot be suspended.'
+    if (e.status === 409) return 'The account changed status and was read again.'
+    if (e.status === 422 || e.status === 400) return 'The reason is not valid.'
   }
-  return 'Chưa làm được. Thử lại.'
+  return 'That did not go through. Try again.'
 }
 
 /** Accounts matching an id, an email or a phone number exactly; nothing for an empty query. */

@@ -1,28 +1,24 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import IconSpark from '~icons/material-symbols/auto-awesome-outline-rounded'
-import IconBlock from '~icons/material-symbols-light/block'
-import IconCalendar from '~icons/material-symbols-light/calendar-today-outline-rounded'
-import IconCheck from '~icons/material-symbols-light/check-rounded'
 import IconCheckCircle from '~icons/material-symbols-light/check-circle-outline-rounded'
-import IconChevron from '~icons/material-symbols-light/chevron-right-rounded'
-import IconDown from '~icons/material-symbols-light/keyboard-arrow-down-rounded'
-import IconUp from '~icons/material-symbols-light/keyboard-arrow-up-rounded'
-import IconLock from '~icons/material-symbols-light/lock-outline'
+import IconExpand from '~icons/material-symbols-light/expand-more-rounded'
+import IconGavel from '~icons/material-symbols-light/gavel-rounded'
 import IconPhoto from '~icons/material-symbols-light/image-outline-rounded'
 import IconUndo from '~icons/material-symbols-light/undo-rounded'
-import IconSee from '~icons/material-symbols-light/visibility-outline'
+import { Crumbs, DotFact, Hero, JKHint, ListColumn, ListRow, StatusPill } from '../components/Panes'
 import { Shell } from '../components/Shell'
-import { Initial, Kbd, Notice, PickedBar } from '../components/ui'
+import { Btn, Card, CardHead, Check, Initial, Kbd, Notice, Segmented, Tag } from '../components/ui'
 import { useOpenConversation } from '../lib/agent'
 import { ApiError } from '../lib/api'
-import { pickedRow, segment as segmentLook } from '../lib/look'
+import { day, firstName, vnd, when } from '../lib/format'
 import {
   type CaseStatus,
   type Decision,
   type ReportCase,
   type ReportCaseDetail,
   type ReportedListing,
+  type ReportReason,
   caseFailure,
   reasonDot,
   reasonLabel,
@@ -34,33 +30,33 @@ import {
 
 const DAY = 86_400_000
 const HOUR = 3_600_000
-const day = new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit' })
-const time = new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit' })
-const money = new Intl.NumberFormat('vi-VN')
 
-const when = (iso: string, now: number) => {
-  const d = new Date(iso)
-  return new Date(now).toDateString() === d.toDateString() ? time.format(d) : day.format(d)
-}
-/** How long a case has waited: "2 giờ", "3 ngày". */
+/** How long a case has waited: "40 min", "9 h", "3 d". */
 const age = (iso: string, now: number) => {
   const ms = Math.max(0, now - new Date(iso).getTime())
-  if (ms < HOUR) return `${Math.max(1, Math.round(ms / 60_000))} phút`
-  if (ms < DAY) return `${Math.round(ms / HOUR)} giờ`
-  return `${Math.round(ms / DAY)} ngày`
+  if (ms < HOUR) return `${Math.max(1, Math.round(ms / 60_000))} min`
+  if (ms < DAY) return `${Math.round(ms / HOUR)} h`
+  return `${Math.round(ms / DAY)} d`
 }
 
 const listingStatus: Record<string, string> = {
-  active: 'Đang bán',
-  hidden: 'Đã ẩn',
-  reserved: 'Đang giữ',
-  sold: 'Đã bán',
-  rejected: 'Bị từ chối',
-  deleted: 'Đã xoá',
-  processing: 'Đang đăng',
+  active: 'For sale',
+  hidden: 'Hidden',
+  reserved: 'Reserved',
+  sold: 'Sold',
+  rejected: 'Rejected',
+  deleted: 'Deleted',
+  processing: 'Posting',
 }
 
-/** Báo cáo: the case queue, and the case of the account in the URL beside it. */
+const reasonTag: Record<ReportReason, string> = {
+  scam: 'bg-error-container text-error',
+  banned: 'bg-error-container text-error',
+  fake: 'bg-tertiary-fixed text-on-tertiary-fixed-variant',
+  other: 'bg-surface-container text-on-surface-variant',
+}
+
+/** Reports: the case queue, and the case of the account in the URL beside it. */
 export function Reports() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -87,57 +83,53 @@ export function Reports() {
     return () => window.removeEventListener('keydown', onKey)
   }, [rows, id, go, navigate])
 
-  const segment = (s: CaseStatus, label: ReactNode) => (
-    <button
-      onClick={() => setStatus(s)}
-      className={`flex flex-1 items-center justify-center gap-1.5 rounded-xs px-2 ${segmentLook(s === status)}`}
-    >
-      {label}
-    </button>
-  )
-
   return (
-    <Shell flush>
-      <section className="flex w-80 shrink-0 flex-col border-r border-hairline">
-        <div className="p-3">
-          <div role="tablist" className="flex h-8 rounded-sm bg-surface-container p-0.5 text-label-medium">
-            {segment(
-              'open',
-              <>
-                Chờ xử lý
-                {!!open.total && (
-                  <span key={open.total} className="flex h-[18px] min-w-[18px] animate-badge items-center justify-center rounded-full bg-error px-1 tabular-nums text-label-small text-on-error">
-                    {open.total}
-                  </span>
-                )}
-              </>,
-            )}
-            {segment('resolved', 'Đã xử lý')}
-          </div>
-        </div>
-        <div key={status} className="rise-list min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">
+    <Shell>
+      <ListColumn
+        head={
+          <Segmented
+            full
+            label="Cases"
+            value={status}
+            onChange={setStatus}
+            items={[
+              {
+                value: 'open',
+                label: (
+                  <>
+                    Waiting
+                    {!!open.total && (
+                      <span key={open.total} className="animate-badge rounded-full bg-error px-1.5 tabular-nums text-label-small text-on-error">
+                        {open.total}
+                      </span>
+                    )}
+                  </>
+                ),
+              },
+              { value: 'resolved', label: 'Resolved' },
+            ]}
+          />
+        }
+        foot={<JKHint />}
+      >
+        <div key={status} className="rise-list space-y-1">
           {rows.map((c) => (
             <QueueRow key={c.account.id + (c.resolution?.at ?? '')} c={c} on={c.account.id === id} now={now} onClick={() => go(c)} />
           ))}
           {cases.data && rows.length === 0 && (
-            <p className="px-3 py-6 text-body-medium text-on-surface-variant">{status === 'open' ? 'Không còn vụ nào chờ.' : 'Chưa xử lý vụ nào.'}</p>
+            <p className="px-3 py-6 text-body-medium text-on-surface-variant">{status === 'open' ? 'No case is waiting.' : 'No case resolved yet.'}</p>
           )}
           {cases.hasNextPage && (
             <button
               onClick={() => cases.fetchNextPage()}
               disabled={cases.isFetchingNextPage}
-              className="h-9 w-full rounded-sm text-label-large text-primary hover:bg-surface-container-low disabled:opacity-60"
+              className="h-9 w-full rounded-full text-label-medium text-primary hover:bg-on-surface/5 disabled:opacity-60"
             >
-              Xem thêm
+              More
             </button>
           )}
         </div>
-        <p className="flex items-center gap-1.5 border-t border-hairline px-4 py-2.5 text-body-small text-on-surface-variant">
-          <Kbd>j</Kbd>
-          <Kbd>k</Kbd>
-          Vụ trước, sau
-        </p>
-      </section>
+      </ListColumn>
       {id ? (
         <CasePane
           key={id}
@@ -149,19 +141,20 @@ export function Reports() {
           }}
         />
       ) : (
-        <div className="flex flex-1 items-center justify-center text-body-medium text-on-surface-variant">Chọn một vụ</div>
+        <div className="flex flex-1 items-center justify-center bg-surface-container-low/40 text-body-medium text-on-surface-variant">Pick a case</div>
       )}
     </Shell>
   )
 }
 
-function CaseInitial({ name, id, reports, size = 36 }: { name: string; id: string; reports: number; size?: number }) {
+/** A case's initial with its report count as a badge, `error` from three. */
+function CaseInitial({ name, id, reports, size = 38 }: { name: string; id: string; reports: number; size?: number }) {
   return (
-    <span className="relative inline-flex h-fit shrink-0">
+    <span className="relative inline-flex">
       <Initial name={name} id={id} size={size} />
       <span
-        className={`absolute -bottom-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 tabular-nums text-label-small ring-2 ring-surface-container-lowest ${
-          reports > 2 ? 'bg-error text-on-error' : 'bg-surface-container-highest text-on-surface'
+        className={`absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 tabular-nums text-label-small ring-2 ring-surface-container-lowest ${
+          reports > 2 ? 'bg-error text-on-error' : 'bg-surface-container-high text-on-surface'
         }`}
       >
         {reports}
@@ -170,48 +163,30 @@ function CaseInitial({ name, id, reports, size = 36 }: { name: string; id: strin
   )
 }
 
-function ReasonDots({ c, max }: { c: { reasons: ReportCase['reasons'] }; max?: number }) {
-  return (
-    <span className="flex min-w-0 items-center gap-2">
-      {reasonsOf(c.reasons)
-        .slice(0, max)
-        .map(([k, n]) => (
-          <span key={k} className="inline-flex items-center gap-1 whitespace-nowrap">
-            <span className={`h-1.5 w-1.5 rounded-full ${reasonDot[k]}`} />
-            {reasonLabel[k]}
-            {n > 1 && ` ${n}`}
-          </span>
-        ))}
-    </span>
-  )
-}
-
 function QueueRow({ c, on, now, onClick }: { c: ReportCase; on: boolean; now: number; onClick: () => void }) {
   const overdue = !c.resolution && now - new Date(c.last_at).getTime() > DAY
   const r = c.resolution
   return (
-    <button onClick={onClick} className={`flex w-full gap-3 rounded-md px-3 py-2.5 text-left ${pickedRow(on)}`}>
-      <PickedBar on={on} />
-      <CaseInitial name={c.account.display_name} id={c.account.id} reports={c.reports} />
-      <span className="min-w-0 flex-1">
-        <span className="flex items-baseline gap-2">
-          <span className="min-w-0 flex-1 truncate text-label-large">{c.account.display_name}</span>
-          <span className={`shrink-0 tabular-nums text-body-small ${overdue ? 'text-error' : 'text-on-surface-variant'}`}>
-            {r ? `${r.by.display_name} · ${when(r.at, now)}` : age(c.last_at, now)}
-          </span>
-        </span>
-        <span className="mt-0.5 block truncate text-body-medium text-on-surface-variant">{c.listing?.title ?? 'Tài khoản'}</span>
-        <span className="mt-1 flex items-center gap-2 text-body-small text-on-surface-variant">
-          <ReasonDots c={c} max={r ? 1 : 2} />
-          <span className="min-w-0 flex-1" />
-          {r && (
-            <span className={`shrink-0 whitespace-nowrap ${r.outcome === 'actioned' ? 'text-error' : ''}`}>
-              {r.outcome === 'actioned' ? 'Đã xử lý' : 'Không vi phạm'}
-            </span>
-          )}
-        </span>
-      </span>
-    </button>
+    <ListRow
+      on={on}
+      onClick={onClick}
+      avatar={<CaseInitial name={c.account.display_name} id={c.account.id} reports={c.reports} />}
+      name={c.account.display_name}
+      when={r ? `${firstName(r.by.display_name)} · ${when(r.at, now)}` : <span className={overdue ? 'text-error' : ''}>{age(c.last_at, now)}</span>}
+      line={c.listing?.title ?? 'Account'}
+      foot={
+        <>
+          {reasonsOf(c.reasons)
+            .slice(0, r ? 1 : 2)
+            .map(([k]) => (
+              <DotFact key={k} tone={reasonDot[k]}>
+                {reasonLabel[k]}
+              </DotFact>
+            ))}
+          {r && <span className={`ml-auto ${r.outcome === 'actioned' ? 'text-error' : 'text-on-surface-variant'}`}>{r.outcome === 'actioned' ? 'Actioned' : 'No violation'}</span>}
+        </>
+      }
+    />
   )
 }
 
@@ -222,11 +197,14 @@ function CasePane({ id, now, onMove }: { id: string; now: number; onMove: (step:
 
   if (detail.error) {
     const gone = detail.error instanceof ApiError && detail.error.status === 404
-    return <div className="flex flex-1 items-center justify-center text-body-medium text-on-surface-variant">{gone ? 'Tài khoản này chưa bị báo cáo.' : 'Chưa tải được vụ này.'}</div>
+    return (
+      <div className="flex flex-1 items-center justify-center bg-surface-container-low/40 text-body-medium text-on-surface-variant">
+        {gone ? 'This account has no reports.' : 'The case did not load.'}
+      </div>
+    )
   }
-  if (!detail.data) return <div className="flex-1" />
+  if (!detail.data) return <div className="flex-1 bg-surface-container-low/40" />
   const c = detail.data
-  const a = c.account
 
   async function askAgent() {
     const conv = await openChat.mutateAsync({ kind: 'account', id })
@@ -234,66 +212,47 @@ function CasePane({ id, now, onMove }: { id: string; now: number; onMove: (step:
   }
 
   return (
-    <section className="relative flex min-w-0 flex-1 animate-pane flex-col">
-      <header className="flex h-[52px] shrink-0 items-center gap-2 border-b border-hairline px-5 text-body-medium">
-        <button onClick={() => navigate('/reports')} className="text-on-surface-variant hover:text-on-surface">
-          Báo cáo
+    <section className="relative flex min-w-0 flex-1 animate-pane flex-col bg-surface-container-low/40">
+      <Crumbs parent="Reports" onParent={() => navigate('/reports')} name={c.account.display_name}>
+        <Btn icon={<IconSpark width={17} height={17} />} onClick={() => void askAgent()} disabled={openChat.isPending}>
+          Ask the agent
+        </Btn>
+        <button title="Previous (k)" onClick={() => onMove(-1)}>
+          <Kbd>k</Kbd>
         </button>
-        <IconChevron width={16} height={16} className="text-outline" />
-        <h1 className="truncate text-title-small">{a.display_name}</h1>
-        <span className="min-w-0 flex-1 truncate text-body-small text-on-surface-variant">
-          · {c.reports.length} báo cáo · từ {when(c.first_at, now)}
-        </span>
-        <button
-          onClick={() => void askAgent()}
-          disabled={openChat.isPending}
-          className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-hairline px-3 text-label-large hover:bg-surface-container-low disabled:opacity-60"
-        >
-          <IconSpark width={16} height={16} className="text-primary" />
-          Hỏi agent
+        <button title="Next (j)" onClick={() => onMove(1)}>
+          <Kbd>j</Kbd>
         </button>
-        <button title="Trước (k)" onClick={() => onMove(-1)} className="flex h-7 w-7 items-center justify-center rounded-sm text-on-surface-variant hover:bg-surface-container-low">
-          <IconUp width={18} height={18} />
-        </button>
-        <button title="Sau (j)" onClick={() => onMove(1)} className="flex h-7 w-7 items-center justify-center rounded-sm text-on-surface-variant hover:bg-surface-container-low">
-          <IconDown width={18} height={18} />
-        </button>
-      </header>
-      <div className="relative min-h-0 flex-1 overflow-y-auto">
-        <Hero c={c} now={now} />
-        <div className="space-y-5 px-8 pb-48">
-          {c.listings.length > 0 && (
-            <section>
-              <h3 className="mb-2.5 text-label-medium text-on-surface-variant">Tin bị báo</h3>
-              <div className="rise-list grid grid-cols-1 gap-3 xl:grid-cols-2">
-                {c.listings.map((l) => (
-                  <ListingCard key={l.id} l={l} reports={c.reports.filter((r) => r.listing_id === l.id).length} />
-                ))}
-              </div>
-            </section>
-          )}
-          <section>
-            <h3 className="mb-2.5 text-label-medium text-on-surface-variant">{c.reports.length} người báo</h3>
-            <ul className="rise-list divide-y divide-hairline rounded-xl border border-hairline bg-surface-container-lowest px-3.5">
+      </Crumbs>
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-32">
+        <CaseHero c={c} />
+        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[1fr_320px]">
+          <div className="rise-list grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {c.listings.map((l) => (
+              <ListingCard key={l.id} l={l} reports={c.reports.filter((r) => r.listing_id === l.id).length} />
+            ))}
+          </div>
+          <Card className="p-4">
+            <CardHead title="Reported by" right={<Tag tone="bg-surface-container text-on-surface">{c.reports.length}</Tag>} />
+            <div className="rise-list">
               {c.reports.map((r) => (
-                <li key={r.id} className="flex items-center gap-3 py-2.5">
-                  <Initial name={r.reporter.display_name} id={r.reporter.id} size={28} />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <span className="text-label-large">{r.reporter.display_name}</span>
-                      <span className="inline-flex items-center gap-1 text-body-small text-on-surface-variant">
-                        <span className={`h-1.5 w-1.5 rounded-full ${reasonDot[r.reason]}`} />
-                        {reasonLabel[r.reason]}
-                        {r.listing_id && ` · ${c.listings.find((l) => l.id === r.listing_id)?.title ?? 'tin'}`}
-                      </span>
-                    </span>
-                    {r.note && <span className="mt-0.5 block text-body-small text-on-surface-variant">“{r.note}”</span>}
-                  </span>
-                  <span className="shrink-0 tabular-nums text-body-small text-on-surface-variant">{when(r.created_at, now)}</span>
-                </li>
+                <div key={r.id} className="flex items-start gap-3 py-2">
+                  <Initial name={r.reporter.display_name} id={r.reporter.id} size={30} />
+                  <div className="min-w-0 flex-1 leading-tight">
+                    <p className="text-label-medium">
+                      {r.reporter.display_name} <span className="font-normal tabular-nums text-on-surface-variant">· {when(r.created_at, now)}</span>
+                    </p>
+                    <p className="mt-0.5 flex items-center gap-1.5 text-body-small text-on-surface-variant">
+                      <span className={`h-1.5 w-1.5 rounded-full ${reasonDot[r.reason]}`} />
+                      {reasonLabel[r.reason]}
+                    </p>
+                    {/* What the reporter wrote stays as they wrote it. */}
+                    {r.note && <p className="mt-0.5 text-body-small text-on-surface-variant">“{r.note}”</p>}
+                  </div>
+                </div>
               ))}
-            </ul>
-          </section>
+            </div>
+          </Card>
         </div>
       </div>
       {c.resolution ? <DoneBar c={c} now={now} /> : <DecisionBar c={c} />}
@@ -301,78 +260,59 @@ function CasePane({ id, now, onMove }: { id: string; now: number; onMove: (step:
   )
 }
 
-function Hero({ c, now }: { c: ReportCaseDetail; now: number }) {
+function CaseHero({ c }: { c: ReportCaseDetail }) {
   const navigate = useNavigate()
   const a = c.account
   const locked = a.status === 'suspended'
   const top = c.listings[0]
   return (
-    <div className={`relative px-8 pb-5 pt-6 ${locked ? 'band-error' : 'band'}`}>
-      <div aria-hidden className="dots pointer-events-none absolute inset-0" />
-      <div className="relative flex items-start gap-4">
-        <Initial name={a.display_name} id={a.id} size={60} status={a.status} />
-        <div className="min-w-0 flex-1 pt-0.5">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <button onClick={() => navigate(`/accounts/${a.id}`)} className="text-headline-small hover:underline">
+    <Hero error={locked}>
+      <div className="flex gap-5">
+        <Initial name={a.display_name} id={a.id} size={72} status={a.status} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => navigate(`/accounts/${a.id}`)} className="text-display-small hover:underline">
               {a.display_name}
             </button>
-            {locked ? (
-              <span className="inline-flex h-6 items-center gap-1 rounded-full bg-error px-2 text-label-small text-on-error">
-                <IconLock width={13} height={13} />
-                {a.suspended_until ? `Khoá đến ${day.format(new Date(a.suspended_until))}` : 'Tạm khoá'}
-              </span>
-            ) : (
-              <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-primary/10 px-2 text-label-small text-primary">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                Hoạt động
-              </span>
-            )}
+            <StatusPill suspended={locked}>{locked ? (a.suspended_until ? `Suspended until ${day(a.suspended_until)}` : 'Suspended') : 'Active'}</StatusPill>
           </div>
-          <p className="mt-0.5 tabular-nums text-body-small text-on-surface-variant">{a.id.slice(0, 8)}</p>
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
+          <p className="mt-0.5 tabular-nums text-body-small text-on-surface-variant">
+            {a.id.slice(0, 8)} · since {day(a.created_at)} · {c.listings.length === 1 ? '1 listing reported' : `${c.listings.length} listings reported`}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
             {reasonsOf(c.reasons).map(([k, n]) => (
-              <span
-                key={k}
-                className={`inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-label-medium ${
-                  k === 'scam' || k === 'banned' ? 'bg-error-container text-error' : k === 'fake' ? 'bg-tertiary-fixed text-on-tertiary-fixed-variant' : 'bg-surface-container-high text-on-surface-variant'
-                }`}
-              >
-                {reasonLabel[k]}
-                <span className="tabular-nums">{n}</span>
-              </span>
+              <Tag key={k} tone={reasonTag[k]}>
+                {reasonLabel[k]} · {n}
+              </Tag>
             ))}
-            <span className="inline-flex h-7 items-center gap-1 rounded-full border border-hairline bg-surface-container-lowest/80 px-2.5 text-label-small text-on-surface-variant">
-              <IconCalendar width={14} height={14} />
-              Tạo {when(a.created_at, now)}
-            </span>
           </div>
         </div>
         {top && (
           <div className="hidden w-[300px] shrink-0 xl:block">
-            <ListingCard l={top} compact />
+            <ListingCard l={top} reports={c.reports.filter((r) => r.listing_id === top.id).length} />
           </div>
         )}
       </div>
-    </div>
+    </Hero>
   )
 }
 
-function ListingCard({ l, reports, compact = false }: { l: ReportedListing; reports?: number; compact?: boolean }) {
+function ListingCard({ l, reports }: { l: ReportedListing; reports?: number }) {
   return (
-    <article className="flex items-center gap-3 rounded-xl border border-hairline bg-surface-container-lowest/90 p-2.5 shadow-lift">
+    <article className="flex items-center gap-3 rounded-3xl border border-hairline bg-surface-container-lowest p-3 shadow-soft">
       {l.photo_url ? (
-        <img src={l.photo_url} alt="" className={`shrink-0 rounded-md object-cover ${compact ? 'h-14 w-14' : 'h-16 w-16'}`} />
+        <img src={l.photo_url} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />
       ) : (
-        <span className={`flex shrink-0 items-center justify-center rounded-md bg-surface-container text-on-surface-variant ${compact ? 'h-14 w-14' : 'h-16 w-16'}`}>
+        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-surface-container text-on-surface-variant">
           <IconPhoto width={22} height={22} />
         </span>
       )}
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-label-large">{l.title}</span>
-        <span className="mt-0.5 block tabular-nums text-body-medium text-tertiary">{money.format(l.price)} ₫</span>
-        <span className="mt-1 flex items-center gap-2 text-body-small text-on-surface-variant">
+      <span className="min-w-0 flex-1 leading-tight">
+        <span className="block truncate text-title-small">{l.title}</span>
+        <span className="mt-0.5 block tabular-nums text-body-small text-tertiary">{vnd(l.price)}</span>
+        <span className="mt-0.5 flex items-center gap-1.5 text-label-small font-normal text-on-surface-variant">
           <span className={l.status === 'hidden' ? 'text-error' : ''}>{listingStatus[l.status] ?? l.status}</span>
-          {reports !== undefined && reports > 0 && <span>· {reports} báo cáo</span>}
+          {reports !== undefined && reports > 0 && <span>· {reports === 1 ? '1 report' : `${reports} reports`}</span>}
         </span>
       </span>
     </article>
@@ -380,19 +320,11 @@ function ListingCard({ l, reports, compact = false }: { l: ReportedListing; repo
 }
 
 const terms: [number | null, string][] = [
-  [1, '1 ngày'],
-  [7, '7 ngày'],
-  [30, '30 ngày'],
-  [null, 'Không hạn'],
+  [1, '1 day'],
+  [7, '7 days'],
+  [30, '30 days'],
+  [null, 'No end'],
 ]
-
-function Check({ on }: { on: boolean }) {
-  return (
-    <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] ${on ? 'bg-primary text-on-primary' : 'border border-outline'}`}>
-      {on && <IconCheck width={12} height={12} />}
-    </span>
-  )
-}
 
 /** The member's decision on an open case, pinned to the bottom: what to do, the term, the reason the person sees. */
 function DecisionBar({ c }: { c: ReportCaseDetail }) {
@@ -404,14 +336,13 @@ function DecisionBar({ c }: { c: ReportCaseDetail }) {
   const [days, setDays] = useState<number | null>(7)
   const [reason, setReason] = useState('')
   const [now] = useState(() => Date.now())
-  const first = c.account.display_name.trim().split(/\s+/).pop() ?? c.account.display_name
-  const term = days === null ? 'không hạn' : `${days} ngày`
+  const termText = days === null ? 'with no end' : days === 1 ? '1 day' : `${days} days`
   const failure = commands.decide.error ?? commands.dismiss.error
   const busy = commands.decide.isPending || commands.dismiss.isPending
 
-  const parts = [hide.length > 0 && (hide.length === 1 ? 'Ẩn tin' : `Ẩn ${hide.length} tin`), suspend && `khoá ${term}`].filter(Boolean) as string[]
-  const label = parts.length ? parts.join(' và ').replace(/^k/, 'K') : 'Chọn việc cần làm'
-  const ready = parts.length > 0 && (!suspend || reason.trim() !== '')
+  const hidePart = hide.length === 0 ? '' : hide.length === 1 ? 'Hide listing' : `Hide ${hide.length} listings`
+  const label = hidePart && suspend ? `${hidePart} and suspend ${termText}` : hidePart || (suspend ? `Suspend ${termText}` : 'Pick what to do')
+  const ready = (hide.length > 0 || suspend) && (!suspend || reason.trim() !== '')
 
   function apply() {
     const d: Decision = { hide }
@@ -420,34 +351,31 @@ function DecisionBar({ c }: { c: ReportCaseDetail }) {
   }
 
   const toggle = (id: string) => setHide((h) => (h.includes(id) ? h.filter((x) => x !== id) : [...h, id]))
+  const chip = 'flex shrink-0 items-center gap-2 rounded-full bg-surface-container-low px-3 py-2 text-label-medium font-normal'
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 animate-rise bg-gradient-to-t from-surface-container-lowest from-60% to-transparent px-6 pb-5 pt-10">
-      {failure && (
-        <div className="pointer-events-auto mb-2">
-          <Notice>{caseFailure(failure)}</Notice>
-        </div>
-      )}
-      <section className="pointer-events-auto overflow-hidden rounded-2xl bg-surface-container-lowest shadow-float">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
-          {hideable.map((l) => (
-            <button key={l.id} type="button" onClick={() => toggle(l.id)} className="flex min-w-0 max-w-[260px] items-center gap-2 text-body-medium">
-              <Check on={hide.includes(l.id)} />
-              <span className="truncate">Ẩn tin {l.title}</span>
+    <div className="absolute inset-x-6 bottom-5 animate-rise space-y-2">
+      {failure && <Notice>{caseFailure(failure)}</Notice>}
+      <div className="flex flex-wrap items-center gap-3 rounded-4xl border border-hairline bg-surface-container-lowest p-3 shadow-float">
+        {hideable.map((l) => (
+          <button key={l.id} type="button" onClick={() => toggle(l.id)} title={l.title} className={`${chip} max-w-[220px]`}>
+            <Check on={hide.includes(l.id)} />
+            <span className="truncate">{hideable.length === 1 ? 'Hide listing' : `Hide ${l.title}`}</span>
+          </button>
+        ))}
+        {!locked && (
+          <span className={chip}>
+            <button type="button" onClick={() => setSuspend((s) => !s)} className="flex items-center gap-2">
+              <Check on={suspend} />
+              Suspend
             </button>
-          ))}
-          {!locked && (
-            <span className="flex items-center gap-2 whitespace-nowrap text-body-medium">
-              <button type="button" onClick={() => setSuspend((s) => !s)} className="flex items-center gap-2">
-                <Check on={suspend} />
-                Tạm khoá
-              </button>
-              {suspend && (
+            {suspend && (
+              <span className="relative flex items-center">
                 <select
                   value={days ?? ''}
                   onChange={(e) => setDays(e.target.value === '' ? null : Number(e.target.value))}
-                  aria-label="Thời hạn"
-                  className="h-7 rounded-sm border border-hairline bg-surface-container-lowest px-1.5 text-body-small"
+                  aria-label="Term"
+                  className="h-7 appearance-none rounded-full border border-error/40 bg-surface-container-lowest pl-2.5 pr-6 text-label-small text-error outline-none"
                 >
                   {terms.map(([n, t]) => (
                     <option key={t} value={n ?? ''}>
@@ -455,67 +383,51 @@ function DecisionBar({ c }: { c: ReportCaseDetail }) {
                     </option>
                   ))}
                 </select>
-              )}
-            </span>
-          )}
-          <span className="flex-1" />
-          <button
-            onClick={() => commands.dismiss.mutate()}
-            disabled={busy}
-            className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-sm border border-hairline px-3 text-label-large hover:bg-surface-container-low disabled:opacity-60"
-          >
-            <IconCheck width={16} height={16} />
-            Không vi phạm
-          </button>
-          <button
-            onClick={apply}
-            disabled={!ready || busy}
-            className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-sm bg-error px-3 text-label-large text-on-error disabled:opacity-50"
-          >
-            <IconBlock width={16} height={16} />
-            {label}
-          </button>
-        </div>
-        {suspend && (
-          <label className="flex items-center gap-2 border-t border-hairline bg-surface-container-low px-4 py-2 text-body-small">
-            <IconSee width={15} height={15} className="shrink-0 text-on-surface-variant" />
-            <span className="shrink-0 text-on-surface-variant">{first} thấy:</span>
-            <input
-              autoFocus
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              maxLength={500}
-              placeholder="Lý do"
-              className="min-w-0 flex-1 bg-transparent text-body-medium outline-none placeholder:text-on-surface-variant"
-            />
-            <span className="tabular-nums text-on-surface-variant">{reason.length}/500</span>
-          </label>
+                <IconExpand width={15} height={15} className="pointer-events-none absolute right-1.5 text-error" />
+              </span>
+            )}
+          </span>
         )}
-      </section>
+        {suspend ? (
+          <input
+            autoFocus
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            maxLength={500}
+            placeholder={`Reason ${firstName(c.account.display_name)} sees`}
+            aria-label="Reason the person sees"
+            className="h-9 min-w-[150px] flex-1 rounded-full border border-hairline px-3.5 text-body-medium outline-none focus:border-primary/50"
+          />
+        ) : (
+          <span className="flex-1" />
+        )}
+        <Btn onClick={() => commands.dismiss.mutate()} disabled={busy}>
+          Not a violation
+        </Btn>
+        <Btn kind="danger-fill" big icon={<IconGavel width={17} height={17} />} onClick={apply} disabled={!ready || busy}>
+          {label}
+        </Btn>
+      </div>
     </div>
   )
 }
 
-/** A resolved case: what was done, who and when, the log and Hoàn tác. */
+/** A resolved case: what was done, who and when, and Undo. */
 function DoneBar({ c, now }: { c: ReportCaseDetail; now: number }) {
   const commands = useCaseCommands(c.account.id)
   const r = c.resolution!
   const hidden = c.listings.filter((l) => l.status === 'hidden').length
   const done =
     r.outcome === 'dismissed'
-      ? ['Không vi phạm']
-      : [hidden > 0 && (hidden === 1 ? 'Đã ẩn tin' : `Đã ẩn ${hidden} tin`), c.account.status === 'suspended' && 'Đã khoá tài khoản'].filter(Boolean) as string[]
+      ? ['No violation']
+      : ([hidden > 0 && (hidden === 1 ? 'Hid the listing' : `Hid ${hidden} listings`), c.account.status === 'suspended' && 'Suspended the account'].filter(Boolean) as string[])
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 animate-rise bg-gradient-to-t from-surface-container-lowest from-60% to-transparent px-6 pb-5 pt-10">
-      {commands.undo.error && (
-        <div className="pointer-events-auto mb-2">
-          <Notice>{caseFailure(commands.undo.error)}</Notice>
-        </div>
-      )}
-      <section className="pointer-events-auto flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-hairline bg-surface-container-low px-4 py-3">
-        {(done.length ? done : ['Đã xử lý']).map((t) => (
+    <div className="absolute inset-x-6 bottom-5 animate-rise space-y-2">
+      {commands.undo.error && <Notice>{caseFailure(commands.undo.error)}</Notice>}
+      <div className="flex flex-wrap items-center gap-4 rounded-4xl border border-hairline bg-surface-container-low px-4 py-3">
+        {(done.length ? done : ['Resolved']).map((t) => (
           <span key={t} className="inline-flex items-center gap-1.5 whitespace-nowrap text-body-medium">
-            <IconCheckCircle width={16} height={16} className="text-primary" />
+            <IconCheckCircle width={17} height={17} className="text-primary" />
             {t}
           </span>
         ))}
@@ -524,15 +436,10 @@ function DoneBar({ c, now }: { c: ReportCaseDetail; now: number }) {
           <Initial name={r.by.display_name} id={r.by.member_id} size={20} member />
           {r.by.display_name} · {when(r.at, now)}
         </span>
-        <button
-          onClick={() => commands.undo.mutate(c)}
-          disabled={commands.undo.isPending}
-          className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-sm border border-hairline bg-surface-container-lowest px-3 text-label-large hover:bg-surface-container disabled:opacity-60"
-        >
-          <IconUndo width={16} height={16} />
-          Hoàn tác
-        </button>
-      </section>
+        <Btn icon={<IconUndo width={16} height={16} />} onClick={() => commands.undo.mutate(c)} disabled={commands.undo.isPending}>
+          Undo
+        </Btn>
+      </div>
     </div>
   )
 }

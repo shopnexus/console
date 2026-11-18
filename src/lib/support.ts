@@ -72,21 +72,21 @@ export interface ConsoleTicketDetail {
 }
 
 export const kindLabel: Record<TicketKind, string> = {
-  not_received: 'Báo chưa nhận hàng',
-  carrier_request: 'Xin thêm hãng',
-  other: 'Yêu cầu khác',
+  not_received: 'Not received',
+  carrier_request: 'Carrier request',
+  other: 'Other request',
 }
 
-/** The queue's kind chips: "Khác" is short enough for a chip. */
+/** The queue's kind filter. */
 export const kindChip: Record<TicketKind, string> = {
-  not_received: 'Chưa nhận hàng',
-  carrier_request: 'Xin thêm hãng',
-  other: 'Khác',
+  not_received: 'Not received',
+  carrier_request: 'Carrier request',
+  other: 'Other',
 }
 
 export const shopNexusId = '0193e000-0000-7000-8000-000000000001'
 
-/** The queue, 50 tickets a page; "Xem thêm" reads the next. */
+/** The queue, 50 tickets a page; "More" reads the next. */
 export function useQueue(status: TicketStatus, kind: TicketKind | null) {
   const query = useInfiniteQuery({
     queryKey: ['support', 'queue', status, kind],
@@ -109,11 +109,11 @@ export function olderMessages(id: string, cursor: string) {
 /** What a member reads when a command on a ticket fails. */
 export function failureText(e: unknown): string {
   if (e instanceof ApiError) {
-    if (e.code === 'ticket_not_allowed') return 'Ticket đã đổi trạng thái. Đã tải lại.'
-    if (e.code === 'account_deleted') return 'Người dùng đã xoá tài khoản, tin không gửi được.'
-    if (e.code === 'invalid_message') return 'Tin trả lời chưa hợp lệ.'
+    if (e.code === 'ticket_not_allowed') return 'The ticket changed status and was read again.'
+    if (e.code === 'account_deleted') return 'The person deleted their account; the reply cannot be sent.'
+    if (e.code === 'invalid_message') return 'The reply is not valid.'
   }
-  return 'Chưa làm được. Thử lại.'
+  return 'That did not go through. Try again.'
 }
 
 export function useTicket(id: string | undefined) {

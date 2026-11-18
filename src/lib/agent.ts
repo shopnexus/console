@@ -90,16 +90,16 @@ export function failureOf(e: unknown): Failure {
 
 /** What the member reads for each failure; aborted is the member's own stop and says nothing. */
 export const failureText: Record<Failure, string> = {
-  timeout: 'Quá 60 giây, chưa có câu trả lời.',
-  budget: 'Hết hạn mức hôm nay.',
-  rate_limited: 'Hỏi nhiều quá trong ít phút. Thử lại sau.',
-  unavailable: 'Chưa kết nối được agent. Thử lại sau.',
-  busy: 'Câu trước chưa có câu trả lời. Thử lại sau.',
-  closed: 'Cuộc trò chuyện đã đóng.',
-  too_long: `Câu hỏi dài quá ${maxQuestion} ký tự`,
-  not_found: 'Không có cuộc trò chuyện này.',
+  timeout: 'No answer within 60 seconds.',
+  budget: 'Your daily budget is used up.',
+  rate_limited: 'Too many questions in a few minutes. Try again later.',
+  unavailable: 'The agent is unavailable. Try again later.',
+  busy: 'The last question is still running.',
+  closed: 'This chat is closed.',
+  too_long: `Questions stop at ${maxQuestion} characters`,
+  not_found: 'There is no such chat.',
   aborted: '',
-  other: 'Chưa hỏi được. Thử lại.',
+  other: 'The question did not go through. Try again.',
 }
 
 export type Outcome = { ok: true; answer: Answer } | { ok: false; failure: Failure }
@@ -238,32 +238,32 @@ export function useAsk(memberId: string) {
   return { waiting, failed, send, stop, dismiss }
 }
 
-/** "Ticket · Khánh Linh" or "Tài khoản · Hoàng Nam"; the short id until the name is read. */
+/** "Ticket · Khánh Linh" or "Account · Hoàng Nam"; the short id until the name is read. */
 export function useSubjectLabel(kind: SubjectKind | undefined, id: string | undefined): string {
   const ticket = useTicket(kind === 'ticket' ? id : undefined)
   const account = useAccount(kind === 'account' ? id : undefined)
   if (!kind || !id) return ''
   const name =
     kind === 'ticket' ? ticket.data?.ticket.person.display_name : account.data?.display_name
-  return `${kind === 'ticket' ? 'Ticket' : 'Tài khoản'} · ${name || shortId(id)}`
+  return `${kind === 'ticket' ? 'Ticket' : 'Account'} · ${name || shortId(id)}`
 }
 
 /** A conversation's name in the list and its header. */
 export function threadTitle(c: Conversation): string {
   if (c.title) return c.title
   if (c.subject_kind === 'ticket') return `Ticket ${shortId(c.subject_id ?? '')}`
-  if (c.subject_kind === 'account') return `Tài khoản ${shortId(c.subject_id ?? '')}`
-  return 'Cuộc mới'
+  if (c.subject_kind === 'account') return `Account ${shortId(c.subject_id ?? '')}`
+  return 'New chat'
 }
 
-export type DayGroup = 'Hôm nay' | 'Hôm qua' | '7 ngày trước' | 'Cũ hơn'
+export type DayGroup = 'Today' | 'Yesterday' | 'Previous 7 days' | 'Older'
 
 /** The list's day group of a time, by calendar day in the browser's zone. */
 export function dayGroup(iso: string, now = new Date()): DayGroup {
   const start = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
   const days = Math.round((start(now) - start(new Date(iso))) / 86_400_000)
-  if (days <= 0) return 'Hôm nay'
-  if (days === 1) return 'Hôm qua'
-  if (days <= 7) return '7 ngày trước'
-  return 'Cũ hơn'
+  if (days <= 0) return 'Today'
+  if (days === 1) return 'Yesterday'
+  if (days <= 7) return 'Previous 7 days'
+  return 'Older'
 }

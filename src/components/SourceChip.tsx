@@ -11,21 +11,21 @@ import type { Source } from '../lib/agent'
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>
 
-// The server's MCP tools, with a Vietnamese label in place of the tool's
-// English title. A tool missing here shows the label the server sent.
+// The server's MCP tools with a short label in place of the tool's name.
+// A tool missing here shows the label the server sent.
 const tools: Record<string, [Icon, string]> = {
   ticket_get: [IconTicket, 'Ticket'],
-  tickets_of_account: [IconTicket, 'Ticket của tài khoản'],
-  account_get: [IconPerson, 'Tài khoản'],
-  account_actions: [IconActions, 'Thao tác trên tài khoản'],
-  order_get: [IconOrder, 'Đơn'],
-  listing_get: [IconListing, 'Tin đăng'],
-  price_guide: [IconPrice, 'Giá tham khảo'],
+  tickets_of_account: [IconTicket, "Account's tickets"],
+  account_get: [IconPerson, 'Account'],
+  account_actions: [IconActions, 'Action history'],
+  order_get: [IconOrder, 'Order'],
+  listing_get: [IconListing, 'Listing'],
+  price_guide: [IconPrice, 'Price guide'],
 }
 
-const chip = 'inline-flex h-6 items-center gap-1 rounded-sm border border-hairline px-1.5 text-body-small text-on-surface-variant'
+const chip = 'inline-flex h-7 items-center gap-1.5 rounded-full border border-hairline bg-surface-container-lowest px-2.5 text-label-small font-normal text-on-surface-variant'
 
-/** A record the agent read, as a 24 px chip; a ticket opens in Hỗ trợ. */
+/** A record the agent read, as a 28 px chip; a ticket opens in Support. */
 export function SourceChip({ source }: { source: Source }) {
   const [Icon, label] = tools[source.tool] ?? [IconDefault, source.label]
   const body = (

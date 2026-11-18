@@ -5,7 +5,8 @@
  * app/.superdesign/design-system.md: the M3 roles generated from #066A61 and
  * #924628, and the motion springs. The rest is the console's own look,
  * console/.superdesign/design-system.md ("Tokens"): Be Vietnam Pro for all text,
- * hairline borders, the `lift` ring, and 5 to 14 px corners. The website keeps
+ * hairline borders, the `lift` ring and the `soft` shadow, and 5 to 24 px
+ * corners. The website keeps
  * the app's M3 type and corners in its own copy of this file.
  */
 
@@ -53,6 +54,16 @@
      (white in light), and the lift ring is a faint dark line. */
   --md-hairline: color-mix(in srgb, var(--md-outline-variant) 70%, var(--md-surface-container-lowest));
   --md-lift-ring: rgb(16 24 22 / 0.06);
+  /* Charts: one colour per agent or provider, in a fixed order. */
+  --md-chart-1: #005049;
+  --md-chart-2: #b3542e;
+  --md-chart-3: #2e9c8e;
+  --md-chart-4: #85d5c9;
+  --md-chart-5: #e8b8a4;
+  /* Raw JSON in the tool panel. */
+  --md-code-key: #7a3e9d;
+  --md-code-string: #1e7145;
+  --md-code-number: #b3542e;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -83,6 +94,14 @@
     --md-inverse-on-surface: #2d3130;
     --md-inverse-primary: #066a61;
     --md-lift-ring: rgb(255 255 255 / 0.07);
+    --md-chart-1: #85d5c9;
+    --md-chart-2: #ffb59a;
+    --md-chart-3: #4fb8a9;
+    --md-chart-4: #2e6b64;
+    --md-chart-5: #b3542e;
+    --md-code-key: #d4a5f0;
+    --md-code-string: #8fd6a6;
+    --md-code-number: #ffb59a;
   }
 }
 
@@ -113,6 +132,14 @@
   --md-inverse-on-surface: #2d3130;
   --md-inverse-primary: #066a61;
   --md-lift-ring: rgb(255 255 255 / 0.07);
+  --md-chart-1: #85d5c9;
+  --md-chart-2: #ffb59a;
+  --md-chart-3: #4fb8a9;
+  --md-chart-4: #2e6b64;
+  --md-chart-5: #b3542e;
+  --md-code-key: #d4a5f0;
+  --md-code-string: #8fd6a6;
+  --md-code-number: #ffb59a;
 }
 
 /*
@@ -160,6 +187,14 @@
   --color-inverse-primary: var(--md-inverse-primary);
   /* border-hairline, divide-hairline, bg-hairline. */
   --color-hairline: var(--md-hairline);
+  --color-chart-1: var(--md-chart-1);
+  --color-chart-2: var(--md-chart-2);
+  --color-chart-3: var(--md-chart-3);
+  --color-chart-4: var(--md-chart-4);
+  --color-chart-5: var(--md-chart-5);
+  --color-code-key: var(--md-code-key);
+  --color-code-string: var(--md-code-string);
+  --color-code-number: var(--md-code-number);
 }
 
 @theme {
@@ -246,7 +281,10 @@
   --radius-md: 8px; /* tiles, avatars of records */
   --radius-lg: 10px; /* blocks, notices */
   --radius-xl: 12px; /* cards, the work card, the ask box */
-  --radius-2xl: 14px; /* the sign-in card, chat bubbles */
+  --radius-2xl: 14px; /* inputs, small cards inside a card */
+  --radius-3xl: 16px; /* cards, list rows, blocks in an answer */
+  --radius-4xl: 20px; /* chat bubbles, panels, the run card */
+  --radius-5xl: 24px; /* the ask box, the sign-in card */
 
   /* ------------------------------------------------------- elevation -- */
   /* Depth is a 1 px ring and a 1 to 2 px shadow (lift); a menu or dialog
@@ -254,6 +292,8 @@
   --shadow-*: initial;
   --shadow-lift: 0 1px 2px 0 rgb(16 24 22 / 0.06), 0 0 0 1px var(--md-lift-ring);
   --shadow-float: 0 12px 32px 0 rgb(16 24 22 / 0.14), 0 0 0 1px var(--md-lift-ring);
+  /* The soft look: a card that rests on the white page without a ring. */
+  --shadow-soft: 0 1px 2px 0 rgb(16 24 22 / 0.04), 0 6px 24px -8px rgb(16 24 22 / 0.1);
 
   /* ---------------------------------------------------------- motion -- */
   /* The app animates with springs only. CSS has no spring, so each one is

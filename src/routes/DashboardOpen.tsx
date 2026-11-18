@@ -1,8 +1,10 @@
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router'
-import IconLock from '~icons/material-symbols/lock-outline-rounded'
-import { Button, Shape } from '../components/ui'
+import { useNavigate, useSearchParams } from 'react-router'
+import IconLock from '~icons/material-symbols-light/lock-outline'
+import IconOpen from '~icons/material-symbols-light/north-east-rounded'
+import { Shell } from '../components/Shell'
+import { Button } from '../components/ui'
 import { ApiError, post, roleName } from '../lib/api'
 import { type DashboardApp, dashboards, mayOpen } from '../lib/dashboards'
 import { safeRedirect, useMe } from '../lib/session'
@@ -51,65 +53,73 @@ export function DashboardOpen() {
   const notConfigured = ticket.error instanceof ApiError && ticket.error.code === 'dashboard_not_configured'
   const failed = ticket.isError && !forbidden && !notConfigured
 
+  const others = dashboards.filter((x) => x !== d && mayOpen(me.role, x))
+  const bad = forbidden || failed || !d
+  const host = d ? `${d.app}.${location.host.replace(/^console\./, '')}` : ''
+
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-surface text-on-surface">
-      <Shape name="Cookie9Sided" size={640} className="absolute -left-56 -top-64 text-secondary-container opacity-60" />
-      <Shape name="Clover4Leaf" size={220} className="absolute right-24 top-20 text-surface-container-high" />
-      <Shape name="Sunny" size={120} className="absolute bottom-24 left-32 text-tertiary-fixed opacity-70" />
-      <header className="relative flex h-16 items-center px-8">
-        <Link to="/" className="flex items-center gap-3">
-          <img src="/favicon.svg" alt="ShopNexus" className="h-8 w-8 rounded-sm" />
-          <span className="text-title-medium">ShopNexus</span>
-          <span className="rounded-full bg-secondary-container px-3 py-1 text-label-medium text-on-secondary-container">Console</span>
-        </Link>
-      </header>
-      <main className="relative flex flex-1 items-center justify-center px-6 pb-10">
-        <section className="w-full max-w-[600px] animate-rise rounded-2xl bg-surface-container-lowest px-8 py-10 md:px-12 md:py-12">
-          <div className="flex items-center gap-4">
-            <img src="/favicon.svg" alt="" className="h-16 w-16 rounded-xl" />
-            {forbidden || failed ? (
-              <div className="flex h-10 flex-1 items-center">
-                <div className="h-0 flex-1 border-t-2 border-dashed border-hairline" />
-                <span className="mx-2 flex h-10 w-10 items-center justify-center rounded-full bg-error-container text-error">
-                  <IconLock width={20} height={20} />
-                </span>
-                <div className="h-0 flex-1 border-t-2 border-dashed border-hairline" />
-              </div>
-            ) : (
-              <div className="relative h-2.5 flex-1">
-                <div className="absolute inset-x-0 top-1/2 border-t-2 border-dashed border-hairline" />
-                <span className="absolute top-0 h-2.5 w-2.5 animate-[travel_1.6s_var(--ease-spatial)_infinite] rounded-full bg-primary" />
+    <Shell>
+      <section className="band relative flex flex-1 items-center justify-center overflow-hidden">
+        <div aria-hidden className="dots pointer-events-none absolute inset-0" />
+        <div className="relative w-[440px] animate-rise">
+          <div className="rounded-5xl border border-hairline bg-surface-container-lowest p-9 text-center shadow-soft">
+            <div className="flex items-center justify-center gap-4">
+              <img src="/favicon.svg" alt="ShopNexus" className="h-16 w-16 rounded-4xl" />
+              <span className="flex gap-1.5" aria-hidden>
+                {Array.from({ length: 7 }, (_, i) => (
+                  <span
+                    key={i}
+                    className={`h-1.5 w-1.5 rounded-full ${bad ? 'bg-outline-variant' : 'animate-pulse bg-primary'}`}
+                    style={bad ? undefined : { animationDelay: `${i * 120}ms` }}
+                  />
+                ))}
+              </span>
+              <span
+                className={`flex h-16 w-16 items-center justify-center rounded-4xl [&>svg]:h-[30px] [&>svg]:w-[30px] ${
+                  bad ? 'bg-error-container text-error' : 'bg-tertiary-fixed text-on-tertiary-fixed-variant'
+                }`}
+              >
+                {bad ? <IconLock /> : d?.icon}
+              </span>
+            </div>
+            <h1 className="mt-6 text-headline-medium">
+              {!d ? 'No such tool' : forbidden ? `${roleName.admin}s only` : failed ? `${d.name} did not open` : `Opening ${d.name}`}
+            </h1>
+            {d && <p className="mt-1.5 text-body-small text-on-surface-variant">{d.name} · {host}</p>}
+            {forbidden && d && (
+              <p className="mt-5 rounded-2xl bg-surface-container-low px-4 py-3 text-body-small text-on-surface-variant">Ask an admin if you need {d.name}.</p>
+            )}
+            {!bad && (
+              <div className="relative mx-auto mt-6 h-1.5 w-48 overflow-hidden rounded-full bg-surface-container">
+                <span className="absolute inset-y-0 w-2/5 animate-[bar_1.8s_var(--ease-effects)_infinite] rounded-full bg-primary" />
               </div>
             )}
-            <div
-              className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-xl [&>svg]:h-8 [&>svg]:w-8 ${
-                allowed && !failed ? 'bg-secondary-container text-on-secondary-container' : 'bg-surface-container-high text-outline'
-              }`}
-            >
-              {d?.icon}
-            </div>
+            {(failed || !d) && (
+              <Button className="mt-6" onClick={() => navigate('/')}>
+                Back to the console
+              </Button>
+            )}
           </div>
-          {!forbidden && !failed && <p className="mt-10 text-label-large text-primary">Đang mở</p>}
-          <h1 className={`${forbidden || failed ? 'mt-10' : 'mt-2'} text-display-small`}>{d?.name ?? 'Không có công cụ này'}</h1>
-          {!forbidden && !failed && d && (
-            <div className="relative mt-8 h-1 overflow-hidden rounded-full bg-secondary-container">
-              <span className="absolute inset-y-0 w-2/5 animate-[bar_1.8s_var(--ease-effects)_infinite] rounded-full bg-primary" />
-            </div>
+          {forbidden && others.length > 0 && (
+            <>
+              <p className="mb-2 mt-6 text-center text-body-small text-on-surface-variant">You can open</p>
+              <div className="grid grid-cols-2 gap-2">
+                {others.map((o) => (
+                  <a
+                    key={o.app}
+                    href={`/dashboards/open?app=${o.app}`}
+                    className="flex items-center gap-2.5 rounded-2xl border border-hairline bg-surface-container-lowest px-3.5 py-2.5 text-label-medium font-normal shadow-soft"
+                  >
+                    <span className="text-primary">{o.icon}</span>
+                    <span className="flex-1">{o.name}</span>
+                    <IconOpen width={15} height={15} className="text-on-surface-variant" />
+                  </a>
+                ))}
+              </div>
+            </>
           )}
-          {forbidden && (
-            <p className="mt-6 inline-flex items-center gap-2 rounded-sm bg-error-container px-3 py-1.5 text-label-large text-error">
-              <IconLock width={18} height={18} />
-              Cần quyền {roleName.admin}
-            </p>
-          )}
-          {failed && <p className="mt-6 text-body-large text-on-surface-variant">Chưa mở được, thử lại sau.</p>}
-          {(forbidden || failed || !d) && (
-            <Button className="mt-10" onClick={() => navigate('/')}>
-              Về console
-            </Button>
-          )}
-        </section>
-      </main>
-    </div>
+        </div>
+      </section>
+    </Shell>
   )
 }

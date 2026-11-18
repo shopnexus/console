@@ -1,8 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { ReactNode } from 'react'
-import IconAgent from '~icons/material-symbols/auto-awesome-outline-rounded'
 import IconAccounts from '~icons/material-symbols-light/group-outline-rounded'
-import IconHome from '~icons/material-symbols-light/home-outline-rounded'
 import IconReports from '~icons/material-symbols-light/flag-outline-rounded'
 import IconSupport from '~icons/material-symbols-light/support-agent-outline'
 
@@ -10,20 +8,13 @@ export interface NavItem {
   to: string
   label: string
   icon: ReactNode
-  /** No screen yet: shown greyed with "Sắp có", not followed. */
-  soon?: boolean
 }
 
-/**
- * The work areas. Nhật ký thao tác and Nhân viên join, for admins, once they
- * have pages; Trang chủ shows both meanwhile.
- */
+/** The work areas under New chat and Search. New chat is the home page, so there is no Home row. */
 export const navigation: NavItem[] = [
-  { to: '/', label: 'Trang chủ', icon: <IconHome width={18} height={18} /> },
-  { to: '/support', label: 'Hỗ trợ', icon: <IconSupport width={18} height={18} /> },
-  { to: '/reports', label: 'Báo cáo', icon: <IconReports width={18} height={18} /> },
-  { to: '/agent', label: 'Agent', icon: <IconAgent width={18} height={18} /> },
-  { to: '/accounts', label: 'Tài khoản', icon: <IconAccounts width={18} height={18} /> },
+  { to: '/support', label: 'Support', icon: <IconSupport width={19} height={19} /> },
+  { to: '/reports', label: 'Reports', icon: <IconReports width={19} height={19} /> },
+  { to: '/accounts', label: 'Accounts', icon: <IconAccounts width={19} height={19} /> },
 ]
 
 const collapsedKey = 'console-nav-collapsed'
@@ -37,10 +28,10 @@ function readCollapsed(): boolean {
 }
 
 /**
- * Whether the drawer shows as a rail. The member's choice is kept in this
- * browser. A page with panes of its own (Hỗ trợ) passes auto, which starts
- * the rail collapsed; expanding it there lasts until the page is left and
- * leaves the saved choice alone.
+ * Whether the sidebar shows as a rail. The member's choice is kept in this
+ * browser. A page with panes of its own (Support, a chat with a side panel)
+ * passes auto, which starts the rail collapsed; expanding it there lasts
+ * until the page is left and leaves the saved choice alone.
  */
 export function useNavCollapsed(auto: boolean): [boolean, () => void] {
   const [saved, setSaved] = useState(readCollapsed)

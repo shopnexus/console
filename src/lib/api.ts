@@ -23,6 +23,13 @@ export class ApiError extends Error {
  * that no other site's form can use the cookie.
  */
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  // VITE_MOCK_AI=1 serves the AI paths the server does not have yet from
+  // fixtures (lib/mock). The build drops this branch when it is unset.
+  if (import.meta.env.VITE_MOCK_AI === '1') {
+    const { mockApi, unmocked } = await import('./mock')
+    const out = await mockApi(init?.method ?? 'GET', path, init?.body ? JSON.parse(String(init.body)) : undefined)
+    if (out !== unmocked) return out as T
+  }
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
     credentials: 'include',
@@ -44,6 +51,23 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 /** POSTs body as JSON. */
 export function post<T>(path: string, body?: unknown): Promise<T> {
   return api<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
+}
+
+export function patch<T>(path: string, body: unknown): Promise<T> {
+  return api<T>(path, { method: 'PATCH', body: JSON.stringify(body) })
+}
+
+export function put<T>(path: string, body: unknown): Promise<T> {
+  return api<T>(path, { method: 'PUT', body: JSON.stringify(body) })
+}
+
+export function del(path: string): Promise<void> {
+  return api<void>(path, { method: 'DELETE' })
+}
+
+/** The full URL of an API path, for a stream the fetch above cannot read. */
+export function apiUrl(path: string): string {
+  return `${API_URL}${path}`
 }
 
 export type Role = 'moderator' | 'admin'
@@ -106,7 +130,7 @@ export interface Page<T> {
   total?: number
 }
 
-export const roleName: Record<Role, string> = { moderator: 'Kiểm duyệt viên', admin: 'Quản trị viên' }
+export const roleName: Record<Role, string> = { moderator: 'Moderator', admin: 'Admin' }
 
 /** The first 8 characters of an opaque id, for a row ("7b1c22e0"). */
 export const shortId = (id: string) => id.slice(0, 8)

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import IconSpark from '~icons/material-symbols/auto-awesome-rounded'
 import IconOpen from '~icons/material-symbols-light/north-east-rounded'
 import { AskBox } from '../components/AskBox'
 import { AttachMenu } from '../components/AttachMenu'
 import { MessageList, TurnNotice } from '../components/MessageList'
 import { Shell } from '../components/Shell'
-import { SubjectIcon, ThreadList } from '../components/ThreadList'
+import { SubjectIcon } from '../components/SubjectIcon'
+import { firstName, greeting, when } from '../lib/format'
 import { ApiError } from '../lib/api'
 import {
   type Failure,
@@ -20,7 +20,6 @@ import {
   useSubjectLabel,
   useThreads,
 } from '../lib/agent'
-import { typing } from '../lib/dom'
 import { useMe } from '../lib/session'
 
 /**
@@ -53,20 +52,9 @@ export function Agent() {
 
   function newChat() {
     setDraft('')
-    navigate('/agent')
+    navigate('/')
     box.current?.focus()
   }
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.key === 'n' || e.key === 'N') && !typing(e)) {
-        e.preventDefault()
-        newChat()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  })
 
   async function open(kind: SubjectKind, subjectId: string) {
     setOpenFailure(undefined)
@@ -110,7 +98,7 @@ export function Agent() {
       onSend={send}
       onStop={() => id && asker.stop(id)}
       running={running}
-      placeholder={id ? 'Hỏi tiếp' : 'Hỏi agent…'}
+      placeholder={id ? 'Ask a follow-up…' : 'Ask about a ticket, a report or an account…'}
       error={inputError && inputError.at === id ? inputError.text : undefined}
       inputRef={box}
       menuUp={!!id}
@@ -134,26 +122,50 @@ export function Agent() {
   )
 
   return (
-    <Shell flush>
-      <ThreadList items={threads.items} onNew={newChat} fresh={!id} />
+    <Shell>
       {!id ? (
-        <section className="flex min-w-0 flex-1 flex-col">
-          <div className="flex flex-1 justify-center px-6 pt-[240px]">
-            <div className="h-fit w-full max-w-[680px] animate-rise space-y-3">
-              {askBox}
-              {openFailure && openFailure.at === id && <TurnNotice failure={openFailure.failure} />}
-            </div>
+        <section className="band relative flex min-w-0 flex-1 flex-col items-center overflow-y-auto px-8 pt-[120px]">
+          <div aria-hidden className="dots pointer-events-none absolute inset-0" />
+          <img src="/art-ai-reading.webp" alt="" className="relative h-[112px] w-[112px] animate-rise object-contain" />
+          <h1 className="relative mt-3 text-display-small">
+            {greeting()}, {firstName(me.display_name)}
+          </h1>
+          <div className="relative mt-8 w-full max-w-[720px] animate-rise space-y-3">
+            {askBox}
+            {openFailure && openFailure.at === id && <TurnNotice failure={openFailure.failure} />}
           </div>
+          {threads.items.length > 0 && (
+            <div className="relative mt-14 w-full max-w-[720px] pb-10">
+              <p className="mb-3 text-label-medium text-on-surface-variant">Continue</p>
+              <div className="rise-list grid grid-cols-3 gap-3">
+                {threads.items.slice(0, 3).map((t) => (
+                  <Link
+                    key={t.id}
+                    to={`/agent/${t.id}`}
+                    className="flex flex-col gap-2 rounded-3xl border border-hairline bg-surface-container-lowest p-4 shadow-soft hover:border-primary/30"
+                  >
+                    <span className="flex items-center gap-1.5 text-body-small text-on-surface-variant">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/8 text-primary">
+                        <SubjectIcon kind={t.subject_kind} size={14} />
+                      </span>
+                      {t.subject_kind === 'ticket' ? 'Ticket' : t.subject_kind === 'account' ? 'Account' : 'Chat'} ·{' '}
+                      <span className="tabular-nums">{when(t.updated_at)}</span>
+                    </span>
+                    <span className="line-clamp-2 text-title-small">{threadTitle(t)}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       ) : (
         <section className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-[52px] shrink-0 items-center gap-3 border-b border-hairline px-5">
-            <IconSpark width={18} height={18} className="shrink-0 text-primary" />
-            <p className="min-w-0 flex-1 truncate text-title-medium">{c ? threadTitle(c) : ''}</p>
+          <header className="flex h-14 shrink-0 items-center gap-3 px-6">
+            <p className="min-w-0 flex-1 truncate text-title-small">{c ? threadTitle(c) : ''}</p>
             {subject?.kind === 'ticket' && (
               <Link
                 to={`/support/${subject.id}`}
-                className="inline-flex h-7 shrink-0 items-center gap-1 rounded-sm border border-hairline px-2 text-body-small text-on-surface-variant hover:bg-surface-container-low"
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-hairline px-3 text-body-small text-on-surface-variant hover:bg-surface-container-low"
               >
                 <SubjectIcon kind="ticket" size={14} />
                 {subjectLabel}
@@ -164,11 +176,11 @@ export function Agent() {
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             <span className="flex-1" />
             {notFound ? (
-              <p className="mx-auto w-full max-w-[680px] px-6 py-5 text-body-medium text-on-surface-variant">
+              <p className="mx-auto w-full max-w-[780px] px-8 py-6 text-body-medium text-on-surface-variant">
                 {failureText.not_found}
               </p>
             ) : conversation.error ? (
-              <div className="mx-auto w-full max-w-[680px] px-6 py-5">
+              <div className="mx-auto w-full max-w-[780px] px-8 py-6">
                 <TurnNotice failure={failureOf(conversation.error)} onRetry={() => void conversation.refetch()} />
               </div>
             ) : (
@@ -184,7 +196,7 @@ export function Agent() {
               )
             )}
           </div>
-          <div className="mx-auto w-full max-w-[680px] space-y-3 px-6 pb-5">
+          <div className="mx-auto w-full max-w-[780px] space-y-3 px-8 pb-5">
             {openFailure && openFailure.at === id && <TurnNotice failure={openFailure.failure} />}
             {askBox}
           </div>

@@ -57,7 +57,7 @@ export function AskBox({
 
   return (
     <div ref={ref} className="relative">
-      <div className="rounded-xl border border-hairline bg-surface-container-lowest shadow-lift focus-within:border-outline">
+      <div className="rounded-5xl border border-hairline bg-surface-container-lowest shadow-soft focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-primary/10">
         <textarea
           ref={inputRef}
           value={value}
@@ -73,28 +73,28 @@ export function AskBox({
           }}
           rows={2}
           placeholder={placeholder}
-          aria-label="Câu hỏi"
+          aria-label="Question"
           aria-invalid={!!error || over}
-          className="field-sizing-content block max-h-60 min-h-[52px] w-full resize-none bg-transparent px-3.5 pt-3 text-body-large text-on-surface outline-none placeholder:text-on-surface-variant"
+          className="field-sizing-content block max-h-60 min-h-[56px] w-full resize-none bg-transparent px-5 pt-4 text-body-large text-on-surface outline-none placeholder:text-on-surface-variant/80"
         />
-        <div className="flex items-center gap-2 px-2 pb-2">
+        <div className="flex items-center gap-1.5 px-3 pb-3">
           {menu && (
             <button
               type="button"
-              title="Gắn ticket, tài khoản"
+              title="Attach a ticket or an account"
               aria-expanded={open}
               onClick={() => setOpen((o) => !o)}
-              className="flex h-8 w-8 items-center justify-center rounded-sm text-on-surface-variant hover:bg-surface-container-low"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-low"
             >
-              <IconAdd width={18} height={18} />
+              <IconAdd width={20} height={20} />
             </button>
           )}
           {attached && (
-            <span className="inline-flex h-6 min-w-0 items-center gap-1 rounded-sm bg-surface-container px-1.5 text-body-small text-on-surface-variant">
+            <span className="inline-flex h-8 min-w-0 items-center gap-1.5 rounded-full bg-primary/7 pl-2 pr-2.5 text-body-small text-primary">
               {attached.icon}
               <span className="truncate">{attached.label}</span>
               {attached.onRemove && (
-                <button type="button" title="Bỏ gắn" onClick={attached.onRemove} className="-mr-0.5 rounded-xs hover:text-on-surface">
+                <button type="button" title="Remove" onClick={attached.onRemove} className="-mr-0.5 rounded-xs hover:text-on-surface">
                   <IconClose width={13} height={13} />
                 </button>
               )}
@@ -104,19 +104,19 @@ export function AskBox({
           {running ? (
             <button
               type="button"
-              title="Dừng (Esc)"
+              title="Stop (Esc)"
               onClick={onStop}
-              className="flex h-8 w-8 items-center justify-center rounded-sm bg-on-surface text-surface"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-on-surface text-surface"
             >
               <IconStop width={18} height={18} />
             </button>
           ) : (
             <button
               type="button"
-              title="Gửi (Enter)"
+              title="Send (Enter)"
               onClick={send}
               disabled={text === '' || over}
-              className="flex h-8 w-8 items-center justify-center rounded-sm bg-on-surface text-surface disabled:opacity-40"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-on-primary disabled:opacity-40"
             >
               <IconSend width={18} height={18} />
             </button>
@@ -125,12 +125,12 @@ export function AskBox({
       </div>
       {(error || over) && (
         <p role="alert" className="mt-1.5 px-1 text-body-small text-error">
-          {over ? `Câu hỏi dài quá ${maxQuestion} ký tự` : error}
+          {over ? `Questions stop at ${maxQuestion} characters` : error}
         </p>
       )}
       {open && menu && (
         <div
-          className={`absolute left-0 z-20 w-[340px] animate-pop rounded-xl bg-surface-container-lowest p-1.5 shadow-float ${
+          className={`absolute left-0 z-20 w-[360px] animate-pop rounded-4xl border border-hairline bg-surface-container-lowest p-2 shadow-float ${
             menuUp ? 'bottom-full mb-2 origin-bottom-left' : 'top-full mt-2 origin-top-left'
           }`}
         >
