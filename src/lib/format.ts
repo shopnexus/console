@@ -50,13 +50,15 @@ export function compact(n: number): string {
   return String(n)
 }
 
-/** A duration: "38 ms", "2.1 s", "42 s", "1:05". */
+/** A duration: "38 ms", "2.1 s", "42 s", "3 min 10 s", "1 h 5 min". */
 export function duration(ms: number): string {
   if (ms < 1000) return `${Math.round(ms)} ms`
   if (ms < 10_000) return `${(ms / 1000).toFixed(1)} s`
-  if (ms < 60_000) return `${Math.round(ms / 1000)} s`
   const s = Math.round(ms / 1000)
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+  if (s < 60) return `${s} s`
+  if (s < 3600) return s % 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s / 60} min`
+  const m = Math.round(s / 60)
+  return m % 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m / 60} h`
 }
 
 /** A running clock: "0:18". */

@@ -64,7 +64,7 @@ function viewOf(t: MockTurn, ask: MockConversation['asks'][number]): Turn {
     error_code: end?.failure,
     continuable: end ? end.continuable : phase === 'paused',
     agent: run.agent,
-    usage: run.usage.input ? { input_tokens: run.usage.input, output_tokens: run.usage.output, cost_usd: run.usage.costUsd, first_token_ms: run.firstTokenMs, provider: run.provider } : undefined,
+    usage: run.usage.input ? { input_tokens: run.usage.input, output_tokens: run.usage.output, cache_read_tokens: run.usage.cacheRead, cache_write_tokens: run.usage.cacheWrite, cost_usd: run.usage.costUsd, first_token_ms: run.firstTokenMs, provider: run.provider } : undefined,
     steers: run.steers.filter((x) => x.text).map((x) => ({ steer_id: x.id, text: x.text })),
     questions: run.clarify,
     last_seq: t.events.length,
@@ -131,7 +131,7 @@ const answer: Block[] = [
   { type: 'sources', items: SOURCES },
 ]
 
-const usage = (i: number, o: number): Body => ({ type: 'usage', input_tokens: i, output_tokens: o, cost_usd: (i * 2 + o * 10) / 1_000_000, provider: 'LLM upstream' })
+const usage = (i: number, o: number): Body => ({ type: 'usage', input_tokens: i, output_tokens: o, cache_read_tokens: Math.round(i * 2.5), cost_usd: (i * 2 + o * 10) / 1_000_000, provider: 'LLM upstream' })
 
 function briefScript(agent: { id: string; name: string }, variant: 'run' | 'retry' | 'budget'): Beat[] {
   const tool = (id: string, step: string, name: string, label: string, input: unknown): Body => ({ type: 'tool.started', call_id: id, step_id: step, tool: name, label, input })

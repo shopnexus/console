@@ -5,7 +5,6 @@ import IconCheck from '~icons/material-symbols-light/check-rounded'
 import IconCopy from '~icons/material-symbols-light/content-copy-outline-rounded'
 import IconError from '~icons/material-symbols-light/error-outline-rounded'
 import IconFlag from '~icons/material-symbols-light/flag-outline-rounded'
-import IconInfo from '~icons/material-symbols-light/info-outline-rounded'
 import IconPause from '~icons/material-symbols-light/pause-circle-outline-rounded'
 import IconPerson from '~icons/material-symbols-light/person-outline-rounded'
 import IconPlay from '~icons/material-symbols-light/play-arrow-rounded'
@@ -48,18 +47,18 @@ import {
 import { ApiError, shortId } from '../../lib/api'
 import { useDismiss, useNow } from '../../lib/dom'
 import { markThreadOpened, useArrival, useSmoothReveal } from '../../lib/motion'
-import { compact, duration, time, usd } from '../../lib/format'
+import { clock, compact, duration, time, usd } from '../../lib/format'
 import { type Panel, PanelContext, type PanelApi } from '../../lib/panel'
 import { answerBlocks, canContinue, counts, elapsed, isLive, outcomeGroup, type RunState } from '../../lib/run'
 import { plain } from '../../lib/markdown'
 import { useMe } from '../../lib/session'
 import { usePickableAgents } from '../../lib/settings'
 import { AttachMenu } from '../AttachMenu'
-import { Btn, IconBtn, Mascot, Spinner } from '../ui'
-import { Blocks, SourceRow } from './Answer'
+import { Btn, Mascot, Spinner } from '../ui'
+import { Blocks, SourceList, SourcesButton } from './Answer'
 import { ClarifyCard } from './Clarify'
 import { BudgetLock, type Chip, Composer, type ComposerMode, PausedStrip } from './Composer'
-import { DocumentPanel, SourcesPanel, ToolPanel } from './Panels'
+import { DocumentPanel, SourcesPanel, ToolOverlay } from './Panels'
 import { CompactionDivider, Compacting, RunCard, Waiting } from './Run'
 
 const attachIcon: Record<Attachment['kind'], ReactNode> = {
@@ -187,36 +186,73 @@ function OutcomeNotice({ run, last, onContinue, busy }: { run: RunState; last: b
   )
 }
 
-/** Model, provider, tokens, cost and time of a finished turn, in a popover from the footer chip. */
-function TurnDetails({ run }: { run: RunState }) {
+/** One action under a reply: a quiet 32 px icon button (AI Portal's reply action). */
+function ReplyButton({ label, pressed = false, onClick, children }: { label: string; pressed?: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={`flex size-8 items-center justify-center rounded-lg transition-colors duration-[120ms] ${pressed ? 'bg-on-surface/8 text-on-surface' : 'text-on-surface-variant hover:bg-on-surface/8 hover:text-on-surface'}`}
+    >
+      {children}
+    </button>
+  )
+}
+
+/**
+ * How long a turn took and, when the agent knows them, its tokens and cost,
+ * as quiet text after the reply actions (AI Portal's turn meta). It opens
+ * the turn's details. Answers show it on hover or focus only; the latest
+ * shows it while it runs, without a time, since the activity line already
+ * ticks. What is unknown or zero is left out, and with nothing left it is
+ * not drawn.
+ */
+function TurnMeta({ run, always }: { run: RunState; always: boolean }) {
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const ref = useDismiss<HTMLDivElement>(open, close)
-  const now = useNow(false)
+  const live = isLive(run)
+  const now = useNow(live)
   const ms = elapsed(run, now)
+  // Uncached input and output: what the prompt cache held is in the details only.
   const tokens = run.usage.input + run.usage.output
+  const cost = run.usage.costUsd
   const firstMs = run.firstTokenMs ?? (run.firstTokenAt && run.startedAt ? new Date(run.firstTokenAt).getTime() - new Date(run.startedAt).getTime() : undefined)
-  const rows: [string, string][] = [
-    ['Model', run.model ?? '–'],
-    ['Provider', run.provider ?? '–'],
-    ['Input', `${run.usage.input.toLocaleString('en-US')} tokens`],
-    ['Output', `${run.usage.output.toLocaleString('en-US')} tokens`],
-    ['Cost', usd(run.usage.costUsd)],
-    ['Time', `${duration(ms)}${firstMs !== undefined ? ` · first token ${duration(firstMs)}` : ''}`],
-  ]
+  const time = ms === undefined ? undefined : live ? clock(ms) : duration(ms)
+  // While it runs, the clock is the activity line's; this adds only what it spends.
+  const line = [!live && time, tokens > 0 && `${compact(tokens)} tokens`, cost > 0 && `≈ ${usd(cost)}`].filter(Boolean).join(' · ')
+  if (!line) return null
+  const rows = (
+    [
+      ['Model', run.model],
+      ['Provider', run.provider],
+      ['Input (uncached)', run.usage.input > 0 && `${run.usage.input.toLocaleString('en-US')} tokens`],
+      ['Cache read', run.usage.cacheRead > 0 && `${run.usage.cacheRead.toLocaleString('en-US')} tokens`],
+      ['Cache write', run.usage.cacheWrite > 0 && `${run.usage.cacheWrite.toLocaleString('en-US')} tokens`],
+      ['Output', run.usage.output > 0 && `${run.usage.output.toLocaleString('en-US')} tokens`],
+      ['Cost', cost > 0 && usd(cost)],
+      ['Time', time && `${time}${firstMs !== undefined ? ` · first token ${duration(firstMs)}` : ''}`],
+    ] as [string, string | false | undefined][]
+  ).filter((r): r is [string, string] => !!r[1])
   return (
-    <div ref={ref} className="relative">
+    <div
+      ref={ref}
+      className={`relative transition-opacity duration-[120ms] ${always || open ? '' : 'opacity-0 group-focus-within/answer:opacity-100 group-hover/answer:opacity-100 [@media(pointer:coarse)]:opacity-100'}`}
+    >
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="inline-flex h-8 items-center gap-1.5 rounded-full bg-surface-container px-3 text-label-small font-normal tabular-nums hover:bg-surface-container-high"
+        title="Turn details"
+        className="flex h-8 items-center px-1 text-label-small font-normal tabular-nums text-on-surface-variant/70 transition-colors duration-150 hover:text-on-surface aria-expanded:text-on-surface"
       >
-        <IconInfo width={14} height={14} />
-        {duration(ms)} · {compact(tokens)} tokens · {usd(run.usage.costUsd)}
+        {line}
       </button>
       {open && (
-        <div className="absolute bottom-10 right-0 z-30 w-[280px] origin-bottom-right animate-pop rounded-3xl border border-hairline bg-surface-container-lowest p-3 text-body-small shadow-float">
+        <div className="absolute bottom-10 left-0 z-30 w-[280px] origin-bottom-left animate-pop rounded-3xl border border-hairline bg-surface-container-lowest p-3 text-body-small shadow-float">
           <p className="mb-2 text-title-small">Turn details</p>
           {rows.map(([k, v]) => (
             <div key={k} className="flex justify-between gap-3 py-1">
@@ -296,6 +332,7 @@ function RunTurn({
   const answerText = textBlock?.markdown ?? (run && run.phase !== 'finished' ? run.draft : '')
   const reveal = useSmoothReveal(answerText, stream)
   const quiet = turn.failed ? false : !run || (isLive(run) && run.steps.length === 0 && run.toolOrder.length === 0 && !run.draft && blocks.length === 0 && run.thinking.length === 0)
+  const [sourcesOpen, setSourcesOpen] = useState(false)
   const textOf = blocks.filter((b) => b.type === 'text').map((b) => plain((b as { markdown: string }).markdown)).join('\n\n')
   return (
     <div className="space-y-4">
@@ -321,7 +358,7 @@ function RunTurn({
       {run && <Steers run={run} onAsk={onAsk} />}
       <div className="flex gap-3">
         <Mascot />
-        <div className="min-w-0 flex-1 space-y-4">
+        <div className="group/answer min-w-0 flex-1 space-y-4">
           {quiet && (!run || isLive(run)) && <Waiting />}
           {turn.failed && !run && <p className="text-body-small text-on-surface-variant">Not sent.</p>}
           {run?.compactions.map((c, i) => (
@@ -330,41 +367,56 @@ function RunTurn({
           {run?.compacting && <Compacting />}
           {run && <RunCard run={run} turnId={turn.id} />}
           {run?.phase === 'awaiting_input' && run.clarify && last && <ClarifyCard questions={run.clarify} busy={busy} onAnswer={(answers: Answers) => void act(() => answerTurn(turn.id, { answers }))} />}
-          {run && finished && !reveal.revealing && <SourceRow sources={run.sources} turnId={turn.id} />}
           {run && (
             <Blocks
               blocks={blocks}
               sources={run.sources}
               turnId={turn.id}
               onAsk={last && finished ? onAsk : undefined}
-              reveal={answerText ? { text: reveal.shown, caret: reveal.revealing } : undefined}
+              reveal={answerText ? { text: reveal.shown, streaming: reveal.revealing } : undefined}
               finished={finished}
             />
           )}
           {run && <OutcomeNotice run={run} last={last} busy={busy} onContinue={() => void act(() => continueTurn(turn.id))} />}
           {run && finished && !reveal.revealing && (
-            <div className="-ml-1.5 flex animate-fade items-center gap-0.5">
-              {textOf && (
-                <IconBtn
-                  title={copied ? 'Copied' : 'Copy'}
-                  onClick={() => {
-                    void navigator.clipboard?.writeText(textOf)
-                    setCopied(true)
-                    setTimeout(() => setCopied(false), 1500)
-                  }}
-                >
-                  <span key={copied ? 'y' : 'n'} className="animate-fade">
-                    {copied ? <IconCheck width={16} height={16} className="text-primary" /> : <IconCopy width={16} height={16} />}
-                  </span>
-                </IconBtn>
+            <div className="-ml-1.5 flex animate-fade flex-col">
+              <div className="flex flex-wrap items-center gap-0.5">
+                {textOf && (
+                  <ReplyButton
+                    label={copied ? 'Copied' : 'Copy reply'}
+                    pressed={copied}
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(textOf)
+                      setCopied(true)
+                      setTimeout(() => setCopied(false), 1200)
+                    }}
+                  >
+                    <span aria-hidden className="ui-icon-swap">
+                      <IconCopy data-shown={!copied} width={16} height={16} />
+                      <IconCheck data-shown={copied} width={16} height={16} />
+                    </span>
+                  </ReplyButton>
+                )}
+                {onAsk && run.outcome?.status !== 'BUDGET' && (
+                  <ReplyButton label="Ask again" onClick={() => onAsk(turn.text)}>
+                    <IconRetry width={16} height={16} />
+                  </ReplyButton>
+                )}
+                <TurnMeta run={run} always={false} />
+                <SourcesButton sources={run.sources} open={sourcesOpen} onToggle={() => setSourcesOpen((o) => !o)} />
+              </div>
+              {run.sources.length > 0 && (
+                <div className="act-disclosure pl-1.5" data-open={sourcesOpen ? '' : undefined} inert={!sourcesOpen}>
+                  <div className="pr-1">
+                    <SourceList sources={run.sources} />
+                  </div>
+                </div>
               )}
-              {onAsk && run.outcome?.status !== 'BUDGET' && (
-                <IconBtn title="Ask again" onClick={() => onAsk(turn.text)}>
-                  <IconRetry width={16} height={16} />
-                </IconBtn>
-              )}
-              <span className="flex-1" />
-              <TurnDetails run={run} />
+            </div>
+          )}
+          {run && last && isLive(run) && (
+            <div className="-ml-1.5 flex">
+              <TurnMeta run={run} always />
             </div>
           )}
         </div>
@@ -374,8 +426,8 @@ function RunTurn({
 }
 
 /**
- * The chat: its turns and the ask box, with the side panel (a tool call,
- * the sources, a document) beside it. Without a conversation it is the new
+ * The chat: its turns and the ask box, with the sources or a document
+ * beside it and a tool call floating over it. Without a conversation it is the new
  * chat home; the first question opens one. subject opens a record's shared
  * chat instead.
  */
@@ -386,7 +438,6 @@ export function ChatView({
   empty,
   onCreated,
   placeholder,
-  onPanel,
 }: {
   conversationId?: string
   subject?: { kind: SubjectKind; id: string; label: string }
@@ -395,8 +446,6 @@ export function ChatView({
   empty?: (box: ReactNode) => ReactNode
   onCreated?: (id: string) => void
   placeholder?: string
-  /** Told when the side panel opens or closes, so the page can fold its sidebar. */
-  onPanel?: (open: boolean) => void
 }) {
   const me = useMe()
   const navigate = useNavigate()
@@ -416,6 +465,21 @@ export function ChatView({
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)
   const [panel, setPanel] = useState<Panel>()
+  const [leaving, setLeaving] = useState(false)
+  const leaveTimer = useRef<number>(undefined)
+  const opener = useRef<HTMLElement | null>(null)
+  // The tool call leaves in 140 ms, then focus goes back to its row.
+  const closeTool = useCallback(() => {
+    setLeaving(true)
+    window.clearTimeout(leaveTimer.current)
+    leaveTimer.current = window.setTimeout(() => {
+      setPanel(undefined)
+      setLeaving(false)
+      opener.current?.focus()
+      opener.current = null
+    }, 140)
+  }, [])
+  useEffect(() => () => window.clearTimeout(leaveTimer.current), [])
   const box = useRef<HTMLTextAreaElement>(null)
   // Whatever mounts while the thread opens draws still (lib/motion).
   useState(() => markThreadOpened())
@@ -445,8 +509,6 @@ export function ChatView({
     box.current?.focus()
   }, [conversationId])
 
-  // A chat that goes away takes its panel with it.
-  useEffect(() => () => onPanel?.(false), [onPanel])
 
   // The thread follows its newest line while the member is at the bottom; scrolled up, it stays put and offers a jump back.
   const scroller = useRef<HTMLDivElement>(null)
@@ -625,8 +687,12 @@ export function ChatView({
   const api: PanelApi = {
     panel,
     open: (p) => {
+      if (!p && panel?.kind === 'tool') return closeTool()
+      window.clearTimeout(leaveTimer.current)
+      setLeaving(false)
+      // A tool call gives focus back to what opened it when it closes.
+      if (p?.kind === 'tool') opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
       setPanel(p)
-      onPanel?.(!!p)
     },
     sourcesOf: (turnId) => runOf(turnId)?.sources ?? [],
   }
@@ -636,7 +702,7 @@ export function ChatView({
 
   return (
     <PanelContext value={api}>
-      <div className="flex min-w-0 flex-1">
+      <div className="relative flex min-w-0 flex-1">
         {!conversationId && empty ? (
           empty(composer)
         ) : (
@@ -684,7 +750,7 @@ export function ChatView({
             </div>
           </section>
         )}
-        {panel?.kind === 'tool' && <ToolPanel key={panel.id} id={panel.id} />}
+        {panel?.kind === 'tool' && <ToolOverlay key={panel.id} id={panel.id} leaving={leaving} onClose={closeTool} />}
         {panel?.kind === 'sources' && <SourcesPanel sources={panelRun?.sources ?? []} active={panel.n} />}
         {panel?.kind === 'doc' && <DocumentPanel key={panel.id} id={panel.id} version={panel.version} sources={panelRun?.sources ?? []} turnId={panel.turnId ?? ''} />}
       </div>

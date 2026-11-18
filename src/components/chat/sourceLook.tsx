@@ -27,3 +27,29 @@ export function SourceBadge({ kind, size = 20 }: { kind: SourceKind; size?: numb
     </span>
   )
 }
+
+/** The letter marks' inks, after AI Portal's source-avatar palette, in our colours. */
+const avatarInks = ['--md-primary', '--md-tertiary', '--md-chart-2', '--md-chart-3']
+
+/** A source's letter mark: its first letter on a tint picked from its name, so one source keeps one colour. */
+export function SourceAvatar({ seed, size = 24, ring = false }: { seed: string; size?: number; ring?: boolean }) {
+  let hash = 0
+  for (const ch of seed) hash = (hash * 31 + ch.charCodeAt(0)) | 0
+  const ink = `var(${avatarInks[Math.abs(hash) % avatarInks.length]})`
+  return (
+    <span
+      aria-hidden
+      className="flex shrink-0 select-none items-center justify-center rounded-full font-bold leading-none"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size * 0.44,
+        color: ink,
+        background: `color-mix(in srgb, ${ink} 14%, var(--md-surface-container-lowest))`,
+        boxShadow: ring ? '0 0 0 1.5px var(--md-surface-container-lowest)' : undefined,
+      }}
+    >
+      {(seed.trim()[0] ?? '?').toUpperCase()}
+    </span>
+  )
+}

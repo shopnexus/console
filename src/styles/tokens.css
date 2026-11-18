@@ -336,7 +336,9 @@
  *   animate-grow    a progress bar filling from the start
  *   animate-fade    plain fade, for labels that appear with the nav
  *   animate-shimmer a waiting line's sweep
- *   animate-panel   a side panel beside the chat: in from 16 px
+ *   animate-panel   a side panel beside the chat, or the tool call over
+ *                   it: in from 16 px; animate-panel-out leaves the same
+ *                   way, faster (140 ms)
  *   animate-wait    a placeholder that holds its space at once and shows
  *                   only after 300 ms, so a fast answer never flashes it
  *   animate-pulse-soft the live step's icon, 1.6 s
@@ -351,6 +353,7 @@
   --animate-pane: sn-pane 200ms var(--ease-spatial) backwards;
   --animate-pop: sn-pop 150ms var(--ease-spatial-fast) backwards;
   --animate-panel: sn-panel 220ms var(--ease-spatial) backwards;
+  --animate-panel-out: sn-panel-out 140ms var(--ease-effects) forwards;
   --animate-wait: sn-fade 160ms var(--ease-effects) 300ms backwards;
   --animate-pulse-soft: sn-pulse 1.6s ease-in-out infinite;
   --animate-thumb: sn-thumb 200ms var(--ease-spatial-fast) backwards;
@@ -371,6 +374,9 @@
   }
   @keyframes sn-panel {
     from { opacity: 0; translate: 16px 0; }
+  }
+  @keyframes sn-panel-out {
+    to { opacity: 0; translate: 16px 0; }
   }
   @keyframes sn-pulse {
     50% { opacity: 0.45; }

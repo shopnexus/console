@@ -1,280 +1,336 @@
-import { type ReactNode, useState } from 'react'
-import IconSpark from '~icons/material-symbols/auto-awesome-outline-rounded'
+import { type CSSProperties, type ReactNode, useState } from 'react'
+import IconWarnFill from '~icons/material-symbols/error-rounded'
+import IconDoneFill from '~icons/material-symbols/check-circle-rounded'
 import IconBlock from '~icons/material-symbols-light/do-not-disturb-on-outline-rounded'
 import IconBadge from '~icons/material-symbols-light/badge-outline'
-import IconCheck from '~icons/material-symbols-light/check-rounded'
-import IconClose from '~icons/material-symbols-light/close-rounded'
+import IconCalc from '~icons/material-symbols-light/calculate-outline-rounded'
+import IconChevron from '~icons/material-symbols-light/expand-more-rounded'
 import IconCompress from '~icons/material-symbols-light/compress-rounded'
+import IconDoc from '~icons/material-symbols-light/description-outline-rounded'
 import IconError from '~icons/material-symbols-light/error-outline-rounded'
-import IconExpand from '~icons/material-symbols-light/expand-more-rounded'
-import IconHourglass from '~icons/material-symbols-light/hourglass-top-rounded'
+import IconList from '~icons/material-symbols-light/format-list-bulleted-rounded'
 import IconLoop from '~icons/material-symbols-light/all-inclusive-rounded'
-import IconPause from '~icons/material-symbols-light/pause-rounded'
+import IconMore from '~icons/material-symbols-light/more-horiz'
+import IconQuestion from '~icons/material-symbols-light/help-outline-rounded'
 import IconReason from '~icons/material-symbols-light/psychology-outline-rounded'
-import IconSchedule from '~icons/material-symbols-light/schedule-outline-rounded'
+import IconRight from '~icons/material-symbols-light/chevron-right-rounded'
+import IconSearch from '~icons/material-symbols-light/search-rounded'
 import IconShield from '~icons/material-symbols-light/verified-user-outline-rounded'
 import IconSpeed from '~icons/material-symbols-light/speed-outline-rounded'
 import IconSwap from '~icons/material-symbols-light/swap-horiz-rounded'
+import IconTool from '~icons/material-symbols-light/build-outline-rounded'
 import { useNow } from '../../lib/dom'
-import { clock, duration, time } from '../../lib/format'
+import { clock, duration } from '../../lib/format'
 import { reducedMotion, useArrival } from '../../lib/motion'
 import { usePanel } from '../../lib/panel'
-import { counts, elapsed, flatTools, isLive, type Note, type RunState, type Step, type ToolCall } from '../../lib/run'
-import { Spinner } from '../ui'
+import { elapsed, flatTools, isLive, type Note, type RunState, type Step, type ToolCall } from '../../lib/run'
+import { groupCalls, metaOf, rowTitle } from '../../lib/trace'
 
-/** A tool call as a quiet chip (a border only on hover): its state, the tool, what it was called on and what came back. A press opens the tool panel. */
-export function ToolChip({ call, count, onPress }: { call: ToolCall; count?: string; onPress?: () => void }) {
+/*
+ * The run's activity, drawn the way AI Portal draws it (step-run,
+ * work-phase-list, agent-trace-row, thinking-indicator). Its styles are the
+ * activity section of styles/global.css.
+ */
+
+/** Steps shown while a run is live; older ones fold into one row. */
+const LIVE_STEPS = 4
+/** Rows a live phase shows. */
+const LIVE_ROWS = 4
+/** Tallies under a phase title before the rest are left to its rows. */
+const TALLIES = 3
+
+/** Live text with a light band sweeping across it; the band widens with the text, so short and long sweep at one pace. */
+export function Shimmer({ children, length }: { children: ReactNode; length?: number }) {
+  const chars = length ?? (typeof children === 'string' ? children.length : 24)
+  return (
+    <span className="act-shimmer" style={{ '--act-spread': `${Math.max(chars * 2, 20)}px` } as CSSProperties}>
+      {children}
+    </span>
+  )
+}
+
+/** A call's icon by what its tool does: counts, searches, lists, reads, or anything else. */
+function toolIcon(tool: string, className: string) {
+  const p = { width: 16, height: 16, className }
+  if (/count|stat|sum|total/.test(tool)) return <IconCalc {...p} />
+  if (/search|find|lookup/.test(tool)) return <IconSearch {...p} />
+  if (/list/.test(tool)) return <IconList {...p} />
+  if (/get|read|detail|show/.test(tool)) return <IconDoc {...p} />
+  return <IconTool {...p} />
+}
+
+/** One tool call as a row: its icon, "label what", the meta at the right when compact. A press opens it in the tool panel. */
+function TraceRow({ calls, index, compact = false }: { calls: ToolCall[]; index: number; compact?: boolean }) {
   const { open, panel } = usePanel()
-  const on = panel?.kind === 'tool' && panel.id === call.id
-  const failed = call.status === 'failed'
-  const icon =
-    call.status === 'running' ? (
-      call.retries.length ? <IconHourglass width={13} height={13} className="text-tertiary" /> : <Spinner size={11} />
-    ) : failed ? (
-      <IconError width={13} height={13} />
-    ) : call.status === 'skipped' ? (
-      <IconSchedule width={13} height={13} className="text-outline" />
-    ) : (
-      <IconCheck width={13} height={13} className="text-primary" />
-    )
+  const lead = calls[0]
+  const on = panel?.kind === 'tool' && calls.some((c) => c.id === panel.id)
+  const running = lead.status === 'running'
+  const failed = lead.status === 'failed'
+  const unsettled = lead.status === 'skipped'
+  const state = running ? 'active' : failed ? 'warn' : 'done'
+  const title = rowTitle(lead)
+  const meta = metaOf(calls)
   return (
-    <button
-      type="button"
-      onClick={onPress ?? (() => open(on ? undefined : { kind: 'tool', id: call.id }))}
-      className={`inline-flex h-7 max-w-full items-center gap-1.5 rounded-[9px] border px-2 text-label-small font-normal ${
-        failed
-          ? 'border-error/30 bg-error/4 text-error'
-          : on
-            ? 'border-primary/40 bg-primary/4'
-            : 'border-transparent bg-surface-container-low hover:border-hairline hover:bg-surface-container-lowest'
-      }`}
-    >
-      {icon}
-      <span className="font-medium">{call.tool}</span>
-      {call.label && !count && <span className={`truncate ${failed ? '' : 'text-on-surface-variant'}`}>{call.label}</span>}
-      {count && <span className="rounded-[5px] bg-surface-container-high px-1 text-[11px] font-semibold">{count}</span>}
-      {call.resultSummary && !count && <span className={failed ? 'opacity-80' : 'text-on-surface-variant'}>→ {call.resultSummary}</span>}
-    </button>
-  )
-}
-
-/** A step's calls: up to three of one tool each as a chip, more as "tool ×n" that opens to them. */
-function StepTools({ calls }: { calls: ToolCall[] }) {
-  const [unfolded, setUnfolded] = useState<string[]>([])
-  const byTool = new Map<string, ToolCall[]>()
-  for (const c of calls) byTool.set(c.tool, [...(byTool.get(c.tool) ?? []), c])
-  const out: ReactNode[] = []
-  for (const [tool, list] of byTool) {
-    if (list.length > 3 && !unfolded.includes(tool)) {
-      const running = list.filter((c) => c.status === 'running').length
-      const lead = list.find((c) => c.status === 'running') ?? list[0]
-      out.push(
-        <ToolChip
-          key={tool}
-          call={{ ...lead, label: '' }}
-          count={running ? `${list.length - running}/${list.length}` : `×${list.length}`}
-          onPress={() => setUnfolded((t) => [...t, tool])}
-        />,
-      )
-    } else for (const c of list) out.push(<ToolChip key={c.id} call={c} />)
-  }
-  return <div className="mt-2 flex flex-wrap gap-1.5">{out}</div>
-}
-
-const guardText: Record<string, [string, (s: number) => ReactNode]> = {
-  pii_masked: ['Personal data masked', (s) => <IconBadge width={s} height={s} />],
-  off_topic: ['Refused off-topic', (s) => <IconBlock width={s} height={s} />],
-  loop_stopped: ['Stopped a loop', (s) => <IconLoop width={s} height={s} />],
-  rate_limited: ['Rate limited', (s) => <IconSpeed width={s} height={s} />],
-}
-
-/** A provider switch or a guardrail inside the run, as a quiet line. */
-export function NoteView({ note }: { note: Note }) {
-  if (note.kind === 'switch') {
-    return (
-      <p className="mt-2 flex items-start gap-2 text-body-small text-on-tertiary-fixed-variant">
-        <IconSwap width={16} height={16} className="mt-0.5 shrink-0" />
-        <span>
-          {note.from} returned {note.reason}; switched to {note.to}, same model
-        </span>
-      </p>
-    )
-  }
-  // Rules the console has no words for yet show by their name.
-  const [title, icon] = guardText[note.rule] ?? [note.rule.replace(/_/g, ' '), (s: number) => <IconShield width={s} height={s} />]
-  return (
-    <p className="mt-2 flex items-start gap-2 text-body-small text-primary">
-      <span className="mt-0.5 shrink-0">{icon(16)}</span>
-      <span>
-        <span className="font-medium">{title}</span>
-        {note.detail && <span className="text-on-surface-variant"> · {note.detail}</span>}
+    <div className={`act-step ${index > 0 ? 'act-enter' : ''}`} data-state={state} data-compact={compact ? '' : undefined}>
+      <span className="act-rail" aria-hidden>
+        {failed ? <IconError width={16} height={16} /> : toolIcon(lead.tool, `${running ? 'act-pulse' : ''} ${unsettled ? 'opacity-60' : ''}`)}
       </span>
-    </p>
-  )
-}
-
-/** A call's failed attempts and the next one, while the run retries it. */
-function Attempts({ call, now }: { call: ToolCall; now: number }) {
-  if (call.retries.length === 0) return null
-  const last = call.retries[call.retries.length - 1]
-  const nextAt = new Date(last.at).getTime() + last.next_in_ms
-  return (
-    <div className="mt-2 space-y-1 text-body-small">
-      {call.retries.map((r) => (
-        <p key={r.attempt} className="flex items-center gap-2">
-          <IconClose width={15} height={15} className="text-error" />
-          <span className="w-[70px] text-on-surface-variant">Attempt {r.attempt}</span>
-          <span className="min-w-0 flex-1 truncate">{r.error}</span>
-          <span className="tabular-nums text-on-surface-variant">{time(r.at)}</span>
-        </p>
-      ))}
-      {call.status === 'running' && (
-        <p className="flex items-center gap-2">
-          <Spinner size={13} />
-          <span className="w-[70px] text-on-surface-variant">Attempt {last.attempt + 1}</span>
-          <span className="flex-1">
-            {nextAt > now ? `in ${Math.ceil((nextAt - now) / 1000)} s, ` : ''}with a {Math.round(last.timeout_ms / 1000)} s limit
+      <div className="min-w-0 flex-1">
+        <button
+          type="button"
+          aria-label={[title.verb, title.text].filter(Boolean).join(' ')}
+          aria-pressed={on}
+          data-tool-row=""
+          onClick={() => open(on ? undefined : { kind: 'tool', id: lead.id })}
+          className="act-title group/row flex w-full min-w-0 items-center gap-1 rounded-md text-left"
+        >
+          <span className={`min-w-0 truncate ${unsettled ? 'opacity-70' : ''}`}>
+            {running ? (
+              <Shimmer length={title.text.length}>{title.text}</Shimmer>
+            ) : (
+              <>
+                {title.verb && <span className="text-outline">{title.verb} </span>}
+                {title.text}
+              </>
+            )}
           </span>
-        </p>
-      )}
+          {compact && meta.length > 0 && <span className="ml-auto shrink-0 pl-3 text-[12.5px] leading-4 tabular-nums text-outline">{meta.join(' · ')}</span>}
+          <IconRight width={16} height={16} className={`ui-chevron shrink-0 text-outline ${on ? 'opacity-100' : 'opacity-0 group-hover/row:opacity-100'}`} aria-hidden />
+        </button>
+        {!compact && meta.length > 0 && (
+          <div className="act-meta">
+            <span className="tabular-nums">{meta.join(' · ')}</span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
-type StepState = 'done' | 'active' | 'quiet' | 'warn'
-
-/** One step on the rail: its state told by ink; only the live one moves. It enters once when it arrives. */
-function StepView({ step, run, last, now, turnId }: { step: Step; run: RunState; last: boolean; now: number; turnId: string }) {
-  const arrived = useArrival(`${turnId}:${step.id}`)
-  const calls = step.tools.map((id) => run.tools[id]).filter(Boolean)
-  const live = isLive(run)
-  const failed = calls.some((c) => c.status === 'failed')
-  const state: StepState = step.done ? (failed ? 'warn' : 'done') : live ? 'active' : run.outcome?.status === 'BUDGET' ? 'warn' : 'quiet'
-  const ink = { done: 'text-on-surface-variant', active: 'text-on-surface', quiet: 'text-outline', warn: 'text-error' }[state]
+/** What the model turned over between steps: the quietest row, a dot, opening to its summary on a press only. */
+function ThinkingRow({ t, index }: { t: { summary: string; durationMs: number }; index: number }) {
+  const [open, setOpen] = useState(false)
   return (
-    <div className={`relative flex gap-2.5 ${arrived ? 'animate-rise' : ''}`}>
-      {!last && <span className="absolute bottom-[-12px] left-[7.5px] top-[22px] w-px bg-outline-variant/60" />}
-      <span className={`relative flex w-4 shrink-0 justify-center pt-0.5 ${ink}`}>
-        {state === 'done' ? (
-          <IconCheck width={16} height={16} />
-        ) : state === 'active' ? (
-          <span className="mt-1 h-2.5 w-2.5 animate-pulse-soft rounded-full bg-primary" />
-        ) : state === 'warn' ? (
-          <IconError width={16} height={16} />
-        ) : (
-          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-outline-variant" />
-        )}
+    <div className={`act-step ${index > 0 ? 'act-enter' : ''}`} data-state="quiet">
+      <span className="act-rail" aria-hidden>
+        <span className="act-dot" />
       </span>
-      <div className={`min-w-0 flex-1 ${ink}`}>
-        <div className="flex items-baseline gap-2">
-          <p className={`flex-1 text-label-medium ${state === 'done' ? 'text-on-surface' : ''}`}>
-            {state === 'active' ? <span className="shimmer-text">{step.title}</span> : step.title}
-          </p>
-          <span className="tabular-nums text-label-small font-normal text-on-surface-variant">
-            {step.durationMs !== undefined ? duration(step.durationMs) : state === 'active' ? clock(now - new Date(step.startedAt).getTime()) : ''}
-          </span>
+      <div className="min-w-0 flex-1">
+        <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="act-think group/row flex w-full min-w-0 items-center gap-1 rounded-md text-left">
+          <span className="min-w-0 truncate">Thought for {duration(t.durationMs)}</span>
+          <IconChevron width={16} height={16} className={`ui-chevron shrink-0 text-outline ${open ? 'rotate-180 opacity-100' : 'opacity-0 group-hover/row:opacity-100'}`} aria-hidden />
+        </button>
+        <div className="act-disclosure" data-open={open ? '' : undefined} inert={!open}>
+          <div className="pt-1">
+            <p className="act-think-body mb-1">{t.summary}</p>
+          </div>
         </div>
-        {step.summary && <p className="mt-0.5 text-body-small text-on-surface-variant">{step.summary}</p>}
-        {calls.length > 0 && <StepTools calls={calls} />}
-        {calls.map((c) => (
-          <Attempts key={c.id} call={c} now={now} />
-        ))}
-        {step.notes.map((note, i) => (
-          <NoteView key={i} note={note} />
-        ))}
+      </div>
+    </div>
+  )
+}
+
+const guardText: Record<string, [string, typeof IconBadge]> = {
+  pii_masked: ['Personal data masked', IconBadge],
+  off_topic: ['Refused off-topic', IconBlock],
+  loop_stopped: ['Stopped a loop', IconLoop],
+  rate_limited: ['Rate limited', IconSpeed],
+}
+
+/** A provider switch or a guardrail, as a quiet row in the run. */
+function NoteRow({ note }: { note: Note }) {
+  const [title, Icon] =
+    note.kind === 'switch'
+      ? [`${note.from} returned ${note.reason}; switched to ${note.to}, same model`, IconSwap]
+      : // Rules the console has no words for yet show by their name.
+        (guardText[note.rule] ?? [note.rule.replace(/_/g, ' '), IconShield])
+  return (
+    <div className="act-step" data-state="quiet" data-compact="">
+      <span className="act-rail" aria-hidden>
+        <Icon width={16} height={16} />
+      </span>
+      <p className="act-think min-w-0 flex-1">
+        {title}
+        {note.kind === 'guardrail' && note.detail && <span> · {note.detail}</span>}
+      </p>
+    </div>
+  )
+}
+
+type PhaseState = 'active' | 'warn' | 'done'
+
+function Rail({ state }: { state: PhaseState }) {
+  if (state === 'active') return <span role="img" aria-label="In progress" className="mt-0.5 size-3.5 animate-spin rounded-full border-[1.8px] border-hairline border-t-on-surface" />
+  if (state === 'warn') return <IconWarnFill role="img" aria-label="A step failed" width={16} height={16} className="text-tertiary" />
+  return <IconDoneFill role="img" aria-label="Done" width={16} height={16} className="text-primary" />
+}
+
+/** "Support tickets ×3", most frequent first. */
+function talliesOf(calls: ToolCall[]): string[] {
+  const counts = new Map<string, number>()
+  for (const c of calls) {
+    const label = rowTitle({ ...c, input: undefined }).text
+    counts.set(label, (counts.get(label) ?? 0) + 1)
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, TALLIES)
+    .map(([label, n]) => (n > 1 ? `${label} ×${n}` : label))
+}
+
+/** How long a phase took, or its clock while it is the one in progress. */
+function PhaseTime({ step, active, now }: { step: Step; active: boolean; now: number }) {
+  const ms = active ? Math.max(0, now - new Date(step.startedAt).getTime()) : step.durationMs
+  if (ms === undefined || (!active && ms < 1000)) return null
+  return <span className="mt-0.5 shrink-0 text-[12.5px] tabular-nums text-outline">{active ? clock(ms) : duration(ms)}</span>
+}
+
+/** One of our steps as a phase: its title, its calls folded to tallies until it is opened, and what it found. */
+function PhaseRow({ step, run, live, now }: { step: Step; run: RunState; live: boolean; now: number }) {
+  const calls = step.tools.map((id) => run.tools[id]).filter(Boolean)
+  const failed = calls.filter((c) => c.status === 'failed').length
+  const state: PhaseState = (live && !step.done) || calls.some((c) => c.status === 'running') ? 'active' : failed ? 'warn' : 'done'
+  const [open, setOpen] = useState(false)
+  const inner = calls.length > 0 || !!step.summary || step.notes.length > 0
+  const expanded = open || (state === 'active' && calls.length > 0)
+  const groups = groupCalls(calls)
+  const shown = state === 'active' && !open ? groups.slice(-LIVE_ROWS) : groups
+  return (
+    <div className="ph" data-state={state}>
+      <span className="act-rail">
+        <Rail state={state} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <button type="button" aria-expanded={expanded} disabled={!inner} onClick={() => setOpen((o) => !o)} className="flex w-full items-start gap-2 rounded-md text-left">
+          <span className={`ph-title min-w-0 flex-1 ${expanded ? '' : 'line-clamp-2'}`}>{state === 'active' ? <Shimmer>{step.title}</Shimmer> : step.title}</span>
+          <PhaseTime step={step} active={state === 'active'} now={now} />
+          {inner && state !== 'active' && <IconChevron width={16} height={16} className={`ui-chevron mt-0.5 shrink-0 text-outline ${expanded ? 'rotate-180' : ''}`} aria-hidden />}
+        </button>
+        {calls.length > 0 && !expanded && (
+          <div className="ph-meta">
+            {failed > 0 && <span className="ph-tally ph-tally-warn">{failed} failed</span>}
+            {talliesOf(calls).map((t) => (
+              <span key={t} className="ph-tally">
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
+        {expanded && (
+          <div className="ph-inner">
+            <div className="ph-rows">
+              {shown.map((g, i) => (
+                <TraceRow key={g[0].id} calls={g} index={i} compact />
+              ))}
+              {step.notes.map((n, i) => (
+                <NoteRow key={i} note={n} />
+              ))}
+            </div>
+            {step.summary && <p className="ph-said">{step.summary}</p>}
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
 /**
- * The run as a quiet trigger line (icon · label · time and counts ·
- * chevron) over its steps on a thin rail. Open while it works; when it ends
- * it folds to "Worked for 42 s · …" and opens again on a press. A turn
- * without steps shows its calls flat.
+ * The run as one trigger line (brain · "Working" and its clock, or "Worked
+ * for 42 s" · steps · chevron) over its work: our steps as phases, or the
+ * calls as rows when the run has no steps. Open while there is something to
+ * watch, folded once there is not, unless the member opened or closed it.
  */
-export function RunCard({ run, turnId }: { run: RunState; turnId: string }) {
+export function RunCard({ run }: { run: RunState; turnId: string }) {
   const live = isLive(run)
+  const asking = run.phase === 'awaiting_input'
   const now = useNow(live || !!run.rateUntil)
-  // Open while it works, folded once it ends; the member's own choice holds until the run changes between the two.
-  const [choice, setChoice] = useState<{ open: boolean; live: boolean }>()
-  const open = choice && choice.live === live ? choice.open : live
-  const setOpen = (f: (o: boolean) => boolean) => setChoice({ open: f(open), live })
-  const c = counts(run)
-  const ms = elapsed(run, now)
-  const current = [...run.steps].reverse().find((s) => !s.done)
+  const [touched, setTouched] = useState<boolean>()
+  const [showEarlier, setShowEarlier] = useState(false)
+  const expanded = touched ?? (live || asking)
   const flat = flatTools(run)
-  const waiting = run.rateUntil && new Date(run.rateUntil).getTime() > now
-  const paused = run.phase === 'paused'
-  const budget = run.outcome?.status === 'BUDGET'
-  if (run.steps.length === 0 && flat.length === 0 && run.thinking.length === 0 && run.notes.length === 0) return null
+  const phased = run.steps.length > 0
+  if (!phased && flat.length === 0 && run.thinking.length === 0 && run.notes.length === 0) return null
 
-  const label = live
-    ? run.phase === 'pausing'
-      ? 'Pausing after this step'
-      : waiting
-        ? 'Waiting for the rate limit'
-        : (current?.title ?? 'Working')
-    : paused
-      ? `Paused after ${duration(ms)}`
+  const ms = elapsed(run, now) ?? 0
+  const calls = run.toolOrder.map((id) => run.tools[id]).filter(Boolean)
+  const failed = calls.filter((c) => c.status === 'failed').length
+  const waiting = run.rateUntil && new Date(run.rateUntil).getTime() > now
+  const budget = run.outcome?.status === 'BUDGET'
+  const liveLabel = run.phase === 'pausing' ? 'Pausing after this step' : waiting ? 'Waiting for the rate limit' : 'Working'
+  const settled = asking
+    ? 'Waiting for your answer'
+    : run.phase === 'paused'
+      ? `Paused${ms ? ` after ${duration(ms)}` : ''}`
       : budget
-        ? `Stopped after ${duration(ms)}`
-        : run.phase === 'awaiting_input'
-          ? 'Waiting for your answer'
-          : `Worked for ${duration(ms)}`
-  const meta = [
-    live ? (waiting ? clock(new Date(run.rateUntil!).getTime() - now) : clock(ms)) : '',
-    c.steps ? (c.steps === 1 ? '1 step' : `${c.steps} steps`) : '',
-    c.tools === 1 ? '1 tool call' : `${c.tools} tool calls`,
-    c.sources === 1 ? '1 source' : `${c.sources} sources`,
+        ? `Stopped${ms ? ` after ${duration(ms)}` : ''}`
+        : ms
+          ? `Worked for ${duration(ms)}`
+          : 'Worked'
+  const rows: ReactNode[] = [
+    ...run.thinking.map((t, i) => <ThinkingRow key={`t${i}`} t={t} index={i} />),
+    ...groupCalls(flat).map((g, i) => <TraceRow key={g[0].id} calls={g} index={run.thinking.length + i} />),
   ]
-    .filter(Boolean)
-    .join(' · ')
-  const icon = live ? (
-    <IconSpark width={16} height={16} className={`text-primary ${reducedMotion() ? '' : 'animate-pulse-soft'}`} />
-  ) : paused || budget ? (
-    <IconPause width={16} height={16} className={budget ? 'text-error' : ''} />
-  ) : (
-    <IconCheck width={16} height={16} className="text-primary" />
-  )
+  const hidden = live && !showEarlier ? Math.max(0, rows.length - LIVE_STEPS) : 0
+  const lastTitle = run.steps[run.steps.length - 1]?.title
 
   return (
-    <section>
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="group flex max-w-full items-center gap-2 text-label-medium text-on-surface-variant hover:text-on-surface">
-        {icon}
-        <span className={`truncate ${live ? 'text-on-surface' : ''}`}>{live ? <span className="shimmer-text">{label}</span> : label}</span>
-        <span className="truncate font-normal tabular-nums text-on-surface-variant">· {meta}</span>
-        <IconExpand width={16} height={16} className={`shrink-0 transition-transform duration-[180ms] ${open ? 'rotate-180' : ''}`} />
+    <div className="flex w-full flex-col">
+      <button type="button" aria-expanded={expanded} onClick={() => setTouched(!expanded)} className="act-trigger w-fit rounded-md">
+        <span role="status" className="contents">
+          {asking ? <IconQuestion width={16} height={16} className="shrink-0 text-tertiary" aria-hidden /> : <IconReason width={16} height={16} className="shrink-0" aria-hidden />}
+          {live ? (
+            <>
+              <Shimmer>{liveLabel}</Shimmer>
+              <span className="tabular-nums text-outline">{waiting ? clock(new Date(run.rateUntil!).getTime() - now) : clock(ms)}</span>
+            </>
+          ) : (
+            <span className={`truncate ${asking ? 'text-on-surface' : ''}`}>{settled}</span>
+          )}
+        </span>
+        {calls.length > 0 && (
+          <span className="shrink-0 tabular-nums text-outline">
+            · {calls.length} {calls.length === 1 ? 'step' : 'steps'}
+            {failed ? ` · ${failed} failed` : ''}
+            {run.steps.length > 1 ? ` · ${run.steps.length} phases` : ''}
+          </span>
+        )}
+        <IconChevron width={16} height={16} className={`ui-chevron shrink-0 text-outline ${expanded ? 'rotate-180' : ''}`} aria-hidden />
       </button>
-      <div className="disclosure" data-open={open ? '' : undefined}>
+      {phased && !expanded && lastTitle && <p className="ml-6 mt-0.5 truncate text-[14px] leading-5 text-outline">{lastTitle}</p>}
+      <div className="act-disclosure" data-open={expanded ? '' : undefined} inert={!expanded}>
         <div>
-          <div className="space-y-3 pb-1 pl-px pt-3">
-            {run.thinking.map((t, i) => (
-              <div key={i} className="flex gap-2.5 text-body-small">
-                <IconReason width={16} height={16} className="mt-0.5 shrink-0 text-on-surface-variant" />
-                <p className="min-w-0 flex-1">
-                  <span className="font-medium">Thought for {duration(t.durationMs)}</span>
-                  <span className="text-on-surface-variant"> · {t.summary}</span>
-                </p>
-              </div>
-            ))}
-            {run.steps.map((s, i) => (
-              <StepView key={s.id} step={s} run={run} last={i === run.steps.length - 1} now={now} turnId={turnId} />
-            ))}
-            {run.steps.length === 0 && flat.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {flat.map((t) => (
-                  <ToolChip key={t.id} call={t} />
-                ))}
-              </div>
-            )}
-            {run.notes.map((n, i) => (
-              <NoteView key={i} note={n} />
-            ))}
-          </div>
+          {phased && rows.length > 0 && <div className="act-list">{rows}</div>}
+          {phased ? (
+            <div className="ph-list">
+              {run.steps.map((s, i) => (
+                <PhaseRow key={s.id} step={s} run={run} live={live && i === run.steps.length - 1} now={now} />
+              ))}
+            </div>
+          ) : (
+            <div className="act-list">
+              {hidden > 0 && (
+                <button type="button" onClick={() => setShowEarlier(true)} className="act-step w-full rounded-md text-left hover:text-on-surface" data-state="quiet">
+                  <span className="act-rail" aria-hidden>
+                    <IconMore width={16} height={16} />
+                  </span>
+                  <span className="act-think">
+                    {hidden} earlier {hidden === 1 ? 'step' : 'steps'}
+                  </span>
+                </button>
+              )}
+              {rows.slice(hidden)}
+            </div>
+          )}
+          {run.notes.length > 0 && (
+            <div className="act-list">
+              {run.notes.map((n, i) => (
+                <NoteRow key={i} note={n} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
-    </section>
+    </div>
   )
 }
 
@@ -288,10 +344,10 @@ export function CompactionDivider({ summary, before, after }: { summary: string;
         <span className="h-px flex-1 bg-outline-variant/60" />
         <IconCompress width={14} height={14} />
         Older turns summarised · {k(before)} → {k(after)} tokens
-        <IconExpand width={14} height={14} className={`transition-transform duration-[180ms] ${open ? 'rotate-180' : ''}`} />
+        <IconChevron width={14} height={14} className={`ui-chevron ${open ? 'rotate-180' : ''}`} />
         <span className="h-px flex-1 bg-outline-variant/60" />
       </button>
-      <div className="disclosure" data-open={open ? '' : undefined}>
+      <div className="act-disclosure" data-open={open ? '' : undefined}>
         <div>
           <p className="mx-auto mt-2 max-w-[600px] rounded-2xl bg-surface-container-low px-4 py-3 text-body-small text-on-surface-variant">{summary}</p>
         </div>
@@ -303,31 +359,43 @@ export function CompactionDivider({ summary, before, after }: { summary: string;
 /** "Summarising older turns" while the run compacts its context. */
 export function Compacting() {
   return (
-    <p className="flex items-center gap-2 text-label-small font-normal text-on-surface-variant">
-      <IconCompress width={14} height={14} />
-      <span className="shimmer-text">Summarising older turns</span>
+    <p className="flex items-center gap-2 text-[14px] leading-5 text-on-surface-variant">
+      <IconCompress width={16} height={16} />
+      <Shimmer>Summarising older turns</Shimmer>
     </p>
   )
 }
 
-const words = ['Thinking', 'Working', 'Writing']
+const verbs = ['Thinking', 'Working', 'Writing']
+/** Seconds before the clock appears, and before the wait is explained. */
+const CLOCK_AFTER = 3
+const LONG_WAIT = 20
 
 /**
- * Before the run's first event: it holds its space at once and shows after
- * 300 ms, so a fast answer never flashes it. One plain word that changes
- * slowly, and a clock after three seconds. The first step replaces it.
+ * Before the run's first event: a brain and one plain word that changes
+ * slowly, a clock after three seconds and a note after twenty. It fades in
+ * when a wait begins; the first step replaces it.
  */
 export function Waiting() {
+  const arrived = useArrival()
   const [start] = useState(() => Date.now())
   const now = useNow(true)
   const secs = Math.floor((now - start) / 1000)
-  const word = reducedMotion() ? words[0] : words[Math.floor(secs / 4.5) % words.length]
+  const i = reducedMotion() ? 0 : Math.floor(secs / 4.5)
   return (
-    <div role="status" aria-label="The agent is working" className="flex h-7 animate-wait items-center gap-2 text-label-medium text-on-surface-variant">
-      <span key={word} className="animate-fade">
-        <span className="shimmer-text">{word}…</span>
-      </span>
-      {secs >= 3 && <span className="font-normal tabular-nums">{clock(now - start)}</span>}
+    <div role="status" aria-label="The agent is thinking" className={`flex flex-col gap-0.5 py-1 text-[14px] leading-5 text-on-surface-variant ${arrived ? 'ui-fade-in' : ''}`}>
+      <div className="flex items-center gap-2">
+        <IconReason width={16} height={16} className="shrink-0" aria-hidden />
+        <span key={i} aria-hidden className={i > 0 ? 'ui-fade-in' : ''}>
+          <Shimmer>{`${verbs[i % verbs.length]}…`}</Shimmer>
+        </span>
+        {secs >= CLOCK_AFTER && (
+          <span aria-hidden className="tabular-nums text-outline">
+            {secs < 60 ? `${secs} s` : duration(secs * 1000)}
+          </span>
+        )}
+      </div>
+      {secs >= LONG_WAIT && <p className="pl-6 text-[12.5px] text-outline">Still working, long answers can take a minute.</p>}
     </div>
   )
 }

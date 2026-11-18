@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import IconOpen from '~icons/material-symbols-light/north-east-rounded'
 import { ChatView } from '../components/chat/Chat'
@@ -22,15 +21,13 @@ export function Agent() {
   const c = conversation.data
   const subject = c?.subject_kind && c.subject_id ? { kind: c.subject_kind, id: c.subject_id } : undefined
   const subjectLabel = useSubjectLabel(subject?.kind, subject?.id)
-  const [panel, setPanel] = useState(false)
   const href = subject ? (subject.kind === 'ticket' ? `/support/${subject.id}` : `/accounts/${subject.id}`) : undefined
 
   return (
-    <Shell railFirst={panel}>
+    <Shell>
       <ChatView
         key={id ?? 'new'}
         conversationId={id}
-        onPanel={setPanel}
         onCreated={(cid) => navigate(`/agent/${cid}`)}
         header={
           <header className="flex h-14 shrink-0 items-center gap-3 px-6">

@@ -1,75 +1,154 @@
-import { type ReactNode, useCallback, useState } from 'react'
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router'
 import IconArticle from '~icons/material-symbols-light/article-outline-rounded'
 import IconFull from '~icons/material-symbols-light/open-in-full-rounded'
 import IconOpen from '~icons/material-symbols-light/north-east-rounded'
-import IconArrow from '~icons/material-symbols-light/arrow-forward-rounded'
-import { useDismiss } from '../../lib/dom'
+import IconNext from '~icons/material-symbols-light/subdirectory-arrow-right-rounded'
+import IconChevron from '~icons/material-symbols-light/expand-more-rounded'
 import { splitFigure, useArrival, useCountUp } from '../../lib/motion'
 import { type Inline, type MdBlock, parseMarkdown } from '../../lib/markdown'
 import { usePanel } from '../../lib/panel'
 import type { Block, ChartSeries, Figure, Source } from '../../lib/run'
 import { kindName, sourceHref } from '../../lib/sources'
-import { Tag } from '../ui'
-import { SourceBadge } from './sourceLook'
+import { SourceAvatar } from './sourceLook'
 
-/** A citation as a numbered chip; a press opens the source it points to. */
-export function Cite({ n, turnId }: { n: number; turnId: string }) {
-  const { sourcesOf, open: openPanel, panel } = usePanel()
-  const [open, setOpen] = useState(false)
-  const close = useCallback(() => setOpen(false), [])
-  const ref = useDismiss<HTMLSpanElement>(open, close)
-  const s = sourcesOf(turnId).find((x) => x.n === n)
-  const on = open || (panel?.kind === 'sources' && panel.turnId === turnId && panel.n === n)
-  const href = s && sourceHref(s)
+/** A source number set in the text: an 18px pill sitting just above the line (AI Portal's CitePill). */
+export function CitePill({ n, className = '' }: { n: number; className?: string }) {
   return (
-    <span ref={ref} className="relative inline-block">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-label={`Source ${n}`}
-        className={`mx-0.5 inline-flex h-[19px] min-w-[19px] items-center justify-center rounded-[6px] px-1 align-[2px] text-[11px] font-semibold leading-none ${
-          on ? 'bg-primary text-on-primary' : 'bg-primary/10 text-primary hover:bg-primary/20'
-        }`}
-      >
-        {n}
+    <span
+      className={`mx-px inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-surface-container-high px-[5px] align-[2px] text-[11px] font-medium leading-none tabular-nums text-on-surface-variant ${className}`}
+    >
+      {n}
+    </span>
+  )
+}
+
+/** Opens after resting on it 200 ms, closes 150 ms after leaving; a click opens at once. */
+function useHoverOpen() {
+  const [open, setOpen] = useState(false)
+  const timer = useRef<number>(undefined)
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+  const schedule = (next: boolean, ms: number) => {
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => setOpen(next), ms)
+  }
+  const set = useCallback((next: boolean) => {
+    window.clearTimeout(timer.current)
+    setOpen(next)
+  }, [])
+  const hover = {
+    onPointerEnter: (e: React.PointerEvent) => e.pointerType === 'mouse' && schedule(true, 200),
+    onPointerLeave: (e: React.PointerEvent) => e.pointerType === 'mouse' && schedule(false, 150),
+  }
+  return { open, set, hover }
+}
+
+/** A citation in the answer: the pill, previewing its source on rest or click, with the way into the record. */
+export function Cite({ n, turnId }: { n: number; turnId: string }) {
+  const { sourcesOf, open: openPanel } = usePanel()
+  const { open, set, hover } = useHoverOpen()
+  const anchor = useRef<HTMLSpanElement>(null)
+  const [at, setAt] = useState<CSSProperties>()
+  const s = sourcesOf(turnId).find((x) => x.n === n)
+  // Above the mark where there is room, below it where there is not, kept inside the window.
+  useEffect(() => {
+    if (!open || !anchor.current) return
+    const r = anchor.current.getBoundingClientRect()
+    const left = Math.max(12, Math.min(r.left - 12, window.innerWidth - 352))
+    setAt(r.top > 240 ? { left, bottom: window.innerHeight - r.top + 6 } : { left, top: r.bottom + 6 })
+    // A click anywhere else closes it.
+    const off = (e: PointerEvent) => {
+      const t = e.target as Element
+      if (!anchor.current?.contains(t) && !t.closest?.('[data-cite-card]')) set(false)
+    }
+    document.addEventListener('pointerdown', off)
+    return () => document.removeEventListener('pointerdown', off)
+  }, [open, set])
+  if (!s) return <CitePill n={n} />
+  const href = sourceHref(s)
+  const action = 'flex h-7 items-center gap-1.5 rounded-lg px-1.5 transition-colors duration-150 hover:bg-on-surface/8'
+  return (
+    <span ref={anchor} className="relative inline-block" {...hover}>
+      <button type="button" onClick={() => set(!open)} onKeyDown={(e) => e.key === 'Escape' && set(false)} aria-label={`Source ${n}: ${s.label}`} aria-expanded={open} className="rounded-full">
+        <CitePill n={n} className="cursor-pointer transition-colors duration-[120ms] hover:bg-surface-container-highest hover:text-on-surface" />
       </button>
-      {open && s && (
-        <span className="absolute left-[-12px] top-[26px] z-30 block w-[300px] animate-pop rounded-3xl border border-hairline bg-surface-container-lowest p-3 text-left text-body-medium shadow-float">
-          <span className="flex items-center gap-2">
-            <SourceBadge kind={s.kind} size={24} />
-            <span className="min-w-0 flex-1 truncate font-semibold">{s.label}</span>
-            <Tag tone="bg-surface-container text-on-surface-variant">{kindName(s.kind)}</Tag>
+      {open &&
+        at &&
+        createPortal(
+        <span
+          role="dialog"
+          aria-label={`Source ${n}`}
+          data-cite-card=""
+          style={at}
+          {...hover}
+          className={`fixed z-50 block w-[340px] max-w-[calc(100vw-24px)] animate-pop rounded-2xl bg-surface-container-lowest p-3 text-left shadow-float ring-1 ring-hairline ${at.top === undefined ? 'origin-bottom-left' : 'origin-top-left'}`}
+        >
+          <span className="flex min-w-0 items-center gap-2.5">
+            <SourceAvatar seed={s.label} />
+            <span className="min-w-0 flex-1 leading-4">
+              <span title={s.label} className="block truncate text-[13.5px] font-medium leading-5 text-on-surface">
+                {s.label}
+              </span>
+              <span className="block truncate text-[12px] text-outline">{kindName(s.kind)}</span>
+            </span>
+            <CitePill n={n} className="m-0 shrink-0" />
           </span>
-          {s.quote && <span className="mt-2 block rounded-lg border-l-2 border-primary bg-primary/5 px-2.5 py-1.5 text-body-small">{s.quote}</span>}
-          <span className="mt-2 flex items-center gap-3 text-body-small font-medium text-primary">
+          {s.quote && <span className="mt-2.5 block border-l-2 border-primary pl-3 text-[13px] leading-5 text-on-surface-variant">{clipped(s.quote)}</span>}
+          <span className="mt-2 flex items-center gap-2 text-[12.5px] font-medium text-on-surface">
             {href && (
-              <Link to={href} className="inline-flex items-center gap-1">
+              <Link to={href} className={`-ml-1.5 ${action}`}>
                 Open {kindName(s.kind).toLowerCase()}
                 <IconOpen width={14} height={14} />
               </Link>
             )}
             <button
               type="button"
+              className={`${href ? '' : '-ml-1.5'} ${action} font-normal text-outline`}
               onClick={() => {
-                close()
+                set(false)
                 openPanel({ kind: 'sources', turnId, n })
               }}
             >
               All sources
             </button>
           </span>
-        </span>
-      )}
+        </span>,
+          document.body,
+        )}
     </span>
   )
 }
 
-function renderInline(xs: Inline[], turnId: string): ReactNode[] {
+/** A quote cut to the length of a claim, at a line where there is one. */
+function clipped(value: string): string {
+  if (value.length <= 240) return value
+  const line = value.lastIndexOf('\n', 240)
+  return `${value.slice(0, line > 120 ? line : 240).trim()}…`
+}
+
+/** Words still arriving, each its own span keyed by its place, so only the new ones animate. */
+function streamed(text: string, key: string): ReactNode {
+  return text.match(/\S+\s*|\s+/g)?.map((w, i) => (
+    <span key={`${key}-w${i}`} className="stream-word">
+      {w}
+    </span>
+  ))
+}
+
+function renderInline(xs: Inline[], turnId: string, streaming = false): ReactNode[] {
   return xs.map((x, i) => {
+    // A span with its own marks arrives as one piece, since its marks are only whole once it is.
+    if (streaming && x.kind !== 'text') {
+      return (
+        <span key={`${i}-s`} className="stream-word">
+          {renderInline([x], turnId)}
+        </span>
+      )
+    }
     switch (x.kind) {
       case 'text':
-        return <span key={i}>{x.text}</span>
+        return <span key={i}>{streaming ? streamed(x.text, String(i)) : x.text}</span>
       case 'bold':
         return (
           <b key={i} className="font-semibold">
@@ -90,27 +169,30 @@ function renderInline(xs: Inline[], turnId: string): ReactNode[] {
   })
 }
 
-/** Markdown with citations, as the answer's text or a document's section. */
-export function Markdown({ md, turnId, sources, big = false, caret = false }: { md: string; turnId: string; sources: Source[]; big?: boolean; caret?: boolean }) {
+/**
+ * Markdown with citations, as the answer's text or a document's section.
+ * streaming: the text is still arriving, so each new word resolves out of
+ * blur and a caret rides the end of the last block.
+ */
+export function Markdown({ md, turnId, sources, big = false, streaming = false }: { md: string; turnId: string; sources: Source[]; big?: boolean; streaming?: boolean }) {
   const known = (n: number) => sources.some((s) => s.n === n)
   const blocks: MdBlock[] = parseMarkdown(md, known)
   const text = big ? 'text-body-large leading-[26px]' : 'text-body-medium leading-[23px]'
   return (
-    <div className="space-y-3">
+    <div className={`space-y-3 ${streaming ? 'streaming-tail' : ''}`}>
       {blocks.map((b, i) => {
         if (b.kind === 'h') {
           const cls = b.level === 1 ? 'text-headline-large' : b.level === 2 ? 'mt-2 text-title-medium' : 'text-title-small'
           return (
             <p key={i} className={cls}>
-              {renderInline(b.inline, turnId)}
+              {renderInline(b.inline, turnId, streaming)}
             </p>
           )
         }
         if (b.kind === 'p') {
           return (
             <p key={i} className={`whitespace-pre-wrap ${text}`}>
-              {renderInline(b.inline, turnId)}
-              {caret && i === blocks.length - 1 && <Caret />}
+              {renderInline(b.inline, turnId, streaming)}
             </p>
           )
         }
@@ -124,7 +206,7 @@ export function Markdown({ md, turnId, sources, big = false, caret = false }: { 
                 ) : (
                   <span className="w-4 shrink-0 tabular-nums text-on-surface-variant">{j + 1}.</span>
                 )}
-                <span>{renderInline(it, turnId)}</span>
+                <span>{renderInline(it, turnId, streaming)}</span>
               </li>
             ))}
           </List>
@@ -132,11 +214,6 @@ export function Markdown({ md, turnId, sources, big = false, caret = false }: { 
       })}
     </div>
   )
-}
-
-/** The soft caret at the end of text while it is revealed. */
-function Caret() {
-  return <span aria-hidden className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-pulse-soft rounded-full bg-primary" />
 }
 
 const figureTone = { good: 'text-primary', bad: 'text-error', neutral: 'text-primary' }
@@ -296,49 +373,126 @@ export function DocCard({ b, turnId }: { b: Extract<Block, { type: 'document_ref
   )
 }
 
+/**
+ * What the agent offered to ask next (AI Portal's next-action chips): a
+ * click sends it, and the whole suggestion shows. They fade up one after
+ * another when they arrive.
+ */
 export function FollowUps({ items, onAsk }: { items: string[]; onAsk?: (text: string) => void }) {
+  const arrived = useArrival(items.length ? `next:${items.join('\n')}` : undefined)
+  if (items.length === 0) return null
   return (
-    <div className="rise-list flex flex-wrap gap-2">
-      {items.map((t) => (
+    <fieldset className="flex w-full min-w-0 flex-wrap gap-2">
+      <legend className="sr-only">Suggested next questions</legend>
+      {items.map((t, i) => (
         <button
           key={t}
           type="button"
+          title={`Ask: ${t}`}
           onClick={() => onAsk?.(t)}
           disabled={!onAsk}
-          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-hairline bg-surface-container-lowest px-3.5 text-label-medium font-normal hover:bg-surface-container-low"
+          style={arrived ? { animation: `fade-up 220ms var(--act-ease-out) ${80 + Math.min(i, 4) * 50}ms both` } : undefined}
+          className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full border border-hairline bg-surface-container-lowest px-3 py-1 text-left text-[13px] text-on-surface transition-colors duration-150 hover:bg-surface-container-low disabled:cursor-default disabled:hover:bg-surface-container-lowest"
         >
-          <IconArrow width={16} height={16} className="text-primary" />
-          {t}
+          <IconNext width={14} height={14} className="shrink-0 text-outline" aria-hidden />
+          <span className="min-w-0 break-words">{t}</span>
         </button>
       ))}
+    </fieldset>
+  )
+}
+
+const sourceRow = 'flex w-full min-w-0 items-center gap-3 px-4 py-2.5 text-left transition-colors duration-150 hover:bg-surface-container-low'
+
+function SourceLabel({ s }: { s: Source }) {
+  return (
+    <>
+      <CitePill n={s.n} className="m-0 shrink-0" />
+      <SourceAvatar seed={s.label} />
+      <span className="min-w-0 flex-1 leading-4">
+        <span title={s.label} className="block truncate text-[14px] font-medium leading-5 text-on-surface">
+          {s.label}
+        </span>
+        <span className="block truncate text-[12.5px] text-outline">{kindName(s.kind)}</span>
+      </span>
+    </>
+  )
+}
+
+/** A source with a quote: closed by default and per source, opening to what the answer rested on. */
+function QuotedSource({ s }: { s: Source }) {
+  const [open, setOpen] = useState(false)
+  const href = sourceHref(s)
+  return (
+    <div className="flex min-w-0 flex-col">
+      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className={sourceRow}>
+        <SourceLabel s={s} />
+        <IconChevron width={16} height={16} aria-hidden className={`shrink-0 text-outline transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="flex flex-col gap-2 pb-3 pl-[52px] pr-4">
+          <figure className="border-l-2 border-primary pl-3">
+            <blockquote className="text-[13.5px] leading-[21px] text-on-surface-variant">{clipped(s.quote ?? '')}</blockquote>
+            {href && (
+              <figcaption className="mt-1">
+                <Link to={href} className="-ml-2.5 flex h-7 w-fit items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium text-on-surface transition-colors duration-150 hover:bg-on-surface/8">
+                  <IconOpen width={14} height={14} aria-hidden />
+                  Open {kindName(s.kind).toLowerCase()}
+                </Link>
+              </figcaption>
+            )}
+          </figure>
+        </div>
+      )}
     </div>
   )
 }
 
-/** The first sources as chips, and "+n more" that opens the panel. */
-export function SourceRow({ sources, turnId }: { sources: Source[]; turnId: string }) {
-  const { open } = usePanel()
-  if (sources.length === 0) return null
-  const shown = sources.slice(0, 4)
+/** The answer's sources as one bordered list, numbered the way the answer marks them (AI Portal's source list). */
+export function SourceList({ sources }: { sources: Source[] }) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {shown.map((s) => (
-        <button
-          key={s.n}
-          type="button"
-          onClick={() => open({ kind: 'sources', turnId, n: s.n })}
-          className="inline-flex h-7 max-w-[240px] items-center gap-1.5 rounded-full border border-hairline bg-surface-container-lowest pl-1 pr-2.5 text-label-small font-normal hover:bg-surface-container-low"
-        >
-          <SourceBadge kind={s.kind} />
-          <span className="truncate">{s.label}</span>
-        </button>
-      ))}
-      {sources.length > shown.length && (
-        <button type="button" onClick={() => open({ kind: 'sources', turnId })} className="inline-flex h-7 items-center rounded-full px-2.5 text-label-small text-primary hover:bg-surface-container-low">
-          +{sources.length - shown.length} more
-        </button>
-      )}
+    <div className="mt-2 flex min-w-0 flex-col divide-y divide-hairline overflow-hidden rounded-2xl border border-hairline bg-surface-container-lowest">
+      <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+        <span className="text-[13px] font-medium text-on-surface">
+          {sources.length} {sources.length === 1 ? 'source' : 'sources'}
+        </span>
+        <span className="text-[12px] text-outline">Numbers match the marks in the answer</span>
+      </div>
+      {sources.map((s) => {
+        const href = sourceHref(s)
+        if (s.quote) return <QuotedSource key={s.n} s={s} />
+        if (href) {
+          return (
+            <Link key={s.n} to={href} className={sourceRow}>
+              <SourceLabel s={s} />
+              <IconOpen width={15} height={15} aria-hidden className="shrink-0 text-outline" />
+            </Link>
+          )
+        }
+        return (
+          <div key={s.n} className={`${sourceRow} hover:bg-transparent`}>
+            <SourceLabel s={s} />
+          </div>
+        )
+      })}
     </div>
+  )
+}
+
+/** The sources toggle in the reply actions: three stacked letter marks and "N sources". */
+export function SourcesButton({ sources, open, onToggle }: { sources: Source[]; open: boolean; onToggle: () => void }) {
+  if (sources.length === 0) return null
+  return (
+    <button type="button" aria-expanded={open} onClick={onToggle} className="ml-1 flex h-8 items-center gap-1.5 rounded-lg px-2 text-left transition-colors duration-[120ms] hover:bg-on-surface/8">
+      <span className="flex -space-x-1">
+        {sources.slice(0, 3).map((s) => (
+          <SourceAvatar key={s.n} seed={s.label} size={14} ring />
+        ))}
+      </span>
+      <span className="text-[12.5px] leading-4 text-on-surface-variant">
+        {sources.length} {sources.length === 1 ? 'source' : 'sources'}
+      </span>
+    </button>
   )
 }
 
@@ -397,16 +551,16 @@ export function Blocks({
   sources: Source[]
   turnId: string
   onAsk?: (text: string) => void
-  reveal?: { text: string; caret: boolean }
+  reveal?: { text: string; streaming: boolean }
   finished: boolean
 }) {
   const firstText = blocks.findIndex((b) => b.type === 'text')
   return (
     <>
-      {firstText < 0 && reveal?.text && <Markdown md={reveal.text} turnId={turnId} sources={sources} big caret={reveal.caret} />}
+      {firstText < 0 && reveal?.text && <Markdown md={reveal.text} turnId={turnId} sources={sources} big streaming={reveal.streaming} />}
       {blocks.map((b, i) => {
-        if (i === firstText && reveal) return <Markdown key={i} md={reveal.text} turnId={turnId} sources={sources} big caret={reveal.caret} />
-        if (b.type === 'follow_ups' && (!finished || reveal?.caret)) return null
+        if (i === firstText && reveal) return <Markdown key={i} md={reveal.text} turnId={turnId} sources={sources} big streaming={reveal.streaming} />
+        if (b.type === 'follow_ups' && (!finished || reveal?.streaming)) return null
         return <BlockView key={i} id={`${turnId}:b${i}`} b={b} sources={sources} turnId={turnId} onAsk={onAsk} />
       })}
     </>

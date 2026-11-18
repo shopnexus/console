@@ -70,19 +70,25 @@ mascot, a greeting and the ask box, with the last three chats under it. A
 chat is at most 800 px wide: the member's questions as bubbles, each answer
 after the mascot.
 
-- A turn is a run: its steps with a one-line summary, tool calls as quiet
-  chips that open the tool panel (Result, Input, Raw JSON, Timing),
-  retries, provider switches and guardrails as one-line notes, the
-  rate-limit countdown, and the context meter in the ask box. A finished
-  run folds to "Worked for 42 s · steps · tool calls · sources".
+- A turn is a run: its steps as phases, each with its tool calls folded to
+  tallies ("Counts ×3") until it opens; a call as a row, "label what", that
+  opens the tool panel (Result, Input, Raw JSON, Timing); provider switches
+  and guardrails as quiet rows; the rate-limit countdown; and the context
+  meter in the ask box. A finished run folds to "Worked for 42 s · 4 steps"
+  with the last phase's title under it. The tool panel floats over the
+  chat at its right edge and takes no room: a click outside, Esc or the
+  same row closes it, and focus goes back to the row.
 - Pause is the run's main control and becomes Stop now. A paused run shows
   Continue and End above the ask box. A message sent while the run works
   or is paused steers it; each steer shows Waiting, "Read before step n",
   or Not read with "Send as a new message".
 - Answers are text with numbered citations, figures, tables, charts, a
-  document card, follow-ups and the turn details chip. The sources panel
-  lists every source by kind with its quoted line; the document panel has
-  versions, Copy as Markdown and Print to PDF.
+  document card and follow-ups. Under a finished answer: Copy, Ask again,
+  the turn's time, tokens and cost as quiet text (shown on hover, nothing
+  that is unknown or zero), and "N sources", which opens the bordered list
+  of sources. The sources panel lists every source by kind with its quoted
+  line; the document panel has versions, Copy as Markdown and Print to PDF.
+  No chat panel folds the sidebar.
 - Clarifying questions are numbered cards of options with Continue and
   Use defaults. A spent budget replaces the ask box until midnight.
 - The ask box takes `/` for skills, `@` and `+` for a ticket, report or
@@ -169,12 +175,21 @@ while it runs.
 
 Only what arrives now moves; a thread that opens draws still.
 
+The run's activity, the citation pills, the sources list and button, the
+follow-up chips and the streaming words follow AI Portal's chat
+(`ai-portal/frontend/src/features/chat` and `styles/activity.css`): the
+same sizes, spacing, radii, timings and behaviour, in our tokens and with
+our teal for done. Its styles are the activity section of
+`styles/global.css`, not classes in each component.
+
 - Text streams by a smooth reveal (`useSmoothReveal` in `lib/motion.ts`):
   the speed eases over 300 ms toward clearing the backlog in 0.6 s, never
   under 40 characters a second, and plays out the rest after the stream
   ends. It never cuts inside a combining mark or a surrogate pair, so a
-  Vietnamese vowel never shows without its tone. A soft caret sits at the
-  end only while text is revealed. History shows in full at once.
+  Vietnamese vowel never shows without its tone. Each new word resolves out
+  of a 4 px blur in 420 ms (`stream-word`), and a 2 px caret rides the end
+  of the last block and breathes every 1.1 s (`streaming-tail`), only while
+  text is revealed. History shows in full at once.
 - Whatever mounts in the 800 ms after a thread opens draws still; an
   entrance keyed by an id plays once, also when the live turn is replaced
   by the stored one (`useArrival`).
@@ -182,21 +197,28 @@ Only what arrives now moves; a thread that opens draws still.
   clears and keeps its focus. Enter sends, Shift+Enter breaks the line, and
   nothing sends while an input method composes. The box grows to eight
   lines. While a run is live, send is Pause, then Stop now.
-- Before the run's first event a placeholder holds its space and shows
-  after 300 ms: one plain word that changes every 4.5 s and a clock after
-  3 s. The first step replaces it.
-- The run is a trigger line over steps on a 1 px rail, told apart by ink.
-  Only the live step moves: its title shimmers (`shimmer-text`) and its dot
-  pulses every 1.6 s. A new step rises in once. The fold opens in 200 ms
-  and closes in 150 ms (`disclosure`); its chevron turns in 180 ms.
+- Before the run's first event a brain fades in with one plain word that
+  shimmers and changes every 4.5 s, a clock from 3 s and "Still working,
+  long answers can take a minute." from 20 s, until the first step
+  replaces it.
+- The run is a trigger line (brain, "Working" shimmering with its clock)
+  over its rows on a 1 px rail, told apart by ink. Only live things move:
+  the live phase's title shimmers (`act-shimmer`) beside a spinner, a
+  running call's icon pulses every 1.6 s, and a new row drops in 6 px in
+  220 ms (`act-enter`). A live run shows its last four rows. It opens while
+  it works and folds when it ends unless the member opened or closed it.
+  Folds open and close in 200 ms (`act-disclosure`); chevrons turn in
+  180 ms.
 - Answer blocks rise in once as they arrive, figures count up on arrival,
-  and follow-ups come after the answer, 18 ms apart.
+  and follow-ups fade up 6 px in 220 ms after the answer, 80 ms then 50 ms
+  apart.
 - The thread follows its end while the member is at the bottom; scrolled
   up, it stays and shows "Jump to latest". Sending always scrolls to the
   new question.
 - Meters move by translate in 280 ms and draw still at first. Menus open
-  from their trigger at 96 % in 150 ms. Side panels come in from 16 px in
-  220 ms. A press sinks a control to 97 %. With reduced motion every
+  from their trigger at 96 % in 150 ms. Side panels and the tool panel come
+  in from 16 px in 220 ms; the tool panel leaves the same way in 140 ms. A
+  press sinks a control to 97 %. With reduced motion every
   animation takes 1 ms and live text stays plain.
 
 ## Density and keyboard

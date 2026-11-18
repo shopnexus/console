@@ -40,3 +40,404 @@
     box-shadow: none;
   }
 }
+
+/*
+ * Chat activity, chips and streaming, after AI Portal
+ * (ai-portal/frontend/src/styles/activity.css and beautiful-ui.css), with
+ * its tokens mapped to ours: text-strong-950 → on-surface, text-sub-600 →
+ * on-surface-variant, text-soft-400 → outline, stroke-soft-200 → hairline,
+ * bg-weak-50 → surface-container-low, bg-soft-200 → surface-container-high,
+ * bg-white-0 → surface-container-lowest, success → primary, the egress
+ * orange → tertiary.
+ *
+ *   trigger   .act-trigger : icon · label (shimmer while live) · meta · chevron
+ *   rows      .act-list > .act-step* ; each step = .act-rail + body
+ *             (.act-title, .act-meta); thinking = .act-dot + .act-think
+ *   states    [data-state=done|active|quiet|warn|ask] on .act-step and .ph
+ *   phases    .ph-list > .ph ; a phase = rail + .ph-title, .ph-meta tallies,
+ *             .ph-inner > .ph-rows of compact steps
+ *   live      .act-shimmer, .act-pulse, and .act-enter once for a new step
+ *   streaming .stream-word per arriving word, .streaming-tail for the caret
+ * The shimmer, the live icon's pulse and a one-time enter are the only motion
+ * in a run, and all of it stops under reduced motion.
+ */
+:root {
+  --act-ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --act-line: var(--md-hairline);
+  --act-warn: var(--md-tertiary);
+  --act-warn-bg: color-mix(in srgb, var(--md-tertiary) 10%, transparent);
+}
+
+.act-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--md-on-surface-variant);
+  transition: color 120ms var(--act-ease-out);
+}
+.act-trigger:hover {
+  color: var(--md-on-surface);
+}
+.act-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 0 4px 1px;
+}
+.act-step {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  color: var(--md-on-surface-variant);
+}
+.act-step[data-state="active"],
+.act-step[data-state="warn"],
+.act-step[data-state="ask"] {
+  color: var(--md-on-surface);
+}
+.act-step[data-state="quiet"] {
+  color: var(--md-outline);
+}
+/* The icon column. Its line runs from under this step's icon to just above
+   the next one's, so the steps read as one chain. */
+.act-rail {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 16px;
+  flex-shrink: 0;
+  padding-top: 2px;
+  color: var(--md-outline);
+}
+.act-step:not(:last-child) > .act-rail::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 23px;
+  bottom: -9px;
+  width: 1px;
+  margin-left: -0.5px;
+  background: var(--act-line);
+}
+.act-step[data-state="active"] > .act-rail {
+  color: var(--md-on-surface);
+}
+.act-step[data-state="warn"] > .act-rail {
+  color: var(--act-warn);
+}
+.act-step[data-state="ask"] > .act-rail {
+  color: var(--md-tertiary);
+}
+.act-dot {
+  width: 5px;
+  height: 5px;
+  margin-top: 6px;
+  border-radius: 9999px;
+  background: currentColor;
+}
+.act-title {
+  font-size: 14px;
+  line-height: 20px;
+}
+.act-think {
+  font-size: 13.5px;
+  line-height: 20px;
+}
+.act-think-body {
+  font-size: 13.5px;
+  line-height: 21px;
+  color: var(--md-on-surface-variant);
+}
+.act-meta {
+  margin-top: 2px;
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--md-outline);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+.act-warn-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--act-warn);
+  font-weight: 500;
+}
+/* A query or a record a step ran on, as a secondary badge. */
+.act-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: var(--md-surface-container-low);
+  font-size: 12px;
+  color: var(--md-on-surface-variant);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A turn's work as phases (our steps): each opened by its title, its tool
+   calls folded under it as tallies until it is opened. */
+.ph-list {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0 2px 1px;
+}
+.ph {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  padding: 6px 0;
+}
+.ph:not(:last-child) > .act-rail::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 24px;
+  bottom: -14px;
+  width: 1px;
+  margin-left: -0.5px;
+  background: var(--act-line);
+}
+.ph-title {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--md-on-surface);
+}
+.ph[data-state="done"] .ph-title {
+  color: var(--md-on-surface-variant);
+}
+.ph-meta {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+.ph-tally {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 6px;
+  background: var(--md-surface-container-low);
+  font-size: 11.5px;
+  color: var(--md-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ph-tally-warn {
+  background: var(--act-warn-bg);
+  color: var(--act-warn);
+}
+.ph-inner {
+  margin-top: 6px;
+}
+.ph-rows {
+  display: flex;
+  flex-direction: column;
+}
+.ph-rows .act-step {
+  align-items: center;
+  min-height: 28px;
+}
+.ph-rows .act-rail {
+  padding-top: 0;
+}
+.act-step[data-compact] > .act-rail::after {
+  display: none;
+}
+.ph-rows .act-title {
+  font-size: 13.5px;
+}
+/* What a step found, quoted under its rows. */
+.ph-said {
+  padding-top: 10px;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--md-on-surface-variant);
+}
+.ph-said::before {
+  content: "\201C";
+  margin-right: 2px;
+  color: var(--md-outline);
+}
+.ph-said::after {
+  content: "\201D";
+  margin-left: 1px;
+  color: var(--md-outline);
+}
+
+/* A run, a row or the sources opening and closing by height, 200 ms both ways. */
+.act-disclosure {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 200ms var(--act-ease-out),
+    opacity 200ms var(--act-ease-out);
+}
+.act-disclosure > * {
+  min-height: 0;
+  overflow: hidden;
+}
+.act-disclosure[data-open] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+/* Two icons in one place, the shown one crossfading in: copy and its tick. */
+.ui-icon-swap {
+  display: inline-grid;
+  place-items: center;
+}
+.ui-icon-swap > * {
+  grid-area: 1 / 1;
+  transition:
+    opacity 220ms cubic-bezier(0.25, 0.1, 0, 1),
+    transform 220ms cubic-bezier(0.25, 0.1, 0, 1),
+    filter 220ms cubic-bezier(0.25, 0.1, 0, 1);
+}
+.ui-icon-swap > [data-shown="false"] {
+  opacity: 0;
+  transform: scale(0.3);
+  filter: blur(3px);
+}
+
+/* A light band sweeping across live text in the text's own colour, so a muted
+   label shimmers muted and an active step shimmers dark. */
+.act-shimmer {
+  display: inline-block;
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent calc(50% - var(--act-spread, 40px)),
+      var(--md-surface-container-lowest),
+      transparent calc(50% + var(--act-spread, 40px))
+    ),
+    linear-gradient(currentColor, currentColor);
+  background-size: 250% 100%, auto;
+  background-repeat: no-repeat, padding-box;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: act-sh 2s linear infinite;
+}
+.act-pulse {
+  animation: act-pulse 1.6s ease-in-out infinite;
+}
+.act-enter {
+  animation: act-in 0.22s var(--act-ease-out) both;
+}
+/* Rotation is transitioned on both properties: Tailwind v4's rotate-* sets
+   `rotate`, not `transform`. */
+.ui-chevron {
+  transition:
+    rotate 180ms var(--act-ease-out),
+    transform 180ms var(--act-ease-out);
+}
+.ui-fade-in {
+  animation: ui-fade-in 160ms var(--act-ease-out) both;
+}
+.ui-fade-wait {
+  animation: ui-fade-in 160ms var(--act-ease-out) 300ms both;
+}
+@keyframes act-sh {
+  from {
+    background-position: 100% center, 0 0;
+  }
+  to {
+    background-position: 0% center, 0 0;
+  }
+}
+@keyframes act-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@keyframes act-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ui-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Every word of a reply still arriving resolves out of blur as it lands. */
+.stream-word {
+  display: inline;
+  animation: stream-in 420ms cubic-bezier(0.22, 0.61, 0.25, 1) both;
+}
+@keyframes stream-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+/* The caret at the tail of a reply still arriving rides the last block's own
+   ::after, so it follows the answer wherever it ends. It breathes while the
+   next words are on their way. */
+.streaming-tail > :not(ul, ol):last-child::after,
+.streaming-tail > :is(ul, ol):last-child > li:last-child > :last-child::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 0.8em;
+  margin-left: 3px;
+  border-radius: 999px;
+  background: var(--md-on-surface);
+  transform: translateY(1px);
+  animation:
+    ui-fade-in 150ms ease-out both,
+    caret-breathe 1100ms ease-in-out 150ms infinite;
+}
+@keyframes caret-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .act-shimmer,
+  .act-pulse,
+  .act-enter,
+  .stream-word {
+    animation: none;
+  }
+  .act-shimmer {
+    background: none;
+    -webkit-text-fill-color: currentColor;
+  }
+}

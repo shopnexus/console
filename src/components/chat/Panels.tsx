@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import IconArticle from '~icons/material-symbols-light/article-outline-rounded'
 import IconCheck from '~icons/material-symbols-light/check-rounded'
@@ -20,10 +20,10 @@ import { IconBtn, Segmented, Tag } from '../ui'
 import { Chart, Markdown, Table } from './Answer'
 import { SourceBadge } from './sourceLook'
 
-/** The one panel shell beside a chat: a header, then a body that scrolls. */
-export function SidePanel({ width = 'w-[480px]', head, children }: { width?: string; head: ReactNode; children: ReactNode }) {
+/** The one panel shell beside a chat: a header, then a body that scrolls. bare fills the sheet a tool call floats in instead. */
+export function SidePanel({ width = 'w-[480px]', head, children, bare = false }: { width?: string; head: ReactNode; children: ReactNode; bare?: boolean }) {
   return (
-    <aside className={`flex shrink-0 animate-panel flex-col border-l border-hairline bg-surface-container-low/50 ${width}`}>
+    <aside className={bare ? 'flex min-h-0 flex-1 flex-col bg-surface-container-low/50' : `flex shrink-0 animate-panel flex-col border-l border-hairline bg-surface-container-low/50 ${width}`}>
       <div className="flex min-h-14 shrink-0 items-center gap-2 border-b border-hairline bg-surface-container-lowest px-4 py-2.5">{head}</div>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
     </aside>
@@ -113,7 +113,49 @@ function Box({ title, right, children }: { title: string; right?: ReactNode; chi
 type ToolTab = 'result' | 'input' | 'raw' | 'timing'
 
 /** One tool call: its result, its input, the raw request and response, and where the time went. */
-export function ToolPanel({ id }: { id: string }) {
+/**
+ * A tool call over the chat, at its right edge: it takes no room, so the
+ * thread keeps its width and its place. A click outside it or Esc closes
+ * it (a press on a tool row is the row's own: it closes or switches). Focus
+ * moves into it when it opens.
+ */
+export function ToolOverlay({ id, leaving, onClose }: { id: string; leaving: boolean; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => ref.current?.focus(), [])
+  useEffect(() => {
+    const down = (e: PointerEvent) => {
+      const t = e.target as Element
+      if (ref.current?.contains(t) || t.closest?.('[data-tool-row]')) return
+      onClose()
+    }
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      // Esc closes this rather than pausing the run behind it.
+      e.stopPropagation()
+      e.preventDefault()
+      onClose()
+    }
+    document.addEventListener('pointerdown', down, true)
+    window.addEventListener('keydown', key, true)
+    return () => {
+      document.removeEventListener('pointerdown', down, true)
+      window.removeEventListener('keydown', key, true)
+    }
+  }, [onClose])
+  return (
+    <div
+      ref={ref}
+      tabIndex={-1}
+      role="dialog"
+      aria-label="Tool call"
+      className={`absolute inset-y-3 right-3 z-40 flex w-[480px] max-w-[calc(100%-24px)] flex-col overflow-hidden rounded-3xl border border-hairline bg-surface-container-lowest shadow-float outline-none ${leaving ? 'animate-panel-out' : 'animate-panel'}`}
+    >
+      <ToolPanel id={id} bare />
+    </div>
+  )
+}
+
+export function ToolPanel({ id, bare = false }: { id: string; bare?: boolean }) {
   const call = useToolCall(id)
   const [tab, setTab] = useState<ToolTab>('result')
   const c = call.data
@@ -133,6 +175,7 @@ export function ToolPanel({ id }: { id: string }) {
     : []
   return (
     <SidePanel
+      bare={bare}
       head={
         <>
           <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${failed ? 'bg-error-container text-error' : 'bg-primary/8 text-primary'}`}>

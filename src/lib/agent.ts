@@ -48,12 +48,15 @@ export interface Turn {
   error_code?: string
   continuable: boolean
   agent?: { id: string; name: string }
-  usage?: { input_tokens: number; output_tokens: number; cost_usd: number; first_token_ms?: number; provider?: string }
+  usage?: { input_tokens: number; output_tokens: number; cost_usd: number; first_token_ms?: number; provider?: string; cache_read_tokens?: number; cache_write_tokens?: number }
   steers: { steer_id: string; text: string }[]
   questions?: ClarifyQuestion[]
   /** The seq of the turn's newest event; the stream opens after it. */
   last_seq: number
   created_at: string
+  /** When the run ended, and how long it worked with pauses left out. */
+  finished_at?: string
+  duration_ms?: number
   /** The console's own fields for a turn it sent: what it was asked with, and a key kept when the server's id replaces the pending one. */
   client_key?: string
   /** Why a question the console sent did not reach the agent; the bubble offers Retry. */

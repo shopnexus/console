@@ -80,7 +80,8 @@ export type RunEvent =
   | E<'text.delta', { delta: string }>
   | E<'block', { block: Block }>
   | E<'clarify', { questions: ClarifyQuestion[] }>
-  | E<'usage', { input_tokens: number; output_tokens: number; cost_usd: number; provider: string; first_token_ms?: number }>
+  // input_tokens is the uncached input; what the prompt cache read and wrote come apart, when the agent reports them.
+  | E<'usage', { input_tokens: number; output_tokens: number; cost_usd: number; provider: string; first_token_ms?: number; cache_read_tokens?: number; cache_write_tokens?: number }>
   | E<'steer.read', { steer_id: string; step_id: string | null; step_number?: number }>
   | E<'turn.pausing', { steps_done: number; reason: 'member' | 'stop_now' }>
   | E<'turn.paused', { steps_done: number; reason: 'member' | 'stop_now' }>
@@ -162,6 +163,8 @@ export interface RunState {
   deadlineS?: number
   startedAt?: string
   finishedAt?: string
+  /** How long the run worked, pauses left out, from the turn view. */
+  durationMs?: number
   firstTokenAt?: string
   /** From the usage events, when the agent measures it. */
   firstTokenMs?: number
@@ -176,7 +179,8 @@ export interface RunState {
   blocks: Block[]
   sources: Source[]
   clarify?: ClarifyQuestion[]
-  usage: { input: number; output: number; costUsd: number }
+  /** input is the uncached input; cacheRead and cacheWrite are 0 where the agent does not report them. */
+  usage: { input: number; output: number; cacheRead: number; cacheWrite: number; costUsd: number }
   steers: Steer[]
   pause?: { stepsDone: number; reason: 'member' | 'stop_now' }
   rateUntil?: string
@@ -197,7 +201,7 @@ export const emptyRun = (): RunState => ({
   draft: '',
   blocks: [],
   sources: [],
-  usage: { input: 0, output: 0, costUsd: 0 },
+  usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0 },
   steers: [],
   compactions: [],
   compacting: false,
@@ -248,7 +252,8 @@ export function reduceRun(s: RunState, ev: RunEvent | LocalAction): RunState {
       agent: s.agent ?? v.agent,
       provider: s.provider ?? v.provider,
       startedAt: s.startedAt ?? v.startedAt,
-      finishedAt: s.finishedAt ?? s.startedAt ?? v.startedAt,
+      finishedAt: s.finishedAt ?? v.finishedAt,
+      durationMs: v.durationMs ?? s.durationMs,
       blocks: s.blocks.length ? s.blocks : v.blocks,
       sources: mergeSources(s.sources, v.sources),
       usage: s.usage.input || s.usage.output ? s.usage : v.usage,
@@ -336,7 +341,13 @@ export function reduceRun(s: RunState, ev: RunEvent | LocalAction): RunState {
         ...n,
         provider: ev.provider || n.provider,
         firstTokenMs: n.firstTokenMs ?? ev.first_token_ms,
-        usage: { input: n.usage.input + ev.input_tokens, output: n.usage.output + ev.output_tokens, costUsd: n.usage.costUsd + ev.cost_usd },
+        usage: {
+          input: n.usage.input + ev.input_tokens,
+          output: n.usage.output + ev.output_tokens,
+          cacheRead: n.usage.cacheRead + (ev.cache_read_tokens ?? 0),
+          cacheWrite: n.usage.cacheWrite + (ev.cache_write_tokens ?? 0),
+          costUsd: n.usage.costUsd + ev.cost_usd,
+        },
       }
     case 'steer.read': {
       const at = n.steps.findIndex((st) => st.id === ev.step_id)
@@ -400,10 +411,11 @@ export function counts(s: RunState) {
 }
 
 /** Milliseconds the run has worked, to now while it runs. */
-export function elapsed(s: RunState, now: number): number {
-  if (!s.startedAt) return 0
-  const end = s.finishedAt ? new Date(s.finishedAt).getTime() : now
-  return Math.max(0, end - new Date(s.startedAt).getTime())
+export function elapsed(s: RunState, now: number): number | undefined {
+  if (isLive(s)) return s.startedAt ? Math.max(0, now - new Date(s.startedAt).getTime()) : 0
+  if (s.durationMs !== undefined) return s.durationMs
+  if (!s.startedAt || !s.finishedAt) return undefined
+  return Math.max(0, new Date(s.finishedAt).getTime() - new Date(s.startedAt).getTime())
 }
 
 /** Tool calls outside any step, for a turn without steps. */
@@ -452,10 +464,12 @@ export interface TurnView {
   error_code?: string
   continuable: boolean
   agent?: { id: string; name: string }
-  usage?: { input_tokens: number; output_tokens: number; cost_usd: number; first_token_ms?: number; provider?: string }
+  usage?: { input_tokens: number; output_tokens: number; cost_usd: number; first_token_ms?: number; provider?: string; cache_read_tokens?: number; cache_write_tokens?: number }
   steers: { steer_id: string; text: string }[]
   questions?: ClarifyQuestion[]
   created_at: string
+  finished_at?: string
+  duration_ms?: number
 }
 
 /** The turn statuses that are final: the run will not write again. */
@@ -483,11 +497,19 @@ export function runFromView(v: TurnView): RunState {
     agent: v.agent,
     provider: v.usage?.provider,
     startedAt: v.created_at,
+    finishedAt: v.finished_at,
+    durationMs: v.duration_ms,
     firstTokenMs: v.usage?.first_token_ms,
     blocks: blocks.filter((b) => b.type !== 'sources'),
     sources: [...v.sources].sort((a, b) => a.n - b.n),
     clarify: phase === 'awaiting_input' ? v.questions : undefined,
-    usage: { input: v.usage?.input_tokens ?? 0, output: v.usage?.output_tokens ?? 0, costUsd: v.usage?.cost_usd ?? 0 },
+    usage: {
+      input: v.usage?.input_tokens ?? 0,
+      output: v.usage?.output_tokens ?? 0,
+      cacheRead: v.usage?.cache_read_tokens ?? 0,
+      cacheWrite: v.usage?.cache_write_tokens ?? 0,
+      costUsd: v.usage?.cost_usd ?? 0,
+    },
     steers: v.steers.map((x) => ({ id: x.steer_id, text: x.text, at: v.created_at, state: phase === 'finished' ? 'unread' : 'waiting' })),
     outcome: phase === 'finished' ? { status: viewStatus[v.status] ?? 'FAILED', outcome: v.outcome, failure: v.error_code, continuable: v.continuable } : undefined,
   }

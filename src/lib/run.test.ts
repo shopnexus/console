@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { answerBlocks, canContinue, counts, elapsed, emptyRun, flatTools, outcomeGroup, reduceRun, replay, runFromView, type RunEvent } from './run'
+import { answerBlocks, canContinue, counts, elapsed, emptyRun, flatTools, outcomeGroup, reduceRun, replay, runFromView, type RunEvent, type TurnView } from './run'
+import { duration } from './format'
 
 let seq = 0
 const at = (s: number) => new Date(Date.UTC(2026, 10, 18, 10, 0, s)).toISOString()
@@ -22,11 +23,13 @@ describe('reduceRun', () => {
       ev('tool.finished', { call_id: 'c2', status: 'success', duration_ms: 41, result_summary: '66', source_ids: [2, 3] }, 2),
       ev('step.finished', { step_id: 's1', summary: '86 reports this week, 66 the week before.', duration_ms: 2100 }, 3),
       ev('usage', { input_tokens: 1000, output_tokens: 200, cost_usd: 0.01, provider: 'LLM upstream' }, 3),
+      ev('usage', { input_tokens: 50, output_tokens: 10, cost_usd: 0.001, provider: 'LLM upstream', cache_read_tokens: 4000, cache_write_tokens: 300 }, 3),
     ])
+    expect(s.usage).toMatchObject({ input: 1050, output: 210, cacheRead: 4000, cacheWrite: 300 })
     expect(s.steps).toHaveLength(1)
     expect(s.steps[0]).toMatchObject({ done: true, summary: '86 reports this week, 66 the week before.', tools: ['c1', 'c2'] })
     expect(s.tools.c1).toMatchObject({ status: 'success', resultSummary: '86', sourceIds: [1, 2] })
-    expect(counts(s)).toEqual({ steps: 1, tools: 2, sources: 3, tokens: 1200 })
+    expect(counts(s)).toEqual({ steps: 1, tools: 2, sources: 3, tokens: 1260 })
     expect(s.provider).toBe('LLM upstream')
   })
 
@@ -194,5 +197,19 @@ describe('local.view', () => {
     expect(reduceRun(emptyRun(), { type: 'local.view', view: { ...view, status: 'paused' }, lastSeq: 3 }).phase).toBe('paused')
     const live = emptyRun()
     expect(reduceRun(live, { type: 'local.view', view: { ...view, status: 'running' }, lastSeq: 0 })).toBe(live)
+  })
+
+  it("times a finished turn by its own run, not from its start to now", () => {
+    const old = { ...view, status: 'succeeded', created_at: '2026-11-01T10:00:00Z' }
+    const now = Date.parse('2026-11-18T10:00:00Z')
+    expect(elapsed(runFromView({ ...old, finished_at: '2026-11-01T10:00:42Z' } as TurnView), now)).toBe(42_000)
+    expect(elapsed(runFromView({ ...old, finished_at: '2026-11-01T10:00:42Z', duration_ms: 30_500 } as TurnView), now)).toBe(30_500)
+    expect(elapsed(runFromView(old as TurnView), now)).toBeUndefined()
+  })
+})
+
+describe('duration', () => {
+  it('says a finished time in words, never as a clock', () => {
+    expect([42_000, 190_000, 180_000, 34_225_000, 3_600_000].map(duration)).toEqual(['42 s', '3 min 10 s', '3 min', '9 h 30 min', '1 h'])
   })
 })
