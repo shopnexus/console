@@ -26,9 +26,13 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   // VITE_MOCK_AI=1 serves the AI paths the server does not have yet from
   // fixtures (lib/mock). The build drops this branch when it is unset.
   if (import.meta.env.VITE_MOCK_AI === '1') {
-    const { mockApi, unmocked } = await import('./mock')
-    const out = await mockApi(init?.method ?? 'GET', path, init?.body ? JSON.parse(String(init.body)) : undefined)
-    if (out !== unmocked) return out as T
+    const { mockApi, unmocked, MockError } = await import('./mock')
+    try {
+      const out = await mockApi(init?.method ?? 'GET', path, init?.body ? JSON.parse(String(init.body)) : undefined)
+      if (out !== unmocked) return out as T
+    } catch (e) {
+      throw e instanceof MockError ? new ApiError(e.status, e.code, e.code) : e
+    }
   }
   const res = await fetch(`${API_URL}${path}`, {
     ...init,

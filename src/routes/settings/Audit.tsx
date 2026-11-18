@@ -1,0 +1,190 @@
+import { useInfiniteQuery } from '@tanstack/react-query'
+import { type ReactNode, useMemo, useState } from 'react'
+import IconCategory from '~icons/material-symbols-light/category-outline-rounded'
+import IconCheck from '~icons/material-symbols-light/check-rounded'
+import IconDownload from '~icons/material-symbols-light/download-rounded'
+import IconEvent from '~icons/material-symbols-light/event-note-outline-rounded'
+import IconExpand from '~icons/material-symbols-light/expand-more-rounded'
+import IconFlag from '~icons/material-symbols-light/flag-outline-rounded'
+import IconHide from '~icons/material-symbols-light/visibility-off-outline'
+import IconHistory from '~icons/material-symbols-light/history-rounded'
+import IconKey from '~icons/material-symbols-light/key-outline-rounded'
+import IconLock from '~icons/material-symbols-light/lock-outline'
+import IconMembers from '~icons/material-symbols-light/group-outline-rounded'
+import IconPerson from '~icons/material-symbols-light/person-add-outline-rounded'
+import IconPersonOff from '~icons/material-symbols-light/person-off-outline-rounded'
+import IconShow from '~icons/material-symbols-light/visibility-outline'
+import IconTune from '~icons/material-symbols-light/tune-rounded'
+import IconUnlock from '~icons/material-symbols-light/lock-open-outline-rounded'
+import { SettingsShell } from '../../components/SettingsShell'
+import { Btn, Card, CardHead, Initial, Notice } from '../../components/ui'
+import { type Action, api, type Page, shortId } from '../../lib/api'
+import { firstName, time, when } from '../../lib/format'
+import { useMembers } from '../../lib/settings'
+
+type Look = [string, ReactNode, string]
+
+// What each action reads as in the log: the verb, its icon and its tint.
+const looks: Record<string, Look> = {
+  'account.suspend': ['suspended', <IconLock key="a" width={17} height={17} />, 'bg-error-container text-error'],
+  'account.unsuspend': ['lifted the suspension of', <IconUnlock key="b" width={17} height={17} />, 'bg-primary/8 text-primary'],
+  'member.create': ['added', <IconPerson key="c" width={17} height={17} />, 'bg-secondary-container text-on-secondary-container'],
+  'member.disable': ['disabled', <IconPersonOff key="d" width={17} height={17} />, 'bg-error-container text-error'],
+  'member.enable': ['enabled', <IconPerson key="e" width={17} height={17} />, 'bg-secondary-container text-on-secondary-container'],
+  'member.reset_password': ['reset the password of', <IconKey key="f" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
+  'member.reset_totp': ['reset two-step sign-in of', <IconKey key="g" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
+  'member.unlock': ['unlocked sign-in of', <IconKey key="h" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
+  'report.dismiss': ['found no violation by', <IconCheck key="i" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
+  'report.resolve': ['resolved the case of', <IconFlag key="j" width={17} height={17} />, 'bg-primary/8 text-primary'],
+  'report.reopen': ['reopened the case of', <IconFlag key="k" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
+  'listing.hide': ['hid listing', <IconHide key="l" width={17} height={17} />, 'bg-tertiary-fixed text-on-tertiary-fixed-variant'],
+  'listing.unhide': ['restored listing', <IconShow key="m" width={17} height={17} />, 'bg-primary/8 text-primary'],
+}
+
+/** A settings change or anything the console does not name yet: "settings.agent.update" reads "changed settings · agent update". */
+function lookOf(kind: string): Look {
+  return looks[kind] ?? [`changed ${kind.replace(/^settings\./, 'settings · ').replace(/[._]/g, ' ')}`, <IconTune key="x" width={17} height={17} />, 'bg-secondary-container text-on-secondary-container']
+}
+
+const groupOf = (kind: string) =>
+  kind.startsWith('account.') ? 'Suspensions' : kind.startsWith('listing.') ? 'Hidden listings' : kind.startsWith('report.') ? 'Report cases' : kind.startsWith('member.') ? 'Members' : 'Settings'
+
+const reasonOf = (a: Action) => (typeof a.details?.reason === 'string' ? a.details.reason : '')
+
+/** Settings › Audit log: every action in the console, newest first, grouped by day; a member filter and a CSV of what is loaded. */
+export function Audit() {
+  const members = useMembers()
+  const [member, setMember] = useState('')
+  const log = useInfiniteQuery({
+    queryKey: ['console', 'actions', 'log', member],
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => {
+      const q = new URLSearchParams({ limit: '50', ...(member ? { member_id: member } : {}), ...(pageParam ? { cursor: pageParam } : {}) })
+      return api<Page<Action>>(`/console/actions?${q}`)
+    },
+    getNextPageParam: (last) => last.next_cursor,
+  })
+  const items = useMemo(() => log.data?.pages.flatMap((p) => p.items) ?? [], [log.data])
+  const days = useMemo(() => {
+    const out: [string, Action[]][] = []
+    for (const a of items) {
+      const d = /^\d/.test(when(a.at)) ? 'Today' : when(a.at)
+      const last = out[out.length - 1]
+      if (last && last[0] === d) last[1].push(a)
+      else out.push([d, [a]])
+    }
+    return out
+  }, [items])
+  const groups = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const a of items) m.set(groupOf(a.action), (m.get(groupOf(a.action)) ?? 0) + 1)
+    return [...m]
+  }, [items])
+
+  function exportCsv() {
+    const cell = (v: string) => `"${v.replace(/"/g, '""')}"`
+    const rows = [
+      ['at', 'member', 'action', 'target_kind', 'target_id', 'reason'],
+      ...items.map((a) => [a.at, a.actor.display_name ?? 'CLI', a.action, a.target.kind, a.target.id, reasonOf(a)]),
+    ]
+    const blob = new Blob([rows.map((r) => r.map(cell).join(',')).join('\n')], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <SettingsShell
+      title="Audit log"
+      icon={<IconHistory />}
+      chips={[[<IconEvent key="e" width={16} height={16} />, `${items.length}${log.hasNextPage ? '+' : ''} actions loaded`]]}
+    >
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
+        <div>
+          <div className="mb-4 flex items-center gap-2">
+            <label
+              className={`relative flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-label-medium font-normal ${
+                member ? 'border-primary/40 bg-primary/6 text-primary' : 'border-hairline bg-surface-container-lowest text-on-surface-variant'
+              }`}
+            >
+              <IconMembers width={16} height={16} />
+              <select value={member} onChange={(e) => setMember(e.target.value)} aria-label="Member" className="appearance-none bg-transparent pr-5 outline-none">
+                <option value="">Everyone</option>
+                {members.data?.items.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.display_name}
+                  </option>
+                ))}
+              </select>
+              <IconExpand width={16} height={16} className="pointer-events-none absolute right-2.5" />
+            </label>
+          </div>
+          {log.error && <Notice>The audit log did not load.</Notice>}
+          <Card className="p-5 pb-1">
+            {days.map(([d, rows]) => (
+              <div key={d}>
+                <p className="mb-3 mt-1 text-label-medium text-on-surface-variant">{d}</p>
+                <div className="relative mb-5 before:absolute before:bottom-4 before:left-[18px] before:top-4 before:w-px before:bg-outline-variant/60">
+                  {rows.map((a) => {
+                    const [verb, icon, tone] = lookOf(a.action)
+                    const who = a.actor.display_name ?? 'CLI'
+                    const reason = reasonOf(a)
+                    return (
+                      <div key={a.id} className="relative flex gap-4 pb-4 last:pb-0">
+                        <span className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-4 ring-surface-container-lowest ${tone}`}>{icon}</span>
+                        <div className="-mt-1 flex min-w-0 flex-1 items-start gap-3 rounded-2xl px-3 py-2 hover:bg-on-surface/4">
+                          <div className="min-w-0 flex-1">
+                            <p className="flex flex-wrap items-center gap-1.5 text-body-medium">
+                              <Initial name={who} id={a.actor.member_id ?? 'cli'} size={22} member />
+                              <span className="font-semibold">{firstName(who)}</span>
+                              {verb}
+                              <span className="inline-flex h-7 items-center rounded-full border border-hairline bg-surface-container-lowest px-2.5 text-label-small text-primary">
+                                {a.target.kind === 'account' ? 'Account' : a.target.kind === 'listing' ? 'Listing' : 'Member'}{' '}
+                                <span className="ml-1 tabular-nums">{shortId(a.target.id)}</span>
+                              </span>
+                            </p>
+                            {/* The reason is the one the person saw, as written. */}
+                            {reason && <p className="mt-1.5 border-l-2 border-primary/40 pl-2.5 text-body-small text-on-surface-variant">{reason}</p>}
+                          </div>
+                          <span className="pt-1 tabular-nums text-body-small text-on-surface-variant">{time(a.at)}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+            {log.data && items.length === 0 && <p className="pb-4 text-body-medium text-on-surface-variant">No actions yet.</p>}
+            {log.hasNextPage && (
+              <div className="pb-4">
+                <Btn kind="ghost" onClick={() => log.fetchNextPage()} disabled={log.isFetchingNextPage}>
+                  More
+                </Btn>
+              </div>
+            )}
+          </Card>
+        </div>
+        <div className="space-y-4">
+          <Card className="p-5 pb-3">
+            <CardHead title="Loaded" />
+            {groups.map(([g, n]) => (
+              <div key={g} className="flex items-center gap-3 py-1.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-container text-on-surface-variant">
+                  <IconCategory width={16} height={16} />
+                </span>
+                <span className="flex-1 text-body-medium">{g}</span>
+                <span className="text-label-medium tabular-nums">{n}</span>
+              </div>
+            ))}
+          </Card>
+          <Btn icon={<IconDownload width={17} height={17} />} onClick={exportCsv} disabled={items.length === 0}>
+            Export CSV
+          </Btn>
+        </div>
+      </div>
+    </SettingsShell>
+  )
+}

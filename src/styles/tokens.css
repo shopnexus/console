@@ -230,6 +230,11 @@
   --text-display-small--line-height: 2rem;
   --text-display-small--font-weight: 600;
   --text-display-small--letter-spacing: -0.015em;
+  /* Settings page titles. */
+  --text-headline-large: 1.625rem;
+  --text-headline-large--line-height: 2.125rem;
+  --text-headline-large--font-weight: 600;
+  --text-headline-large--letter-spacing: -0.015em;
   /* Sign-in titles. */
   --text-headline-medium: 1.375rem;
   --text-headline-medium--line-height: 1.875rem;
