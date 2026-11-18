@@ -16,7 +16,7 @@ export interface AccountDetail {
   actions: Action[]
 }
 
-/** Tài khoản's list: every account newest first, or the suspended ones, the term that ends first first. */
+/** Accounts' list: every account newest first, or the suspended ones, the term that ends first first. */
 export function useAccountList(tab: AccountTab) {
   const query = useInfiniteQuery({
     queryKey: ['console', 'accounts', 'list', tab],
@@ -84,7 +84,7 @@ export function useAccount(id: string | undefined) {
 }
 
 // The accounts a member opened last, kept in this browser and shared by the
-// nav's search, Trang chủ and the agent's + menu.
+// sidebar's search and the ask box's + menu.
 const recentKey = 'console-recent-accounts'
 const changed = 'console-recent-accounts'
 

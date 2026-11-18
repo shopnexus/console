@@ -62,7 +62,7 @@ export function reasonsOf(r: Reasons): [ReportReason, number][] {
   return reasonOrder.filter((k) => (r[k] ?? 0) > 0).map((k) => [k, r[k]!])
 }
 
-/** Báo cáo's queue: open cases newest report first, or resolved ones newest resolution first. */
+/** Reports' queue: open cases newest report first, or resolved ones newest resolution first. */
 export function useCases(status: CaseStatus) {
   const query = useInfiniteQuery({
     queryKey: ['console', 'reports', 'list', status],
