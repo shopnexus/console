@@ -18,7 +18,6 @@ import { typing, useAnchor, useDismiss } from '../lib/dom'
 import { navigation, useNavCollapsed } from '../lib/navigation'
 import { useCases } from '../lib/reports'
 import { useForgetMe, useMe } from '../lib/session'
-import { useDashboards } from '../lib/settings'
 import { useOpenCount } from '../lib/support'
 import { SearchMenu } from './SearchMenu'
 import { Initial, Kbd, ThemeSwitch } from './ui'
@@ -253,9 +252,8 @@ function SearchRow({ rail }: { rail: boolean }) {
 /** Tools: the ops dashboards in a menu, each with ↗, or a lock below the member's role. */
 function ToolsRow({ rail }: { rail: boolean }) {
   const me = useMe()
-  // Floors come from Settings for admins, who may read them; the built-in list stands in meanwhile and for everyone else.
-  const floors = useDashboards(me.role === 'admin')
-  const list = dashboards.map((d) => ({ ...d, floor: floors.data?.items.find((f) => f.app === d.app)?.floor ?? d.floor }))
+  // Floors come with the session (GET /console/me); the built-in list stands in for a server that sends none.
+  const list = dashboards.map((d) => ({ ...d, floor: me.dashboards?.find((f) => f.app === d.app)?.floor ?? d.floor }))
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const ref = useDismiss<HTMLDivElement>(open, close)

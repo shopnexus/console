@@ -81,6 +81,8 @@ export interface Me {
   email: string
   display_name: string
   role: Role
+  /** The ops dashboards and the lowest role that opens each, as Settings › Tools sets them. */
+  dashboards?: { app: string; name: string; floor: Role }[]
 }
 
 export interface Member {

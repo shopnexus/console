@@ -223,8 +223,12 @@ export interface Budgets {
   monthly_cap_usd?: number
   alert_pct?: number
   on_cap?: OnCap
+  /** The month's spend so far, against monthly_cap_usd. */
+  month_spent_usd?: number
   /** The month's spend has passed the alert share. */
   alerting?: boolean
+  /** The month's spend has reached the cap; with on_cap stop_agents, console turns are refused. */
+  capped?: boolean
   /** What each member may spend a day through the console agents, by role, with overrides by member. */
   member_daily_usd?: MemberDaily
   overrides?: { member_id: string; daily_usd: number }[]
@@ -434,6 +438,8 @@ export function settingsFailure(code: string | undefined): string {
       return 'LiteLLM refused the change.'
     case 'ai_gateway_unavailable':
       return 'LiteLLM is unavailable. Try again later.'
+    case 'member_not_found':
+      return 'There is no such member.'
     case 'bad_request':
       return 'Some field is not valid.'
     case 'forbidden':

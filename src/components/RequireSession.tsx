@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router'
 import { ApiError, api, type Me } from '../lib/api'
 import { MeContext, meKey } from '../lib/session'
+import { Unreachable } from './Unreachable'
 
 /**
  * Renders children for a signed-in member and sends anyone else to sign-in,
@@ -22,7 +23,7 @@ export function RequireSession({ children }: { children: ReactNode }) {
       const rd = location.pathname + location.search
       return <Navigate to={`/signin?rd=${encodeURIComponent(rd)}`} replace />
     }
-    throw me.error
+    return <Unreachable error={me.error} onRetry={() => void me.refetch()} />
   }
   return <MeContext value={me.data}>{children}</MeContext>
 }

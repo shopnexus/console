@@ -102,7 +102,7 @@ export const failureText: Record<Failure, string> = {
   agent_gone: 'That agent is no longer there. Pick another.',
   agent_off: 'That agent is turned off. Pick another.',
   timeout: 'No answer within the time limit.',
-  budget: 'Your daily budget is used up.',
+  budget: 'The AI budget is used up.',
   rate_limited: 'Too many questions in a few minutes. Try again later.',
   unavailable: 'The agent is unavailable. Try again later.',
   busy: 'The last question is still running.',

@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createBrowserRouter, Navigate, Outlet } from 'react-router'
 import { RouterProvider } from 'react-router/dom'
 import { RequireSession } from './components/RequireSession'
+import { RouteError } from './components/Unreachable'
 import { Accounts } from './routes/Accounts'
 import { Agent } from './routes/Agent'
 import { DashboardOpen } from './routes/DashboardOpen'
@@ -21,13 +22,14 @@ import { Tools } from './routes/settings/Tools'
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } })
 
 const router = createBrowserRouter([
-  { path: '/signin', element: <SignIn /> },
+  { path: '/signin', element: <SignIn />, errorElement: <RouteError /> },
   {
     element: (
       <RequireSession>
         <Outlet />
       </RequireSession>
     ),
+    errorElement: <RouteError />,
     children: [
       { path: '/', element: <Agent /> },
       { path: '/dashboards/open', element: <DashboardOpen /> },
