@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from './api'
-import { dayGroup, failureOf, startTurn, variablesOf } from './agent'
+import { QueryClient } from '@tanstack/react-query'
+import { type ConversationDetail, dayGroup, detailKey, failureOf, pendingTurn, postTurn, startTurn, type Turn, variablesOf, withLocalTurns } from './agent'
 
 function reply(status: number, body: unknown) {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
@@ -80,5 +81,43 @@ describe('dayGroup', () => {
     [new Date(2026, 10, 9, 9, 0), 'Older'],
   ])('puts %s in %s', (d, group) => {
     expect(dayGroup(d.toISOString(), now)).toBe(group)
+  })
+})
+
+describe('a second question in a chat', () => {
+  const turn = (id: string, over: Partial<Turn> = {}): Turn => ({ id, member_id: 'm', text: id, status: 'succeeded', blocks: [], sources: [], continuable: false, steers: [], last_seq: 0, created_at: '2026-11-18T10:00:00Z', ...over })
+  const chat = (turns: Turn[]): ConversationDetail => ({ id: 'c1', updated_at: '2026-11-18T10:00:00Z', turns })
+
+  it('shows at once, takes its id on the 202 and stays through a read of the conversation', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (init?.method === 'POST') return reply(202, { conversation_id: 'c1', turn_id: 't2' })
+        // The event stream and the read again never answer in this test.
+        return new Promise<Response>(() => undefined)
+      }),
+    )
+    const client = new QueryClient()
+    client.setQueryData(detailKey('c1'), chat([turn('t1')]))
+    const pending = pendingTurn('m', { text: 'And suspended ones?' })
+    const posting = postTurn(client, 'c1', 'c1', pending, { text: 'And suspended ones?' })
+    await Promise.resolve()
+    expect(client.getQueryData<ConversationDetail>(detailKey('c1'))!.turns.map((t) => t.text)).toEqual(['t1', 'And suspended ones?'])
+    expect(await posting).toBe('t2')
+    const after = client.getQueryData<ConversationDetail>(detailKey('c1'))!.turns
+    expect(after.map((t) => [t.id, t.status, t.client_key])).toEqual([
+      ['t1', 'succeeded', undefined],
+      ['t2', 'running', pending.client_key],
+    ])
+
+    // A read that began before the post lands without the new turn: the turn stays.
+    const stale = withLocalTurns(chat([turn('t1')]), client.getQueryData(detailKey('c1')))
+    expect(stale.turns.map((t) => t.id)).toEqual(['t1', 't2'])
+    // A later read has it stored: it keeps its client key, so its view is not drawn again.
+    const fresh = withLocalTurns(chat([turn('t1'), turn('t2', { status: 'running', text: 'And suspended ones?' })]), client.getQueryData(detailKey('c1')))
+    expect(fresh.turns.map((t) => [t.id, t.client_key])).toEqual([
+      ['t1', undefined],
+      ['t2', pending.client_key],
+    ])
   })
 })

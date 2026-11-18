@@ -578,7 +578,8 @@ export function Blocks({
       {firstText < 0 && reveal?.text && <Markdown md={reveal.text} turnId={turnId} sources={sources} big streaming={reveal.streaming} />}
       {blocks.map((b, i) => {
         if (i === firstText && reveal) return <Markdown key={i} md={reveal.text} turnId={turnId} sources={sources} big streaming={reveal.streaming} />
-        if (b.type === 'follow_ups' && (!finished || reveal?.streaming)) return null
+        // Follow-ups belong to the latest answer once it is whole; an older one's would send out of turn.
+        if (b.type === 'follow_ups' && (!finished || reveal?.streaming || !onAsk)) return null
         return <BlockView key={i} id={`${turnId}:b${i}`} b={b} sources={sources} turnId={turnId} onAsk={onAsk} />
       })}
     </>

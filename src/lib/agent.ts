@@ -141,12 +141,31 @@ export function useThreads() {
 }
 
 /** One conversation with its turns. */
+/**
+ * A conversation read from the server, with what the console sent and the
+ * server did not show yet kept: a read that started before a question was
+ * posted must not take the question away. A stored turn the console sent
+ * keeps its client key, so its view is not drawn again.
+ */
+export function withLocalTurns(server: ConversationDetail, local: ConversationDetail | undefined): ConversationDetail {
+  if (!local) return server
+  const sent = local.turns.filter((t) => t.client_key)
+  const byId = new Map(sent.map((t) => [t.id, t]))
+  const turns = server.turns.map((t) => {
+    const mine = byId.get(t.id)
+    return mine ? { ...t, client_key: mine.client_key, agent_id: t.agent_id ?? mine.agent_id, attachments: t.attachments ?? mine.attachments, skill_id: t.skill_id ?? mine.skill_id } : t
+  })
+  const seen = new Set(server.turns.map((t) => t.id))
+  return { ...server, turns: [...turns, ...sent.filter((t) => !seen.has(t.id))] }
+}
+
 export function useConversation(id: string | undefined) {
+  const client = useQueryClient()
   return useQuery({
     queryKey: detailKey(id ?? ''),
     // A temporary chat lives in the cache only until the agent has the conversation.
     enabled: !!id && !isTempChat(id),
-    queryFn: () => api<ConversationDetail>(`/console/agent/conversations/${id}`),
+    queryFn: async () => withLocalTurns(await api<ConversationDetail>(`/console/agent/conversations/${id}`), client.getQueryData<ConversationDetail>(detailKey(id!))),
     retry: (n, e) => !(e instanceof ApiError && e.status === 404) && n < 1,
   })
 }
@@ -215,11 +234,16 @@ export function putTurn(client: QueryClient, cacheId: string, turn: Turn) {
  */
 export async function postTurn(client: QueryClient, cacheId: string, conversationId: string, pending: Turn, req: TurnRequest): Promise<string | undefined> {
   putTurn(client, cacheId, { ...pending, failed: undefined, status: 'pending' })
+  // A read of the conversation already on its way would land without the question; it is dropped, keeping the question.
+  await client.cancelQueries({ queryKey: detailKey(cacheId) }, { revert: false })
+  putTurn(client, cacheId, { ...pending, failed: undefined, status: 'pending' })
   try {
     if (req.text.length > maxQuestion) throw new ApiError(422, 'agent_input_rejected', 'too long')
     const { turn_id } = await startTurn(conversationId, req)
     putTurn(client, cacheId, { ...pending, id: turn_id, status: 'running', failed: undefined })
     followTurn(turn_id)
+    // The stored conversation is read again; the turn keeps its place and its key meanwhile.
+    void client.invalidateQueries({ queryKey: detailKey(cacheId) })
     void client.invalidateQueries({ queryKey: listKey })
     return turn_id
   } catch (e) {
