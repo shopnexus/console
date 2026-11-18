@@ -20,9 +20,11 @@ holds the shared pieces for the mockups: the nav, `avatar` with its tints,
   a right away from someone; `tertiary` appears only for a listing's price.
   The page is `surfaceContainer`; the work area is one `surfaceContainerLowest`
   card with 12 px corners and a hairline ring.
-- Type: Geist for all text, ids, codes, keys and version tags included, with
-  tabular figures for them and for times and counts. No monospace face.
-  Letter spacing −0.012em, −0.022em on titles. Body 15–16 px, secondary
+- Type: Be Vietnam Pro since 2026-11-18 (Geist before), for all text, ids,
+  codes, keys and version tags included, with tabular figures for them and
+  for times and counts. No monospace face. Text keeps the face's own letter
+  spacing, since negative tracking closes its narrow word spaces; titles
+  −0.015em. Body 15–16 px, secondary
   lines 13 px, page and card titles 16–17 px semibold, sign-in titles 22 px,
   figures on tiles 32 px.
 - Borders: hairlines in `outlineVariant` mixed 70 % with white. Depth is a
@@ -52,7 +54,7 @@ member sits at the bottom. Each page's header is 52 px inside the work card.
 - Steps: password, code; the first sign-in adds a new password and TOTP
   enrolment, shown as a two-step indicator. The member's email stays visible
   as a row with "Đổi" once typed.
-- The TOTP code is six 44 × 48 boxes in Geist with tabular figures, in two groups of three.
+- The TOTP code is six 44 × 48 boxes with tabular figures, in two groups of three.
   Enrolment shows the QR and the key with a copy button side by side.
 - Refusals say only that the sign-in was refused, with no detail about which
   part was wrong; a lock says when to try again.
@@ -111,7 +113,7 @@ tools and proposes; the member acts. Most work happens in a chat with it.
   report or an account from recent ones or by name or id.
 - Agent in the nav is the member's own chats, grouped by day with the kind of
   record each is about; "Cuộc mới" (`N`) is filled `onSurface`.
-- No narration: the screens never say what the agent is doing or can do.
+- Run steps since 2026-11-18 (the owner asked for them; before, no narration): a running turn shows a run card with the elapsed time and live counts, a timeline of steps with a one-line summary each, tool calls as chips that open to their input and result, a sub-agent's own steps, and a Steer box. A finished turn folds this into "Worked for 42 s · steps · tool calls · sources" with the reasoning summary, and a footer chip opens the turn details (model, provider, tokens, cost, time). `tools/build_soft_trace.py`.
 
 ## Hỗ trợ
 
@@ -221,6 +223,6 @@ headlines that explain or reassure, no notes that describe what the screen
 already shows: a screen title names the thing ("Đăng nhập", "Grafana"), and a
 refusal states the fact ("Cần quyền Quản trị viên").
 
-Vietnamese with correct diacritics. Roles: "Kiểm duyệt viên", "Quản trị viên".
+English since 2026-11-18 (Vietnamese before): every label, title and message on the console is in English; people's and shops' names keep their diacritics. Roles: "Moderator", "Admin". The soft mockups get their copy from `tools/en.py`.
 Dashboards: Grafana, Restate, LiteLLM, RustFS, Argo CD. No marketing tone: the
 reader is at work.

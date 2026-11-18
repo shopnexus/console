@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · Console · Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { theme: { extend: {
+  colors: {'primary':'#005049','on-primary':'#FFFFFF','primary-container':'#066A61','on-primary-container':'#97E7DB','secondary':'#47645F','on-secondary':'#FFFFFF','secondary-container':'#C7E6E0','on-secondary-container':'#4B6863','tertiary':'#773115','on-tertiary':'#FFFFFF','tertiary-container':'#95482A','on-tertiary-container':'#FFCDBC','tertiary-fixed':'#FFDBCF','on-tertiary-fixed-variant':'#773215','error':'#BA1A1A','on-error':'#FFFFFF','error-container':'#FFDAD6','surface':'#F7FAF8','surface-container-lowest':'#FFFFFF','surface-container-low':'#F1F4F2','surface-container':'#EBEFED','surface-container-high':'#E6E9E7','surface-container-highest':'#E0E3E1','on-surface':'#181C1C','on-surface-variant':'#3E4947','outline':'#6E7977','outline-variant':'#BEC9C6','inverse-surface':'#2D3130','inverse-on-surface':'#EEF1EF','inverse-primary':'#85D5C9'},
+  fontSize: {'display-large':['57px',{lineHeight:'64px',fontWeight:'400',letterSpacing:'-0.25px'}],'display-medium':['45px',{lineHeight:'52px',fontWeight:'400',letterSpacing:'0'}],'display-small':['36px',{lineHeight:'44px',fontWeight:'400',letterSpacing:'0'}],'headline-medium':['28px',{lineHeight:'36px',fontWeight:'400',letterSpacing:'0'}],'headline-small':['24px',{lineHeight:'32px',fontWeight:'400',letterSpacing:'0'}],'title-large':['22px',{lineHeight:'28px',fontWeight:'400',letterSpacing:'0'}],'title-medium':['16px',{lineHeight:'24px',fontWeight:'500',letterSpacing:'0.15px'}],'title-small':['14px',{lineHeight:'20px',fontWeight:'500',letterSpacing:'0.1px'}],'body-large':['16px',{lineHeight:'24px',fontWeight:'400',letterSpacing:'0.5px'}],'body-medium':['14px',{lineHeight:'20px',fontWeight:'400',letterSpacing:'0.25px'}],'body-small':['12px',{lineHeight:'16px',fontWeight:'400',letterSpacing:'0.4px'}],'label-large':['14px',{lineHeight:'20px',fontWeight:'500',letterSpacing:'0.1px'}],'label-medium':['12px',{lineHeight:'16px',fontWeight:'500',letterSpacing:'0.5px'}],'label-small':['11px',{lineHeight:'16px',fontWeight:'500',letterSpacing:'0.5px'}]},
+  borderRadius: {'xs':'4px','sm':'8px','md':'12px','lg':'16px','lg-plus':'20px','xl':'28px','xl-plus':'32px'},
+  fontFamily: { sans: ['"Be Vietnam Pro"', 'system-ui', 'sans-serif'], mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'] },
+  boxShadow: { float: '0 1px 3px 0 rgba(0,0,0,.30), 0 4px 8px 3px rgba(0,0,0,.15)' },
+} } };
+</script>
+<script src="https://code.iconify.design/iconify-icon/3.0.2/iconify-icon.min.js"></script>
+<style>
+  :root { --md-primary: #005049; --md-on-primary: #FFFFFF; --md-primary-container: #066A61; --md-on-primary-container: #97E7DB; --md-secondary: #47645F; --md-on-secondary: #FFFFFF; --md-secondary-container: #C7E6E0; --md-on-secondary-container: #4B6863; --md-tertiary: #773115; --md-on-tertiary: #FFFFFF; --md-tertiary-container: #95482A; --md-on-tertiary-container: #FFCDBC; --md-tertiary-fixed: #FFDBCF; --md-on-tertiary-fixed-variant: #773215; --md-error: #BA1A1A; --md-on-error: #FFFFFF; --md-error-container: #FFDAD6; --md-surface: #F7FAF8; --md-surface-container-lowest: #FFFFFF; --md-surface-container-low: #F1F4F2; --md-surface-container: #EBEFED; --md-surface-container-high: #E6E9E7; --md-surface-container-highest: #E0E3E1; --md-on-surface: #181C1C; --md-on-surface-variant: #3E4947; --md-outline: #6E7977; --md-outline-variant: #BEC9C6; --md-inverse-surface: #2D3130; --md-inverse-on-surface: #EEF1EF; --md-inverse-primary: #85D5C9;
+    --spatial: linear(0, 0.107, 0.321, 0.539, 0.719, 0.848, 0.931, 0.979, 1.004, 1.014, 1.015, 1.011, 1.006, 1.003, 1);
+    --effects: linear(0, 0.286, 0.625, 0.826, 0.924, 0.968, 0.987, 0.995, 1); }
+  html, body { background: var(--md-surface); font-family: "Be Vietnam Pro", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .state { position: relative; isolation: isolate; }
+  .state::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: currentColor; opacity: 0;
+    pointer-events: none; transition: opacity 140ms var(--effects); }
+  .state:hover::after { opacity: .08; }
+  .state:active::after { opacity: .1; }
+  @keyframes caret { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }
+  .caret { width: 2px; height: 28px; background: var(--md-primary); animation: caret 1.06s steps(1) infinite; }
+  @keyframes drift { 0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)) } 50% { transform: translateY(-10px) rotate(calc(var(--r, 0deg) + 8deg)) } }
+  .drift { animation: drift 9s var(--effects) infinite; }
+
+  html, body { background: #fff; }
+  body, body * { font-family: "Be Vietnam Pro", system-ui, sans-serif; letter-spacing: 0em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .tight { letter-spacing: -0.015em !important; }
+  .hair { border-color: color-mix(in srgb, var(--md-outline-variant) 55%, white); }
+  .soft { box-shadow: 0 1px 2px rgba(16,24,22,.04), 0 6px 24px -8px rgba(16,24,22,.10); }
+  .hov:hover { background: color-mix(in srgb, var(--md-on-surface) 5%, transparent); }
+  .side { background: #F7F9F8; }
+  .glow { background: radial-gradient(60% 50% at 50% 0%, color-mix(in srgb, var(--md-primary) 7%, transparent), transparent 70%),
+    radial-gradient(40% 35% at 75% 10%, color-mix(in srgb, var(--md-tertiary-fixed) 40%, transparent), transparent 70%); }
+  .ring-focus { box-shadow: 0 0 0 4px color-mix(in srgb, var(--md-primary) 9%, transparent), 0 6px 24px -8px rgba(16,24,22,.12); }
+
+
+  .hero { background: radial-gradient(70% 140% at 0% 0%, color-mix(in srgb, var(--md-primary) 10%, transparent), transparent 60%),
+    radial-gradient(50% 120% at 100% 0%, color-mix(in srgb, var(--md-tertiary-fixed) 55%, transparent), transparent 60%); }
+  .hdots { background-image: radial-gradient(circle, rgba(16,24,22,.08) 1px, transparent 1px); background-size: 18px 18px;
+    mask-image: linear-gradient(to bottom, black, transparent 90%); }
+</style>
+</head>
+<body>
+<div class="flex h-[900px] w-[1440px] bg-white text-on-surface">
+  
+  <main class="hero relative flex flex-1 items-center justify-center overflow-hidden"><div class="hdots pointer-events-none absolute inset-0"></div>
+  <div class="absolute left-8 top-7 flex items-center gap-2"><img src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/d0e7dcea-fa3d-477d-9b2a-e072f17a3ee7/brand-assets/console-logo/favicon.svg" alt="ShopNexus" class="h-8 w-8 rounded-[9px]"><span class="tight text-[16px] font-semibold">ShopNexus Console</span></div>
+  <div class="absolute right-8 top-7 flex rounded-full bg-white/80 p-1 soft"><a id="theme-sys" href="#theme-sys" class="flex h-8 w-8 items-center justify-center rounded-full bg-surface-container text-on-surface-variant"><iconify-icon icon="material-symbols-light:computer-outline-rounded" width="17" height="17" class="block shrink-0 "></iconify-icon></a><a id="theme-light" href="#theme-light" class="flex h-8 w-8 items-center justify-center rounded-full  text-on-surface-variant"><iconify-icon icon="material-symbols-light:light-mode-outline-rounded" width="17" height="17" class="block shrink-0 "></iconify-icon></a><a id="theme-dark" href="#theme-dark" class="flex h-8 w-8 items-center justify-center rounded-full  text-on-surface-variant"><iconify-icon icon="material-symbols-light:dark-mode-outline-rounded" width="17" height="17" class="block shrink-0 "></iconify-icon></a></div>
+  <div class="relative w-[440px]"><div class="rounded-[24px] border hair bg-white p-9 soft">
+  <img src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/d0e7dcea-fa3d-477d-9b2a-e072f17a3ee7/content-assets/art-verified/art_verified.webp" alt="" class="mx-auto -mt-20 h-[120px] w-[120px] object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,.12)]">
+  <h1 class="tight mt-2 text-center text-[28px] font-semibold">Sign in</h1>
+  <div class="mt-7 space-y-4"><div><p class="mb-1.5 text-[13.5px] font-medium">Email</p>
+  <p class="flex h-12 items-center gap-2.5 rounded-[14px] border bg-white px-4 text-[15px] hair"><iconify-icon icon="material-symbols-light:mail-outline-rounded" width="18" height="18" class="block shrink-0 text-on-surface-variant"></iconify-icon><span class="flex-1 ">lan@shopnexus.vn</span></p></div>
+    <div><p class="mb-1.5 text-[13.5px] font-medium">Password</p>
+  <p class="flex h-12 items-center gap-2.5 rounded-[14px] border bg-white px-4 text-[15px] border-primary/60 ring-4 ring-primary/10"><iconify-icon icon="material-symbols-light:lock-outline" width="18" height="18" class="block shrink-0 text-on-surface-variant"></iconify-icon><span class="flex-1 ">••••••••••</span><iconify-icon icon="material-symbols-light:visibility-outline" width="18" height="18" class="block shrink-0 text-on-surface-variant"></iconify-icon></p></div></div>
+  <a id="continue" href="#continue" class="mt-6 flex h-12 items-center justify-center gap-2 rounded-full bg-primary text-[15px] font-medium text-on-primary">Continue<iconify-icon icon="material-symbols-light:arrow-forward-rounded" width="18" height="18" class="block shrink-0 "></iconify-icon></a>
+  <p class="mt-4 text-center text-[13px] text-on-surface-variant">Forgot your password? Ask an admin.</p>
+</div></div>
+  <p class="absolute bottom-6 text-[13px] text-on-surface-variant">console.shopnexus.vn</p></main>
+</div>
+</body>
+</html>

@@ -1,0 +1,45 @@
+Drafts replaced by the soft look on 2026-11-18; delete them on the canvas.
+Agent · Mềm · Cuộc trò chuyện · be-vietnam-pro | 4ef498fd-f632-46b3-a5e2-8d7929b09bcc
+Agent · Mềm · Cuộc trò chuyện · Inter xám ấm | 836e4965-0c79-4c05-a9a9-5f600a5a63a4
+Agent · Mềm · Cuộc mới · Inter xám ấm | 9908ab89-dd5e-4a9f-9df1-90a57e18c1cf
+Agent · Mềm · Cuộc mới · lexend | a2ba2176-ef7b-4f39-bee2-54cc09827286
+Agent · Mềm · Cuộc mới · nunito | 926a17b4-2aee-4d5d-9894-1adec6048560
+Agent · Mềm · Cuộc mới · be-vietnam-pro | df91e9be-4141-49bd-ae63-d4ca50dc65a8
+Agent · Mềm · Cuộc trò chuyện | a5d069dc-9007-4fe0-9908-4e0be2dcc3ec
+Agent · Mềm · Cuộc mới | b89f6ad0-34a7-44d2-a8c4-accfa3af3451
+Báo cáo · B · Đã xử lý | 7c685b01-5f9d-4e9c-a13f-7bc573fb8e60
+Báo cáo · B · Hỏi agent | 0556f170-f4cf-49ff-a7f9-bbc0700a1296
+Báo cáo · B · Hồ sơ vụ | 49a853df-ef75-4ee8-bedc-3bfb316a3c38
+Tài khoản · Đang khoá | 3079afbb-516d-4fcd-9529-fbbe9c087b6c
+Tài khoản · Tạm khoá | e17ac344-0b18-486f-a2f1-d92b2a34d558
+Tài khoản · Đang hoạt động | 478c3981-ab41-430a-847b-3251256319fb
+Hỗ trợ · Geist · Agent và Chat khách | 1a9c6aa2-a0f5-4dbf-8c20-2920a0ad492d
+Hỗ trợ · Geist · Agent và Thông tin | 549b2e7f-0966-45bf-9bc4-5bab7f7bd1af
+Hỗ trợ · Agent đọc sẵn ticket | 070bd8aa-d54c-49a5-8d05-46023e6c8f1e
+Agent · Đã khoá nhóm | f869267a-3cea-4263-97b3-4cf7278c3d30
+Báo cáo · Đồ thị nhóm gian lận | a1f4d401-9a99-4a75-aa69-56f008c60d05
+Báo cáo · Duyệt đề xuất khoá nhóm | aa9ab713-6bf3-4335-b566-5aa53687e9c4
+Báo cáo · Hỏi agent về báo cáo | 264ec538-be26-4fb2-959d-7ce3973dfc4c
+Agent · Cuộc mới, gắn báo cáo | eb0736d2-b2f9-4af4-9fbf-e00296bd0c47
+Agent · Quá thời gian | 26426c40-8e0f-4a04-988c-4a576639e9d4
+Agent · Đang trả lời | 026b0a54-9366-44c4-8b19-b67fade4e88e
+Agent · Cuộc trò chuyện | b7d8b39a-3fe2-4b88-88a2-63a63d8c1311
+Hỗ trợ · Hỏi agent về ticket | 379d1c51-41b8-4b0d-8d9f-9da4de81f5b3
+Hỗ trợ · Hiện đại · Inter | 66efcb9d-a0bb-4bd8-90bd-e65233035159
+Hỗ trợ · Hiện đại · Geist | 8c4c574e-5980-4ae4-8a7d-6029904ef2c6
+Trang chủ · Hiện đại · Inter | bca05447-24f2-4b06-b5ac-c63e0aa5e047
+Trang chủ · Hiện đại · Geist | a356e398-edf7-48ff-be08-dbfc92363635
+Hỗ trợ · Bàn làm việc | 1f7dc033-df34-46bd-a2ab-3f8b8d92b691
+Trang chủ · Bàn làm việc | c3aad77f-56db-4b1e-a247-78bbf3f4f7a4
+Hỗ trợ · Bản trả lời agent soạn | ea30bae8-44b4-4df4-a97d-54ec1d2aa82d
+Báo cáo · Đề xuất của agent | 676f6762-980b-45cc-8ba2-2f721820701f
+Hỗ trợ · Ticket đã xử lý | 2674c6cb-7da3-407f-99d2-bdc18dcd9086
+Hỗ trợ · Ticket đang mở | 4a2df821-ad82-46e9-9885-153397da18d1
+Trang chủ · Kiểm duyệt viên | 3cfdd3b6-1824-4d7b-95f6-433b9c88bf46
+Trang chủ · Quản trị viên | 153193af-37f9-48d3-90a6-7ca9a6cb6fab
+Mở công cụ · Không đủ quyền | ab2622a8-f6ba-4bfd-81d5-cb0bc37ac4bb
+Mở công cụ · Đang mở | 6ee970d2-cbd6-4259-949f-cb2d897394f7
+Lần đầu · Bật xác thực hai bước | 73441be4-5773-4c5d-a31f-e282e15801c7
+Lần đầu · Đặt mật khẩu mới | 93f45899-37da-42cc-becd-99cf69e34452
+Đăng nhập · Mã xác thực | 873eb270-e3e2-43ac-92d4-a30f1bedae38
+Đăng nhập · Mật khẩu | 6533bc45-4871-421b-922e-0ebf2daa736b
