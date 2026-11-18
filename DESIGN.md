@@ -21,9 +21,10 @@ shadows and breakpoints are off.
   view; `error` marks an action that takes a right away from someone;
   `tertiary` appears only for a listing's price. The page is
   `surface-container`; the work area is one `surface-container-lowest` card.
-- **Type.** Geist for all text. Ids, codes, keys and version tags stay in
-  Geist with `tabular-nums`. Text runs at −0.012em,
-  titles at −0.022em; times and counts use `tabular-nums` too. The utilities
+- **Type.** Be Vietnam Pro for all text. Ids, codes, keys and version tags
+  stay in Be Vietnam Pro with `tabular-nums`. Text keeps the face's own
+  spacing, because negative tracking closes its narrow word spaces; titles run
+  at −0.015em. Times and counts use `tabular-nums` too. The utilities
   keep the M3 role names: `text-body-large` 16 px for chat and inputs,
   `text-body-medium` 15 px for rows, `text-body-small` 13 px for secondary
   lines, `text-label-*` 15, 14 and 13 px, `text-title-*` 17, 16 and 15 px

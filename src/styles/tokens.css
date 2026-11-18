@@ -3,15 +3,15 @@
  *
  * Colour comes from the Android app's design system,
  * app/.superdesign/design-system.md: the M3 roles generated from #066A61 and
- * #924628, and the motion springs. The rest is the console's Geist look,
- * console/.superdesign/design-system.md ("Tokens"): Geist for all text,
+ * #924628, and the motion springs. The rest is the console's own look,
+ * console/.superdesign/design-system.md ("Tokens"): Be Vietnam Pro for all text,
  * hairline borders, the `lift` ring, and 5 to 14 px corners. The website keeps
  * the app's M3 type and corners in its own copy of this file.
  */
 
-@import "@fontsource/geist/400.css";
-@import "@fontsource/geist/500.css";
-@import "@fontsource/geist/600.css";
+@import "@fontsource/be-vietnam-pro/400.css";
+@import "@fontsource/be-vietnam-pro/500.css";
+@import "@fontsource/be-vietnam-pro/600.css";
 
 /* ---------------------------------------------------------------- colour --
  * Light by default, dark when the system asks, and data-theme on <html>
@@ -49,7 +49,7 @@
   --md-inverse-surface: #2d3130;
   --md-inverse-on-surface: #eef1ef;
   --md-inverse-primary: #85d5c9;
-  /* Geist: hairlines are outlineVariant mixed 70 % with the card colour
+  /* Hairlines are outlineVariant mixed 70 % with the card colour
      (white in light), and the lift ring is a faint dark line. */
   --md-hairline: color-mix(in srgb, var(--md-outline-variant) 70%, var(--md-surface-container-lowest));
   --md-lift-ring: rgb(16 24 22 / 0.06);
@@ -158,7 +158,7 @@
   --color-inverse-surface: var(--md-inverse-surface);
   --color-inverse-on-surface: var(--md-inverse-on-surface);
   --color-inverse-primary: var(--md-inverse-primary);
-  /* Geist: border-hairline, divide-hairline, bg-hairline. */
+  /* border-hairline, divide-hairline, bg-hairline. */
   --color-hairline: var(--md-hairline);
 }
 
@@ -173,44 +173,46 @@
   --breakpoint-2xl: 1600px; /* extra-large */
 
   /* ------------------------------------------------------------ type -- */
-  /* Geist for everything, ids and codes too, with tabular figures. Text runs
-     at -0.012em (set on html below), titles at -0.022em. Vietnamese stacks
+  /* Be Vietnam Pro for everything, ids and codes too, with tabular figures.
+     Text runs at its own spacing: the face's word spaces are narrow, and any
+     negative tracking glues Vietnamese words together. Titles take -0.015em.
+     Vietnamese stacks
      marks above and below (ặ, ỗ, ữ), so no step goes under 1.2 line height.
-     The M3 role names stay so a page reads the same; the sizes are Geist's. */
-  --font-sans: "Geist", system-ui, sans-serif;
+     The M3 role names stay so a page reads the same. */
+  --font-sans: "Be Vietnam Pro", system-ui, sans-serif;
 
   --text-*: initial;
   /* Figures on tiles and the sign-in side panel. */
   --text-display-large: 2.25rem;
   --text-display-large--line-height: 2.75rem;
   --text-display-large--font-weight: 600;
-  --text-display-large--letter-spacing: -0.022em;
+  --text-display-large--letter-spacing: -0.015em;
   --text-display-medium: 2rem;
   --text-display-medium--line-height: 2.5rem;
   --text-display-medium--font-weight: 600;
-  --text-display-medium--letter-spacing: -0.022em;
+  --text-display-medium--letter-spacing: -0.015em;
   --text-display-small: 1.5rem;
   --text-display-small--line-height: 2rem;
   --text-display-small--font-weight: 600;
-  --text-display-small--letter-spacing: -0.022em;
+  --text-display-small--letter-spacing: -0.015em;
   /* Sign-in titles. */
   --text-headline-medium: 1.375rem;
   --text-headline-medium--line-height: 1.875rem;
   --text-headline-medium--font-weight: 600;
-  --text-headline-medium--letter-spacing: -0.022em;
+  --text-headline-medium--letter-spacing: -0.015em;
   --text-headline-small: 1.1875rem;
   --text-headline-small--line-height: 1.625rem;
   --text-headline-small--font-weight: 600;
-  --text-headline-small--letter-spacing: -0.022em;
+  --text-headline-small--letter-spacing: -0.015em;
   /* Page, card and record titles. */
   --text-title-large: 1.0625rem;
   --text-title-large--line-height: 1.5rem;
   --text-title-large--font-weight: 600;
-  --text-title-large--letter-spacing: -0.022em;
+  --text-title-large--letter-spacing: -0.015em;
   --text-title-medium: 1rem;
   --text-title-medium--line-height: 1.375rem;
   --text-title-medium--font-weight: 600;
-  --text-title-medium--letter-spacing: -0.022em;
+  --text-title-medium--letter-spacing: -0.015em;
   --text-title-small: 0.9375rem;
   --text-title-small--line-height: 1.375rem;
   --text-title-small--font-weight: 600;
@@ -237,7 +239,7 @@
   --text-label-small--font-weight: 500;
 
   /* ----------------------------------------------------------- shape -- */
-  /* Geist corners. rounded-full is Tailwind's own. */
+  /* Corners. rounded-full is Tailwind's own. */
   --radius-*: initial;
   --radius-xs: 5px; /* keys, version tags */
   --radius-sm: 6px; /* controls, chips, nav rows */
@@ -455,11 +457,10 @@
     background: var(--md-surface);
     color: var(--md-on-surface);
     font-family: var(--font-sans);
-    letter-spacing: -0.012em;
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Keys and codes stay in Geist, like the text around them. */
+  /* Keys and codes stay in the text face, like the text around them. */
   kbd,
   code,
   samp,
