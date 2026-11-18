@@ -301,11 +301,14 @@ def tools():
            ("order_get", "Đơn hàng", "Đơn COD và các mốc giao", "package-2-outline", "bg-tertiary-fixed text-on-tertiary-fixed-variant", "#B3542E", [14, 18, 16, 20, 17, 22, 21]),
            ("listing_get", "Tin đăng", "Mọi trạng thái trừ đã xoá", "storefront-outline-rounded", "bg-inverse-primary/40 text-primary-container", "#2E9C8E", [18, 21, 25, 22, 27, 24, 29])]
     calls = ["1.902", "644", "2.310", "512", "1.188", "1.476"]
-    cards = "".join(card(f"""<div class="flex items-start gap-3"><span class="flex h-10 w-10 items-center justify-center rounded-[12px] {tint}">{gi(ic, 20)}</span>
-  <div class="min-w-0 flex-1 leading-tight"><p class="text-[15px] font-semibold">{t}</p><p class="mt-0.5 text-[12px] text-on-surface-variant">{k}</p></div>{toggle(True, "tool-" + k)}</div>
-<p class="mt-3 text-[13px] text-on-surface-variant">{d}</p>
-<div class="mt-3 flex items-end justify-between"><div><p class="tnum tight text-[20px] font-semibold">{n}</p><p class="text-[12px] text-on-surface-variant">lần · 7 ngày</p></div>{spark(sp, color, 110, 34)}</div>""", "p-4")
-                    for (k, t, d, ic, tint, color, sp), n in zip(mcp, calls))
+    rows = "".join(f"""<div class="hov flex items-center gap-5 border-t hair px-5 py-3.5 first:border-t-0">
+  <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] {tint}">{gi(ic, 20)}</span>
+  <div class="w-[220px] leading-tight"><p class="text-[15px] font-semibold">{t}</p><p class="mt-0.5 text-[12.5px] text-on-surface-variant">{k}</p></div>
+  <p class="min-w-0 flex-1 text-[13.5px] text-on-surface-variant">{d}</p>
+  <div class="w-[96px] text-right leading-tight"><p class="tnum text-[16px] font-semibold">{n}</p><p class="text-[11.5px] text-on-surface-variant">calls · 7 days</p></div>
+  {spark(sp, color, 100, 32)}
+  {toggle(True, "tool-" + k)}</div>""" for (k, t, d, ic, tint, color, sp), n in zip(mcp, calls))
+    cards = card('<div class="flex items-center gap-5 border-b hair bg-surface-container-low/60 px-5 py-2.5 text-[12.5px] text-on-surface-variant"><span class="w-10"></span><span class="w-[220px]">Tool</span><span class="flex-1">Reads</span><span class="w-[96px] text-right">Usage</span><span class="w-[100px]"></span><span class="w-11">On</span></div>' + rows, "overflow-hidden p-0")
     dash = [("Grafana", "monitoring", "Mọi người", "bg-tertiary-fixed text-on-tertiary-fixed-variant"), ("Restate", "account-tree-outline-rounded", "Quản trị viên", "bg-primary/[.08] text-primary"),
             ("LiteLLM", "neurology-outline-rounded", "Quản trị viên", "bg-secondary-container text-on-secondary-container"), ("RustFS", "folder-open-outline-rounded", "Quản trị viên", "bg-inverse-primary/40 text-primary-container"),
             ("pgweb", "database-outline", "Quản trị viên", "bg-surface-container text-on-surface-variant"), ("Argo CD", "deployed-code-outline-rounded", "Quản trị viên", "bg-tertiary-fixed text-on-tertiary-fixed-variant")]
@@ -317,11 +320,11 @@ def tools():
   <span class="tnum text-[12.5px] text-on-surface-variant">{ms} ms</span><span class="tnum w-12 text-right text-[12.5px] text-on-surface-variant">{w}</span></div>"""
                      for ch, n, tl, rec, ms, w in [("L", "Lan", "account_get", "Đồ Cũ Gò Vấp", 42, "10:04"), ("L", "Lan", "listing_get", "iPhone 13 Pro Max 256GB", 38, "10:03"),
                                                    ("M", "Minh", "ticket_get", "Khánh Linh · chưa nhận hàng", 51, "09:11"), ("M", "Minh", "order_get", "GHTK S1.A1.17373471", 47, "09:11")])
-    body = f"""<div class="grid grid-cols-[1fr_340px] gap-4">
-  <div><div class="mb-3 flex items-center gap-2 px-1"><p class="text-[14px] font-semibold">Agent đọc được</p>{tag(gi("lock-outline", 13) + "Chỉ đọc")}</div>
-    <div class="grid grid-cols-3 gap-3">{cards}</div>
-    <p class="mb-3 mt-5 px-1 text-[14px] font-semibold">Gọi gần đây</p>{card(recent, "p-0 overflow-hidden")}</div>
+    body = f"""<div class="mb-3 flex items-center gap-2 px-1"><p class="text-[14px] font-semibold">Agent đọc được</p>{tag(gi("lock-outline", 13) + "Chỉ đọc")}</div>
+{cards}
+<div class="mt-5 grid grid-cols-[380px_1fr] gap-4">
   <div><p class="mb-3 px-1 text-[14px] font-semibold">Công cụ trong nav</p>{card(drows, "p-4 py-2")}</div>
+  <div><p class="mb-3 px-1 text-[14px] font-semibold">Gọi gần đây</p>{card(recent, "p-0 overflow-hidden")}</div>
 </div>"""
     return page("tools", "Tools", "build-outline-rounded",
                 [("visibility-outline", "6 tools chỉ đọc"), ("bolt-outline-rounded", "8.032 lần gọi · 7 ngày"), ("apps-rounded", "6 công cụ ngoài")], body)
