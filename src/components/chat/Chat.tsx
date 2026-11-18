@@ -325,9 +325,11 @@ function RunTurn({
   copied: boolean
   setCopied: (v: boolean) => void
 }) {
-  // Only what arrives now animates: a turn the member just sent, or one that streams after the thread opened.
-  const arrived = useArrival(turn.client_key ?? turn.id, !!turn.client_key)
-  const [stream] = useState(() => arrived || !!turn.client_key)
+  // Only what arrives now animates: a turn the member just sent, or one still
+  // running when this view first saw it. A finished turn read back off the
+  // chat draws whole, however late its answer loads.
+  const [stream] = useState(() => !!turn.client_key || turn.status === 'pending' || turn.status === 'running')
+  const arrived = useArrival(turn.client_key ?? turn.id, !!turn.client_key) && stream
   const blocks = run ? answerBlocks(run) : []
   const finished = run?.phase === 'finished'
   const textBlock = blocks.find((b) => b.type === 'text') as { markdown: string } | undefined

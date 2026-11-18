@@ -55,6 +55,8 @@ export function useSmoothReveal(text: string, animate: boolean): { shown: string
   const textRef = useRef(text)
   useEffect(() => {
     textRef.current = text
+    // Text that is not being revealed shows whole (see the return), also when it loads after mount.
+    if (!animate) return
     if (reveal.current.progress > text.length) reveal.current = { progress: text.length, speed: 0 }
     if (reveal.current.progress >= text.length) {
       setShownLength(text.length)
@@ -72,7 +74,8 @@ export function useSmoothReveal(text: string, animate: boolean): { shown: string
     }
     loop.frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(loop.frame)
-  }, [text])
+  }, [text, animate])
+  if (!animate) return { shown: text, revealing: false }
   const end = Math.min(shownLength, text.length)
   return { shown: text.slice(0, end), revealing: end < text.length }
 }
