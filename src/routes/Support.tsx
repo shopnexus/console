@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import IconBolt from '~icons/material-symbols/bolt-rounded'
@@ -9,7 +10,9 @@ import IconFilter from '~icons/material-symbols-light/filter-list-rounded'
 import IconExpand from '~icons/material-symbols-light/expand-more-rounded'
 import IconSee from '~icons/material-symbols-light/visibility-outline'
 import IconUndo from '~icons/material-symbols-light/undo-rounded'
+import { ChatView } from '../components/chat/Chat'
 import { DotFact, JKHint, ListColumn, ListRow } from '../components/Panes'
+import { openConversation } from '../lib/agent'
 import { Shell } from '../components/Shell'
 import { Btn, Card, IconBtn, Initial, Notice, Segmented } from '../components/ui'
 import { day, time, vnd, when } from '../lib/format'
@@ -146,7 +149,7 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /** Details: the person on a hero, the order, a carrier request, and the person's other tickets. */
-export function Details({ d }: { d: ConsoleTicketDetail }) {
+function Details({ d }: { d: ConsoleTicketDetail }) {
   const navigate = useNavigate()
   const p = d.ticket.person
   const suspended = d.person_status === 'suspended'
@@ -225,7 +228,7 @@ export function Details({ d }: { d: ConsoleTicketDetail }) {
 }
 
 /** The person's chat with ShopNexus, oldest first, with its own box for a reply written by hand. */
-export function CustomerChat({ d, onFailure }: { d: ConsoleTicketDetail; onFailure?: (e: unknown) => void }) {
+function CustomerChat({ d, onFailure }: { d: ConsoleTicketDetail; onFailure?: (e: unknown) => void }) {
   const t = d.ticket.ticket
   const commands = useTicketCommands(t.id)
   const [text, setText] = useState('')
@@ -369,6 +372,7 @@ function Panel({ id }: { id: string }) {
   const detail = useTicket(id)
   const commands = useTicketCommands(id)
   const [replyError, setReplyError] = useState<unknown>(null)
+  const [side, setSide] = useState<'chat' | 'info'>('chat')
   if (!detail.data) {
     return <section className="flex flex-1 items-center justify-center">{detail.isError && <Notice>This ticket did not load.</Notice>}</section>
   }
@@ -412,15 +416,34 @@ function Panel({ id }: { id: string }) {
             <Notice>{failureText(failure)}</Notice>
           </div>
         )}
-        <div className="flex min-h-0 flex-1 flex-col bg-surface-container-low/40">
-          <CustomerChat key={t.id} d={d} onFailure={setReplyError} />
-        </div>
+        <TicketAgent ticketId={t.id} label={`Ticket · ${p.display_name || 'Deleted'}`} />
       </div>
-      <aside className="flex w-[340px] shrink-0 flex-col overflow-hidden border-l border-hairline bg-surface-container-low/50 pt-3">
-        <Details d={d} />
+      <aside className="flex w-[340px] shrink-0 flex-col overflow-hidden border-l border-hairline bg-surface-container-low/50">
+        <div className="p-3">
+          <Segmented
+            full
+            label="Side"
+            value={side}
+            onChange={setSide}
+            items={[
+              { value: 'chat', label: 'Customer chat' },
+              { value: 'info', label: 'Details' },
+            ]}
+          />
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col">{side === 'chat' ? <CustomerChat key={t.id} d={d} onFailure={setReplyError} /> : <Details d={d} />}</div>
       </aside>
     </section>
   )
+}
+
+/** The agent's chat about the ticket: the ticket's shared conversation, opened (or made) on first view. */
+function TicketAgent({ ticketId, label }: { ticketId: string; label: string }) {
+  const conv = useQuery({ queryKey: ['agent', 'subject', 'ticket', ticketId], queryFn: () => openConversation({ kind: 'ticket', id: ticketId }), staleTime: Infinity })
+  if (!conv.data) {
+    return <div className="flex flex-1 items-center justify-center">{conv.isError && <Notice>The agent's chat did not open.</Notice>}</div>
+  }
+  return <ChatView key={conv.data.id} conversationId={conv.data.id} subject={{ kind: 'ticket', id: ticketId, label }} placeholder="Ask the agent or change the reply…" />
 }
 
 /** Support: the ticket queue, and the ticket in the URL beside it. */
