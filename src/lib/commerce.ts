@@ -5,56 +5,57 @@ import { ApiError, api, post } from './api'
 // /v1/console/listings/{id}). Every part the server may leave out is
 // optional, so a page draws what it has.
 
-export interface OrderParty {
-  id: string
-  display_name: string
-  status?: 'active' | 'suspended' | 'deleted'
-}
+export type PersonStatus = 'active' | 'suspended' | 'deleted'
 
+/** ConsoleOrder (GET /v1/console/orders/{id}). ShopNexus keeps no delivery events: the timeline is drawn from the dates. */
 export interface OrderDetail {
-  id?: string
+  id: string
   code: string
-  status: string
+  status: 'pending' | 'shipped' | 'completed' | 'failed' | 'cancelled' | string
   price: number
-  listing?: { id: string; title: string; photo_url?: string; status?: string; category?: string; condition?: string }
-  buyer?: OrderParty & { since?: string }
-  seller?: OrderParty & { orders?: number; rating?: number }
-  /** Who closed it: "system", a member's name, the buyer. */
-  completed_by?: string
+  created_at: string
+  /** The side whose confirmation closed it; absent when ShopNexus closed it 3 days after delivery. */
+  completed_by?: 'buyer' | 'seller'
+  cancelled_by?: 'buyer' | 'seller'
+  cancel_reason?: string
   shipped_at?: string
   closed_at?: string
-  created_at: string
-  shipment?: { mode?: string; carrier?: string; tracking_code?: string; status?: string; fee?: number; delivered_at?: string }
-  /** What the carrier says now, and why it could not be asked. */
-  carrier_now?: string
+  listing: { id: string; title: string; photo_url?: string; status: string; category_code: string; category: string; condition: string }
+  buyer: { id: string; display_name: string; status: PersonStatus; since: string }
+  /** orders: the seller's sold listings. */
+  seller: { id: string; display_name: string; status: PersonStatus; orders: number; rating?: { average: number; count: number } }
+  shipment?: { mode: 'linked' | 'manual' | string; carrier: string; tracking_code: string; status: string; fee?: number; delivered_at?: string }
+  /** What the carrier says of the parcel now, for a shipment on the seller's carrier account, and why it could not be asked. */
+  carrier_now?: { status: string; fee?: number }
   carrier_error?: string
-  events?: { status: string; at: string; place?: string; note?: string }[]
-  tickets?: { id: string; person_display_name: string; kind: string; status: string; last_line?: string; opened_at: string }[]
+  tickets: { id: string; person_display_name: string; kind: string; status: string; last_line?: string; opened_at: string }[]
 }
 
+/** ConsoleListing (GET /v1/console/listings/{id}). */
 export interface ListingDetail {
-  id?: string
+  id: string
   title: string
   price: number
-  description?: string
-  category_code?: string
-  category_name?: string
-  condition?: string
+  description: string
+  category_code: string
+  category: string
+  condition: string
   status: string
-  allow_offers?: boolean
-  commune?: string
-  province?: string
+  allow_offers: boolean
+  commune: string
+  province: string
   photo_urls?: string[]
   specs?: { label: string; value: string }[]
   created_at: string
   published_at?: string
   sold_at?: string
-  seller?: OrderParty & { listings?: number }
-  hidden?: { by_member_name?: string; at: string; reason?: string }
-  reports?: { reporter_display_name: string; reason: string; note?: string; at: string }[]
-  /** The report case of the seller, when the listing was reported. */
-  case_id?: string
-  price_guide?: { median: number; pct_vs_guide: number }
+  /** listings: on sale now; sold: sold ever. */
+  seller: { id: string; display_name: string; status: PersonStatus; listings: number; sold: number }
+  hidden?: { by_member_name: string; at: string }
+  /** The seller's account id, which keys the report case, when the listing has reports. */
+  report_case_id?: string
+  reports?: { reporter_display_name: string; reason: string; note: string; at: string }[]
+  price_guide?: { median: number; sample_size: number; pct_vs_guide: number }
 }
 
 const notFound = (n: number, e: unknown) => !(e instanceof ApiError && e.status === 404) && n < 1
@@ -67,12 +68,12 @@ export function useListing(id: string | undefined) {
   return useQuery({ queryKey: ['console', 'listings', id], queryFn: () => api<ListingDetail>(`/console/listings/${id}`), enabled: !!id, retry: notFound })
 }
 
-/** Hides a listing with the reason its seller sees, or unhides it; the listing and the report cases read again after. */
+/** Hides a listing or unhides it; the listing and the report cases read again after. */
 export function useListingCommands(id: string) {
   const client = useQueryClient()
   const done = () => Promise.all([client.invalidateQueries({ queryKey: ['console', 'listings', id] }), client.invalidateQueries({ queryKey: ['console', 'reports'] })])
   return {
-    hide: useMutation({ mutationFn: (reason: string) => post(`/console/listings/${id}/hide`, { reason }), onSettled: done }),
+    hide: useMutation({ mutationFn: () => post(`/console/listings/${id}/hide`), onSettled: done }),
     unhide: useMutation({ mutationFn: () => post(`/console/listings/${id}/unhide`), onSettled: done }),
   }
 }
@@ -82,36 +83,35 @@ export function listingFailure(e: unknown): string {
   if (e instanceof ApiError) {
     if (e.code === 'listing_state_conflict' || e.status === 409) return 'The listing changed status and was read again.'
     if (e.status === 404) return 'The listing is gone.'
-    if (e.status === 400 || e.status === 422) return 'The reason is not valid.'
   }
   return 'That did not go through. Try again.'
 }
 
 export const orderStatus: Record<string, string> = {
-  pending: 'Placed',
-  placed: 'Placed',
-  confirmed: 'Confirmed',
-  shipping: 'Shipping',
+  pending: 'Waiting to ship',
   shipped: 'Shipped',
-  delivered: 'Delivered',
   completed: 'Completed',
+  failed: 'Delivery failed',
   cancelled: 'Cancelled',
-  refused: 'Refused',
-  returned: 'Returned',
-  disputed: 'Disputed',
 }
 
-/** The statuses that read as gone wrong, in error. */
-export const orderTrouble = new Set(['cancelled', 'refused', 'returned', 'disputed', 'failed'])
+/** The statuses that stopped the order, drawn with an error dot. */
+export const orderTrouble = new Set(['failed', 'cancelled'])
+
+export const cancelReason: Record<string, string> = {
+  buyer: 'The buyer cancelled',
+  seller: 'The seller cancelled',
+  seller_timeout: 'No shipment within 3 days',
+  pickup_timeout: 'Not picked up within 3 days',
+  shipped_to_another: 'Shipped to another buyer',
+  listing_closed: 'The listing closed',
+}
 
 export const shipmentStatus: Record<string, string> = {
   pending_pickup: 'Waiting for pickup',
-  picked_up: 'Picked up',
   in_transit: 'In transit',
-  out_for_delivery: 'Out for delivery',
   delivered: 'Delivered',
   failed: 'Delivery failed',
-  returned: 'Returned',
 }
 
 export const listingStatus: Record<string, string> = {
@@ -124,14 +124,7 @@ export const listingStatus: Record<string, string> = {
   processing: 'Posting',
 }
 
-export const conditionLabel: Record<string, string> = {
-  new: 'New',
-  like_new: 'Like new',
-  good: 'Good',
-  fair: 'Fair',
-  used: 'Used',
-  for_parts: 'For parts',
-}
+export const conditionLabel: Record<string, string> = { new: 'New', like_new: 'Like new', used: 'Used' }
 
 /** A status word the console has no label for, readable: "out_for_delivery" → "Out for delivery". */
 export const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())

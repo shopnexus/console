@@ -10,11 +10,35 @@ import IconTruck from '~icons/material-symbols-light/local-shipping-outline-roun
 import { BackCrumbs, FactRow, Hero, Missing, OpenLink, PartyCard, StatusPill } from '../components/Panes'
 import { Shell } from '../components/Shell'
 import { Btn, Card, CardHead, IconTile, Initial, Tag } from '../components/ui'
-import { askHref, conditionLabel, humanize, listingStatus, type OrderDetail, orderStatus, orderTrouble, shipmentStatus, useOrder } from '../lib/commerce'
+import { askHref, cancelReason, conditionLabel, humanize, listingStatus, type OrderDetail, orderStatus, orderTrouble, shipmentStatus, useOrder } from '../lib/commerce'
 import { date, int, stamp, vnd, when } from '../lib/format'
 import { kindLabel, type TicketKind } from '../lib/support'
 
-const payMode: Record<string, string> = { cod: 'COD', cod_inspection: 'COD with inspection', prepaid: 'Paid ahead' }
+const shipMode: Record<string, string> = { linked: "linked to the seller's account", manual: "made in the carrier's app" }
+const carrierName: Record<string, string> = { ghtk: 'GHTK', ghn: 'GHN', spx: 'SPX', jt: 'J&T', viettel_post: 'Viettel Post' }
+const carrier = (c: string) => carrierName[c] ?? c.toUpperCase()
+
+/** The delivery as ShopNexus knows it, newest first: the order's own dates and what the carrier says now. */
+function timeline(o: OrderDetail): { title: string; at?: string; note?: string }[] {
+  const s = o.shipment
+  const steps: { title: string; at?: string; note?: string }[] = [{ title: 'Order placed', at: o.created_at, note: 'Cash on delivery' }]
+  if (o.shipped_at) steps.push({ title: 'Shipped', at: o.shipped_at, note: s ? `${carrier(s.carrier)} · ${s.tracking_code}` : undefined })
+  if (s?.delivered_at) steps.push({ title: 'Delivered', at: s.delivered_at })
+  if (o.closed_at) {
+    const title = o.status === 'cancelled' ? 'Cancelled' : o.status === 'failed' ? 'Delivery failed' : 'Completed'
+    const note =
+      o.status === 'cancelled'
+        ? o.cancel_reason && (cancelReason[o.cancel_reason] ?? humanize(o.cancel_reason))
+        : o.status === 'completed'
+          ? o.completed_by
+            ? `The ${o.completed_by} confirmed it`
+            : 'By ShopNexus, 3 days after delivery'
+          : undefined
+    steps.push({ title, at: o.closed_at, note })
+  }
+  if (o.carrier_now && !o.closed_at) steps.push({ title: `Carrier says: ${shipmentStatus[o.carrier_now.status] ?? humanize(o.carrier_now.status)}`, note: 'Now' })
+  return steps.reverse()
+}
 
 /** An order, reached by a link: its hero, the delivery, the shipment, the listing, both parties and the tickets about it. */
 export function Order() {
@@ -35,7 +59,7 @@ function OrderPage({ id, o }: { id: string; o: OrderDetail }) {
   const trouble = orderTrouble.has(o.status)
   const dates = [`Placed ${stamp(o.created_at)}`, o.shipped_at && `shipped ${stamp(o.shipped_at)}`, o.closed_at && `closed ${stamp(o.closed_at)}`].filter(Boolean).join(' · ')
   const s = o.shipment
-  const events = [...(o.events ?? [])].sort((a, b) => b.at.localeCompare(a.at))
+  const steps = timeline(o)
   return (
     <>
       <BackCrumbs kind="Orders" name={o.code}>
@@ -60,7 +84,7 @@ function OrderPage({ id, o }: { id: string; o: OrderDetail }) {
         </button>
       </BackCrumbs>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-6">
-        <Hero error={trouble}>
+        <Hero>
           <div className="flex items-center gap-5">
             <IconTile size={64} tone="bg-surface-container-lowest text-primary shadow-soft">
               <IconPackage width={30} height={30} />
@@ -72,23 +96,21 @@ function OrderPage({ id, o }: { id: string; o: OrderDetail }) {
               </div>
               <p className="mt-0.5 tabular-nums text-body-small text-on-surface-variant">{dates}</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                {s?.mode && (
-                  <Tag tone="border border-hairline bg-surface-container-lowest text-on-surface">
-                    <IconPay width={13} height={13} />
-                    {payMode[s.mode] ?? humanize(s.mode)}
-                  </Tag>
-                )}
-                {s?.carrier && (
+                <Tag tone="border border-hairline bg-surface-container-lowest text-on-surface">
+                  <IconPay width={13} height={13} />
+                  Cash on delivery
+                </Tag>
+                {s && (
                   <Tag tone="border border-hairline bg-surface-container-lowest text-on-surface">
                     <IconTruck width={13} height={13} />
-                    {s.carrier.toUpperCase()}
+                    {carrier(s.carrier)}
                   </Tag>
                 )}
               </div>
             </div>
             <div className="text-right">
-              <p className="tabular-nums text-[26px] font-semibold leading-tight text-tertiary">{vnd(o.price)}</p>
-              {s?.mode?.startsWith('cod') && <p className="text-body-small text-on-surface-variant">paid at the door</p>}
+              <p className="tabular-nums text-[26px] font-semibold leading-tight text-on-surface">{vnd(o.price)}</p>
+              <p className="text-body-small text-on-surface-variant">paid at the door</p>
             </div>
           </div>
         </Hero>
@@ -96,50 +118,54 @@ function OrderPage({ id, o }: { id: string; o: OrderDetail }) {
           <div className="space-y-4">
             <Card>
               <CardHead title="Delivery" />
-              {events.length === 0 ? (
-                <p className="text-body-small text-on-surface-variant">No delivery events yet.</p>
-              ) : (
-                <ol className="relative before:absolute before:bottom-2 before:left-[5px] before:top-2 before:w-px before:bg-outline-variant/70">
-                  {events.map((e, i) => (
-                    <li key={`${e.status}${e.at}`} className="relative flex gap-3 pb-4 last:pb-0">
-                      <span className={`relative z-10 mt-1 h-3 w-3 shrink-0 rounded-full ${i === 0 ? 'bg-primary ring-4 ring-primary/15' : 'bg-outline-variant'}`} />
-                      <div className="min-w-0 flex-1 leading-tight">
-                        <div className="flex gap-2">
-                          <p className={`flex-1 text-body-medium ${i === 0 ? 'font-semibold' : ''}`}>{shipmentStatus[e.status] ?? orderStatus[e.status] ?? humanize(e.status)}</p>
-                          <p className="tabular-nums text-body-small text-on-surface-variant">{when(e.at)}</p>
-                        </div>
-                        {(e.place || e.note) && <p className="mt-0.5 text-body-small text-on-surface-variant">{[e.place, e.note].filter(Boolean).join(' · ')}</p>}
+              <ol className="relative before:absolute before:bottom-2 before:left-[5px] before:top-2 before:w-px before:bg-outline-variant/70">
+                {steps.map((e, i) => (
+                  <li key={e.title} className="relative flex gap-3 pb-4 last:pb-0">
+                    <span className={`relative z-10 mt-1 h-3 w-3 shrink-0 rounded-full ${i === 0 ? 'bg-primary ring-4 ring-primary/15' : 'bg-outline-variant'}`} />
+                    <div className="min-w-0 flex-1 leading-tight">
+                      <div className="flex gap-2">
+                        <p className={`flex-1 text-body-medium ${i === 0 ? 'font-semibold' : ''}`}>{e.title}</p>
+                        {e.at && <p className="tabular-nums text-body-small text-on-surface-variant">{when(e.at)}</p>}
                       </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
+                      {e.note && <p className="mt-0.5 text-body-small text-on-surface-variant">{e.note}</p>}
+                    </div>
+                  </li>
+                ))}
+              </ol>
             </Card>
-            {(s || o.carrier_now || o.carrier_error || o.completed_by) && (
+            {(s || o.carrier_error) && (
               <Card className="p-5 pb-3">
                 <CardHead title="Shipment" />
-                {s?.carrier && <FactRow label="Carrier">{s.carrier.toUpperCase()}</FactRow>}
-                {s?.tracking_code && (
-                  <FactRow label="Tracking">
-                    <span className="tabular-nums">{s.tracking_code}</span>
+                {s && (
+                  <>
+                    <FactRow label="Carrier">
+                      {carrier(s.carrier)}
+                      {shipMode[s.mode] && <span className="text-on-surface-variant"> · {shipMode[s.mode]}</span>}
+                    </FactRow>
+                    <FactRow label="Tracking">
+                      <span className="tabular-nums">{s.tracking_code}</span>
+                    </FactRow>
+                    <FactRow label="Shipment">{shipmentStatus[s.status] ?? humanize(s.status)}</FactRow>
+                    {s.fee !== undefined && (
+                      <FactRow label="Shipping fee">
+                        <span className="tabular-nums">{vnd(s.fee)}</span>
+                      </FactRow>
+                    )}
+                    {s.delivered_at && <FactRow label="Delivered">{stamp(s.delivered_at)}</FactRow>}
+                  </>
+                )}
+                {o.carrier_now && (
+                  <FactRow label="Carrier says now">
+                    <span className="text-primary">{shipmentStatus[o.carrier_now.status] ?? humanize(o.carrier_now.status)}</span>
+                    {o.carrier_now.fee !== undefined && <span className="tabular-nums text-on-surface-variant"> · fee {vnd(o.carrier_now.fee)}</span>}
                   </FactRow>
                 )}
-                {s?.status && <FactRow label="Shipment">{shipmentStatus[s.status] ?? humanize(s.status)}</FactRow>}
-                {s?.fee !== undefined && (
-                  <FactRow label="Shipping fee">
-                    <span className="tabular-nums">{vnd(s.fee)}</span>
-                  </FactRow>
-                )}
-                {s?.delivered_at && <FactRow label="Delivered">{stamp(s.delivered_at)}</FactRow>}
-                {(o.carrier_now || o.carrier_error) && (
-                  <FactRow label="Carrier says now">{o.carrier_now ? <span className="text-primary">{o.carrier_now}</span> : <span className="text-error">{o.carrier_error}</span>}</FactRow>
-                )}
-                {o.completed_by && <FactRow label="Completed by">{o.completed_by}</FactRow>}
+                {o.carrier_error && <FactRow label="Carrier says now">{o.carrier_error}</FactRow>}
               </Card>
             )}
           </div>
           <div className="space-y-4">
-            {o.listing && (
+            {
               <Card className="p-4">
                 <div className="flex items-center gap-3">
                   {o.listing.photo_url ? (
@@ -153,7 +179,7 @@ function OrderPage({ id, o }: { id: string; o: OrderDetail }) {
                     <p className="text-label-small font-normal text-on-surface-variant">Listing</p>
                     <p className="mt-0.5 truncate text-title-small">{o.listing.title}</p>
                     <p className="mt-0.5 text-body-small text-on-surface-variant">
-                      {[o.listing.status && (listingStatus[o.listing.status] ?? humanize(o.listing.status)), o.listing.category, o.listing.condition && `${conditionLabel[o.listing.condition] ?? humanize(o.listing.condition)} condition`]
+                      {[listingStatus[o.listing.status] ?? humanize(o.listing.status), o.listing.category, `${conditionLabel[o.listing.condition] ?? humanize(o.listing.condition)}`]
                         .filter(Boolean)
                         .join(' · ')}
                     </p>
@@ -161,26 +187,16 @@ function OrderPage({ id, o }: { id: string; o: OrderDetail }) {
                   <OpenLink to={`/listings/${o.listing.id}`} />
                 </div>
               </Card>
-            )}
-            {o.buyer && (
-              <PartyCard
-                role="Buyer"
-                id={o.buyer.id}
-                name={o.buyer.display_name}
-                status={o.buyer.status}
-                meta={[o.buyer.id.slice(0, 8), o.buyer.since && `since ${date(o.buyer.since)}`].filter(Boolean).join(' · ')}
-              />
-            )}
-            {o.seller && (
-              <PartyCard
-                role="Seller"
-                id={o.seller.id}
-                name={o.seller.display_name}
-                status={o.seller.status}
-                meta={[o.seller.id.slice(0, 8), o.seller.orders !== undefined && `${int(o.seller.orders)} orders`, o.seller.rating !== undefined && `${o.seller.rating.toFixed(1)} ★`].filter(Boolean).join(' · ')}
-              />
-            )}
-            {o.tickets && o.tickets.length > 0 && (
+            }
+            <PartyCard role="Buyer" id={o.buyer.id} name={o.buyer.display_name} status={o.buyer.status} meta={`${o.buyer.id.slice(0, 8)} · since ${date(o.buyer.since)}`} />
+            <PartyCard
+              role="Seller"
+              id={o.seller.id}
+              name={o.seller.display_name}
+              status={o.seller.status}
+              meta={[o.seller.id.slice(0, 8), `${int(o.seller.orders)} sold`, o.seller.rating && `${o.seller.rating.average.toFixed(1)} ★ (${int(o.seller.rating.count)})`].filter(Boolean).join(' · ')}
+            />
+            {o.tickets.length > 0 && (
               <Card className="p-4">
                 <CardHead title="Tickets about this order" right={<Tag tone="bg-surface-container text-on-surface">{o.tickets.length}</Tag>} />
                 {o.tickets.map((t) => (

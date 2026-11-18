@@ -17,21 +17,14 @@ const order: OrderDetail = {
   code: 'SN-1042',
   status: 'completed',
   price: 3_800_000,
-  listing: { id: MOCK_LISTING, title: 'iPhone X 64GB, battery 86%', photo_url: PHOTO, status: 'sold', category: 'Phones', condition: 'good' },
+  listing: { id: MOCK_LISTING, title: 'iPhone 13 Pro Max 256GB', photo_url: PHOTO, status: 'sold', category_code: 'phones', category: 'Phones', condition: 'used' },
   buyer: { id: '7b1c22e0-0000-4000-8000-000000000001', display_name: 'Khánh Linh', status: 'active', since: '2025-03-02T00:00:00Z' },
-  seller: { id: '5e8a0100-0000-4000-8000-000000000002', display_name: 'Hoàng Nam', status: 'active', orders: 38, rating: 4.8 },
-  completed_by: 'System, after the carrier reported delivery',
+  seller: { id: '5e8a0100-0000-4000-8000-000000000002', display_name: 'Hoàng Nam', status: 'active', orders: 38, rating: { average: 4.8, count: 21 } },
   created_at: ago(80),
   shipped_at: ago(72),
   closed_at: ago(26),
-  shipment: { mode: 'cod_inspection', carrier: 'ghtk', tracking_code: 'S1.A1.17373471', status: 'delivered', fee: 32_000, delivered_at: ago(26) },
-  carrier_now: 'Delivered · 14:21',
-  events: [
-    { status: 'placed', at: ago(80), note: 'COD with inspection' },
-    { status: 'picked_up', at: ago(72), place: 'From Hoàng Nam, District 3' },
-    { status: 'out_for_delivery', at: ago(32), place: 'Bình Thạnh hub' },
-    { status: 'delivered', at: ago(26), place: 'Reception, building B', note: 'signed “Hằng”' },
-  ],
+  shipment: { mode: 'linked', carrier: 'ghtk', tracking_code: 'S1.A1.17373471', status: 'delivered', fee: 32_000, delivered_at: ago(26) },
+  carrier_now: { status: 'delivered', fee: 32_000 },
   tickets: [{ id: 't1', person_display_name: 'Khánh Linh', kind: 'not_received', status: 'open', last_line: 'Mình hỏi bảo vệ rồi, không ai nhận giúp cả.', opened_at: ago(5) }],
 }
 
@@ -41,8 +34,8 @@ const listing = (hidden: boolean): ListingDetail => ({
   price: 8_900_000,
   description: 'Máy zin, pin 88%, fullbox. Chuyển cọc 500k mình giữ hàng, ship toàn quốc.',
   category_code: 'phones',
-  category_name: 'Phones',
-  condition: 'good',
+  category: 'Phones',
+  condition: 'used',
   status: hidden ? 'hidden' : 'active',
   allow_offers: true,
   commune: 'Gò Vấp',
@@ -54,15 +47,15 @@ const listing = (hidden: boolean): ListingDetail => ({
   ],
   created_at: ago(200),
   published_at: ago(199),
-  seller: { id: 'a1f0c3aa-0000-4000-8000-000000000003', display_name: 'Đồ Cũ Gò Vấp', status: 'active', listings: 14 },
-  ...(hidden ? { hidden: { by_member_name: 'Nguyễn Thị Lan', at: ago(2), reason: 'Asks for a deposit before the buyer sees the phone.' } } : {}),
+  seller: { id: 'a1f0c3aa-0000-4000-8000-000000000003', display_name: 'Đồ Cũ Gò Vấp', status: 'active', listings: 14, sold: 31 },
+  ...(hidden ? { hidden: { by_member_name: 'Nguyễn Thị Lan', at: ago(2) } } : {}),
   reports: [
     { reporter_display_name: 'Quang Huy', reason: 'scam', note: 'Bắt chuyển cọc trước rồi chặn mình', at: ago(20) },
     { reporter_display_name: 'Minh Thư', reason: 'scam', note: 'Ảnh lấy trên mạng, hỏi video thì không gửi', at: ago(4) },
-    { reporter_display_name: 'Bảo Ngọc', reason: 'fake', at: ago(3) },
+    { reporter_display_name: 'Bảo Ngọc', reason: 'fake', note: '', at: ago(3) },
   ],
-  case_id: 'a1f0c3aa-0000-4000-8000-000000000003',
-  price_guide: { median: 21_200_000, pct_vs_guide: -58 },
+  report_case_id: 'a1f0c3aa-0000-4000-8000-000000000003',
+  price_guide: { median: 21_200_000, sample_size: 48, pct_vs_guide: -58 },
 })
 
 const listings: Record<string, ListingDetail> = { [MOCK_LISTING]: listing(false), [MOCK_HIDDEN]: listing(true) }
@@ -73,10 +66,10 @@ export const commerceRoutes: Route[] = [
   [
     'POST',
     /^\/console\/listings\/([^/]+)\/hide$/,
-    (m, body) => {
+    (m) => {
       const l = listings[m[1]]
       if (!l) return unmocked
-      listings[m[1]] = { ...l, status: 'hidden', hidden: { by_member_name: 'You', at: new Date().toISOString(), reason: (body as { reason?: string })?.reason } }
+      listings[m[1]] = { ...l, status: 'hidden', hidden: { by_member_name: 'You', at: new Date().toISOString() } }
       return {}
     },
   ],

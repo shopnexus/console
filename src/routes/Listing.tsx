@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import IconSpark from '~icons/material-symbols/auto-awesome-outline-rounded'
 import IconFlag from '~icons/material-symbols-light/flag-outline-rounded'
@@ -53,14 +53,14 @@ function ListingPage({ id, l }: { id: string; l: ListingDetail }) {
     .filter(Boolean)
     .join(' · ')
   const details: [string, string | undefined][] = [
-    ['Category', l.category_name ?? l.category_code],
-    ['Condition', l.condition && (conditionLabel[l.condition] ?? humanize(l.condition))],
+    ['Category', l.category || l.category_code],
+    ['Condition', conditionLabel[l.condition] ?? humanize(l.condition)],
     ...(l.specs ?? []).map((x) => [x.label, x.value] as [string, string]),
-    ['Offers', l.allow_offers === undefined ? undefined : l.allow_offers ? 'Allowed' : 'Not allowed'],
+    ['Offers', l.allow_offers ? 'Allowed' : 'Not allowed'],
     ['Area', [l.commune, l.province].filter(Boolean).join(', ') || undefined],
   ]
-  // The case of the listing's seller; the Reports page keys a case by the account.
-  const caseHref = l.seller && (reports.length > 0 || l.case_id) ? `/reports/${l.seller.id}` : undefined
+  // The report case is keyed by the seller's account, as the Reports page is.
+  const caseHref = l.report_case_id ? `/reports/${l.report_case_id}` : undefined
 
   return (
     <>
@@ -75,13 +75,7 @@ function ListingPage({ id, l }: { id: string; l: ListingDetail }) {
         ) : (
           (l.status === 'active' || l.status === 'reserved') && (
             <div ref={hideBox} className="relative">
-              <Btn
-                kind="danger"
-                icon={<IconHide width={16} height={16} />}
-                onClick={() => setHiding((h) => !h)}
-                aria-expanded={hiding}
-                className={hiding ? 'border-error bg-error/6 ring-4 ring-error/10' : ''}
-              >
+              <Btn icon={<IconHide width={16} height={16} />} onClick={() => setHiding((h) => !h)} aria-expanded={hiding} className={hiding ? 'bg-on-surface/5 ring-4 ring-on-surface/5' : ''}>
                 Hide listing
               </Btn>
               {hiding && <HidePopover l={l} onClose={closeHide} hide={commands.hide} />}
@@ -91,7 +85,7 @@ function ListingPage({ id, l }: { id: string; l: ListingDetail }) {
       </BackCrumbs>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-6">
         {failure && <Notice>{listingFailure(failure)}</Notice>}
-        <Hero error={hidden}>
+        <Hero>
           <div className="flex flex-col gap-5 lg:flex-row">
             <div className="w-full shrink-0 lg:w-[300px]">
               {photos.length > 0 ? (
@@ -122,20 +116,19 @@ function ListingPage({ id, l }: { id: string; l: ListingDetail }) {
                 <h1 className="text-display-small">{l.title}</h1>
                 <StatusPill suspended={hidden}>{hidden ? 'Hidden' : (listingStatus[l.status] ?? humanize(l.status))}</StatusPill>
               </div>
-              <p className="mt-1 tabular-nums text-[26px] font-semibold leading-tight text-tertiary">{vnd(l.price)}</p>
+              <p className="mt-1 tabular-nums text-[26px] font-semibold leading-tight text-on-surface">{vnd(l.price)}</p>
               <p className="mt-1 tabular-nums text-body-small text-on-surface-variant">{line}</p>
-              {hidden && l.hidden?.reason && <p className="mt-2 max-w-[560px] border-l-2 border-error/40 pl-2.5 text-body-small text-on-surface-variant">The seller sees: {l.hidden.reason}</p>}
               {(reports.length > 0 || guide) && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {reports.length > 0 && (
-                    <Tag tone="bg-error-container text-error">
+                    <Tag tone="border border-hairline bg-surface-container-lowest text-on-surface-variant">
                       <IconFlag width={13} height={13} />
                       {reports.length === 1 ? '1 report' : `${reports.length} reports`}
                       {top && ` · ${(reasonLabel[top as ReportReason] ?? humanize(top)).toLowerCase()}`}
                     </Tag>
                   )}
                   {guide && guide.pct_vs_guide !== 0 && (
-                    <Tag tone="bg-tertiary-fixed text-on-tertiary-fixed-variant">
+                    <Tag tone="border border-hairline bg-surface-container-lowest text-on-surface-variant">
                       <IconSell width={13} height={13} />
                       {Math.abs(Math.round(guide.pct_vs_guide))}% {guide.pct_vs_guide < 0 ? 'under' : 'over'} the price guide
                     </Tag>
@@ -157,21 +150,25 @@ function ListingPage({ id, l }: { id: string; l: ListingDetail }) {
                   {v}
                 </FactRow>
               ))}
-            {guide && <FactRow label="Price guide">{vnd(guide.median)}</FactRow>}
+            {guide && (
+              <FactRow label="Price guide">
+                {vnd(guide.median)} <span className="text-on-surface-variant">· {int(guide.sample_size)} similar</span>
+              </FactRow>
+            )}
           </Card>
           <div className="space-y-4">
-            {l.seller && (
+            {
               <PartyCard
                 role="Seller"
                 id={l.seller.id}
                 name={l.seller.display_name}
                 status={l.seller.status}
-                meta={[l.seller.id.slice(0, 8), l.seller.listings !== undefined && `${int(l.seller.listings)} listings`].filter(Boolean).join(' · ')}
+                meta={`${l.seller.id.slice(0, 8)} · ${int(l.seller.listings)} on sale · ${int(l.seller.sold)} sold`}
               />
-            )}
+            }
             {reports.length > 0 && (
               <Card className="p-4">
-                <CardHead title="Reports on this listing" right={<Tag tone="bg-error-container text-error">{reports.length}</Tag>} />
+                <CardHead title="Reports on this listing" right={<Tag tone="bg-surface-container text-on-surface">{reports.length}</Tag>} />
                 {reports.map((r, i) => (
                   <div key={i} className="flex items-start gap-3 py-2">
                     <Initial name={r.reporter_display_name} id={r.reporter_display_name} size={30} />
@@ -207,47 +204,25 @@ function topReason(reports: { reason: string }[]): string | undefined {
   return [...n.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
 }
 
-/** Hide: the reason the seller sees, then Hide listing. */
+/** Hide: what it does, then Hide listing. The server takes no reason for it yet. */
 function HidePopover({ l, onClose, hide }: { l: ListingDetail; onClose: () => void; hide: ReturnType<typeof useListingCommands>['hide'] }) {
-  const [reason, setReason] = useState('')
-  function submit(e: FormEvent) {
-    e.preventDefault()
-    if (!reason.trim()) return
-    hide.mutate(reason.trim(), { onSuccess: onClose })
-  }
   return (
-    <form
-      onSubmit={submit}
-      className="absolute right-0 top-full z-30 mt-2 w-[400px] origin-top-right animate-pop overflow-hidden rounded-5xl border border-hairline bg-surface-container-lowest shadow-float"
-    >
-      <div className="flex items-center gap-3 p-4">
-        <IconTile size={40} tone="bg-error-container text-error">
+    <div className="absolute right-0 top-full z-30 mt-2 w-[380px] origin-top-right animate-pop overflow-hidden rounded-5xl border border-hairline bg-surface-container-lowest shadow-float">
+      <div className="flex items-start gap-3 p-4">
+        <IconTile size={40} tone="bg-surface-container text-on-surface-variant">
           <IconHide width={20} height={20} />
         </IconTile>
         <div className="min-w-0 flex-1 leading-tight">
-          <p className="truncate text-title-medium">Hide {l.title}</p>
-          <p className="mt-0.5 text-body-small text-on-surface-variant">The seller cannot put it back on sale until a member unhides it.</p>
+          <p className="truncate text-title-medium">Hide {l.title}?</p>
+          <p className="mt-1 text-body-small text-on-surface-variant">Buyers stop seeing it, and {l.seller.display_name} cannot put it back on sale until a member unhides it.</p>
         </div>
       </div>
-      <div className="px-4">
-        <p className="mb-1.5 text-body-small text-on-surface-variant">Reason {l.seller?.display_name ?? 'the seller'} sees</p>
-        <textarea
-          autoFocus
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          maxLength={500}
-          rows={3}
-          aria-label="Reason"
-          className="w-full resize-none rounded-2xl border border-hairline bg-transparent px-3.5 py-2.5 text-body-medium outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10"
-        />
-        <p className="mt-1 text-right tabular-nums text-label-small font-normal text-on-surface-variant">{reason.length}/500</p>
-      </div>
-      <div className="mt-3 flex items-center justify-end gap-2 border-t border-hairline bg-surface-container-low/60 p-3">
+      <div className="flex items-center justify-end gap-2 border-t border-hairline bg-surface-container-low/60 p-3">
         <Btn onClick={onClose}>Cancel</Btn>
-        <Btn type="submit" kind="danger-fill" disabled={!reason.trim() || hide.isPending}>
+        <Btn autoFocus kind="danger-fill" disabled={hide.isPending} onClick={() => hide.mutate(undefined, { onSuccess: onClose })}>
           Hide listing
         </Btn>
       </div>
-    </form>
+    </div>
   )
 }
