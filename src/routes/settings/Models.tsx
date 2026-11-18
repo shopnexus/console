@@ -10,7 +10,7 @@ import IconSync from '~icons/material-symbols-light/sync-rounded'
 import { ModelTag, ProviderTile, TagIcon } from '../../components/AiBits'
 import { SettingsShell } from '../../components/SettingsShell'
 import { Card, Check, Notice, Segmented } from '../../components/ui'
-import { fillAt, price } from '../../lib/aiLook'
+import { contextSize, fillAt, price } from '../../lib/aiLook'
 import { useDismiss } from '../../lib/dom'
 import { type AiModel, type ModelTag as Tag, useAgents, useModels, useProviders, useSettingsCommands } from '../../lib/settings'
 
@@ -108,7 +108,11 @@ export function Models() {
                   </span>
                   <span className="min-w-0 leading-tight">
                     <span className="block truncate text-title-small">{m.model}</span>
-                    {m.tags.length === 0 && <span className="block text-body-small text-error">No tags yet</span>}
+                    {m.tags.length === 0 ? (
+                      <span className="block text-body-small text-error">No tags yet</span>
+                    ) : (
+                      m.context_tokens !== undefined && <span className="block text-body-small text-on-surface-variant">{contextSize(m.context_tokens)} context</span>
+                    )}
                   </span>
                 </span>
                 <span className="flex w-[330px] flex-wrap items-center gap-1.5">

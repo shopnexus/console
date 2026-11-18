@@ -565,6 +565,7 @@ export const agentRoutes: Route[] = [
         return {
           id: m[1], turn_id: t.id, tool: start.tool, status: end?.status ?? 'running', input: start.input ?? {}, output: end ? toolResult(start) : undefined, output_spilled: false,
           started_at: start.at, finished_at: end?.at, duration_ms: end?.duration_ms, timing: end?.timing, attempts: retries.length + 1,
+          attempt_errors: retries.map((r) => ({ attempt: r.attempt, error: r.error, at: r.at })),
         }
       }
       throw new MockError(404, 'agent_tool_call_not_found')

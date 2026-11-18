@@ -216,7 +216,7 @@ export function ToolPanel({ id }: { id: string }) {
             </Box>
           </>
         )}
-        {c && (tab === 'timing' || tab === 'result') && bars.length > 0 && (
+        {c && (tab === 'timing' || tab === 'result') && (bars.length > 0 || (c.attempt_errors?.length ?? 0) > 0) && (
           <Box title="Timing" right={<span className="tabular-nums text-label-small font-normal text-on-surface-variant">{duration(total)}</span>}>
             <div className="space-y-2">
               {bars.map(([label, start, len, tone]) => (
@@ -227,6 +227,16 @@ export function ToolPanel({ id }: { id: string }) {
                   </div>
                   <span className="w-12 text-right tabular-nums">{duration(len)}</span>
                 </div>
+              ))}
+              {c.attempt_errors?.map((a) => (
+                <p key={a.attempt} className="flex items-center gap-2 text-body-small">
+                  <IconClose width={15} height={15} className="text-error" />
+                  <span className="w-[70px] text-on-surface-variant">Attempt {a.attempt}</span>
+                  <span className="min-w-0 flex-1 truncate" title={a.error}>
+                    {a.error}
+                  </span>
+                  <span className="tabular-nums text-on-surface-variant">{time(a.at)}</span>
+                </p>
               ))}
             </div>
           </Box>

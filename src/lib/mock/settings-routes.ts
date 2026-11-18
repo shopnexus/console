@@ -29,6 +29,23 @@ export const settingsRoutes: Route[] = [
       return db.setTags(b.model, b.tags)
     },
   ],
+  ['GET', new RegExp(`${S}/providers/health$`), () => ({ items: db.health.filter((h) => db.providers.some((p) => p.id === h.id)) })],
+  ['GET', new RegExp(`${S}/providers/([^/]+)/models$`), (m) => (provider(m[1]), db.providerOptions(m[1]))],
+  ['GET', new RegExp(`${S}/agents/usage$`), (_, __, q) => db.agentUsage((q.get('range') as SpendRange | null) ?? '7d')],
+  ['GET', new RegExp(`${S}/tools$`), (_, __, q) => db.toolsUsage((q.get('range') as SpendRange | null) ?? '7d')],
+  ['GET', new RegExp(`${S}/guardrails$`), (_, __, q) => db.guardrails((q.get('range') as SpendRange | null) ?? '7d')],
+  ['GET', new RegExp(`${S}/dashboards$`), () => ({ items: db.dashboards })],
+  [
+    'PATCH',
+    new RegExp(`${S}/dashboards$`),
+    (_, body) => {
+      for (const d of (body as { items: { app: string; floor: 'moderator' | 'admin' }[] }).items) {
+        const x = db.dashboards.find((y) => y.app === d.app)
+        if (x) x.floor = d.floor
+      }
+      return { items: db.dashboards }
+    },
+  ],
   ['GET', new RegExp(`${S}/providers$`), () => ({ items: [...db.providers].sort((a, b) => a.order - b.order || b.weight - a.weight) })],
   [
     'POST',
@@ -38,7 +55,7 @@ export const settingsRoutes: Route[] = [
       if (db.providers.some((p) => p.id === b.id)) throw new MockError(409, 'ai_provider_exists')
       const p: Provider = {
         id: b.id, name: b.name ?? b.id, kind: b.kind, base_url: b.base_url, key_hint: `${b.api_key.slice(0, 3)}…${b.api_key.slice(-4)}`,
-        weight: b.weight ?? 1, order: b.order ?? 1, mode: b.mode ?? 'pick', models: [],
+        weight: b.weight ?? 1, order: b.order ?? 1, mode: b.mode ?? 'pick', models: [], enabled: true,
       }
       db.providers.push(p)
       return p
@@ -80,6 +97,7 @@ export const settingsRoutes: Route[] = [
       const p = provider(m[1])
       const model = (body as { model: string }).model
       if (!p.models.includes(model)) p.models.push(model)
+      if (!db.models().some((x) => x.model === model)) db.setTags(model, db.providerOptions(p.id).items.find((o) => o.model === model)?.tags ?? [])
       return p
     },
   ],
@@ -135,6 +153,10 @@ export const settingsRoutes: Route[] = [
       const b = body as BudgetsPatch
       for (const x of b.agents ?? []) agent(x.agent_id).monthly_budget_usd = x.monthly_budget_usd ?? undefined
       if (b.member_daily_usd !== undefined) db.budgetState.member_daily_usd = b.member_daily_usd ?? undefined
+      if (b.monthly_cap_usd !== undefined) db.budgetState.monthly_cap_usd = b.monthly_cap_usd ?? undefined
+      if (b.alert_pct !== undefined) db.budgetState.alert_pct = b.alert_pct
+      if (b.on_cap !== undefined) db.budgetState.on_cap = b.on_cap
+      if (b.overrides !== undefined) db.budgetState.overrides = b.overrides
       return db.budgets()
     },
   ],

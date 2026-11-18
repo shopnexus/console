@@ -8,18 +8,20 @@ import IconSearch from '~icons/material-symbols-light/search-rounded'
 import IconShield from '~icons/material-symbols-light/shield-person-outline-rounded'
 import IconCopy from '~icons/material-symbols-light/content-copy-outline-rounded'
 import { SettingsShell } from '../../components/SettingsShell'
-import { Btn, Card, Dot, IconBtn, Initial, Notice, Segmented, Tag } from '../../components/ui'
+import { Btn, Card, Dot, IconBtn, Initial, Meter, Notice, Segmented, Tag } from '../../components/ui'
 import { ApiError, type Member, roleName } from '../../lib/api'
 import { useDismiss } from '../../lib/dom'
-import { day, time } from '../../lib/format'
+import { time, usd } from '../../lib/format'
 import { useMe } from '../../lib/session'
-import { useMemberCommands, useMembers } from '../../lib/settings'
+import { useBudgets, useMemberCommands, useMembers, useSpend } from '../../lib/settings'
 
 type Filter = 'all' | 'admin' | 'moderator'
 
 /** Settings › Members: every console member, their role, status and spend this month, and what an admin can do to each. */
 export function Members() {
   const members = useMembers()
+  const spend = useSpend('30d')
+  const budgets = useBudgets()
   const [filter, setFilter] = useState<Filter>('all')
   const [q, setQ] = useState('')
   const [inviting, setInviting] = useState(false)
@@ -79,7 +81,7 @@ export function Members() {
           <span className="w-[280px]">Member</span>
           <span className="w-[150px]">Role</span>
           <span className="w-[170px]">Status</span>
-          <span className="flex-1">Since</span>
+          <span className="flex-1">30 days</span>
           <span className="w-8" />
         </div>
         <div className="rise-list">
@@ -111,7 +113,10 @@ export function Members() {
                     </Tag>
                   )}
                 </span>
-                <span className="flex-1 tabular-nums text-body-small text-on-surface-variant">{day(m.created_at)}</span>
+                <SpendCell
+                  usd={spend.data?.members?.find((x) => x.member_id === m.id)?.usd}
+                  daily={budgets.data?.overrides?.find((o) => o.member_id === m.id)?.daily_usd ?? budgets.data?.member_daily_usd?.[m.role]}
+                />
                 <MemberActions m={m} locked={locked(m)} />
               </div>
             )
@@ -120,6 +125,20 @@ export function Members() {
         </div>
       </Card>
     </SettingsShell>
+  )
+}
+
+/** What a member spent in 30 days against their daily budget times 30. */
+function SpendCell({ usd: spent, daily }: { usd?: number; daily?: number }) {
+  if (spent === undefined) return <span className="flex-1 text-on-surface-variant">–</span>
+  return (
+    <span className="block w-[160px] flex-1">
+      <span className="flex max-w-[160px] justify-between text-body-small">
+        <span className="font-medium tabular-nums">{usd(spent)}</span>
+        {daily !== undefined && <span className="tabular-nums text-on-surface-variant">${daily}/day</span>}
+      </span>
+      {daily ? <Meter pct={(spent / (daily * 30)) * 100} tone="bg-primary/70" className="mt-1.5 h-[5px] max-w-[160px]" /> : null}
+    </span>
   )
 }
 

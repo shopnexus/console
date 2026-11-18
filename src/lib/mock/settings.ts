@@ -27,20 +27,20 @@ export const ids = {
 
 export const providers: Provider[] = [
   {
-    id: 'llm-upstream', name: 'LLM upstream', kind: 'openai', base_url: 'https://llm.internal/v1', key_hint: 'sk-…4f2a', weight: 50, order: 1, mode: 'pick',
+    id: 'llm-upstream', name: 'LLM upstream', kind: 'openai', base_url: 'https://llm.internal/v1', key_hint: 'sk-…4f2a', weight: 50, order: 1, mode: 'pick', enabled: true,
     models: ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5'],
   },
   {
-    id: 'anthropic', name: 'Anthropic', kind: 'anthropic', base_url: 'https://api.anthropic.com', key_hint: 'sk-ant-…91cd', weight: 30, order: 1, mode: 'pick',
+    id: 'anthropic', name: 'Anthropic', kind: 'anthropic', base_url: 'https://api.anthropic.com', key_hint: 'sk-ant-…91cd', weight: 30, order: 1, mode: 'pick', enabled: true,
     models: ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-fable-5-2', 'claude-haiku-5-5'],
   },
   {
-    id: 'openrouter', name: 'OpenRouter', kind: 'openrouter', base_url: 'https://openrouter.ai/api/v1', key_hint: 'sk-or-…7be0', weight: 20, order: 2, mode: 'sync',
+    id: 'openrouter', name: 'OpenRouter', kind: 'openrouter', base_url: 'https://openrouter.ai/api/v1', key_hint: 'sk-or-…7be0', weight: 20, order: 2, mode: 'sync', enabled: true,
     models: ['anthropic/claude-sonnet-5-5', 'anthropic/claude-haiku-5-5', 'baai/bge-m3', 'intfloat/multilingual-e5-large'],
     synced_at: new Date(Date.now() - 40 * 60_000).toISOString(),
   },
   {
-    id: 'aws-bedrock', name: 'AWS Bedrock', kind: 'bedrock', base_url: 'https://bedrock-runtime.ap-southeast-1.amazonaws.com', key_hint: 'AKIA…Q3TZ', weight: 0, order: 3, mode: 'pick',
+    id: 'aws-bedrock', name: 'AWS Bedrock', kind: 'bedrock', base_url: 'https://bedrock-runtime.ap-southeast-1.amazonaws.com', key_hint: 'AKIA…Q3TZ', weight: 0, order: 3, mode: 'pick', enabled: false,
     models: ['claude-opus-5-5', 'claude-sonnet-5-5'],
   },
 ]
@@ -110,6 +110,15 @@ const prices: Record<string, [number, number?]> = {
   'intfloat/multilingual-e5-large': [0.5],
 }
 
+const contexts: Record<string, number> = {
+  'claude-opus-5-5': 1_000_000,
+  'claude-sonnet-5-5': 1_000_000,
+  'claude-fable-5-2': 400_000,
+  'claude-haiku-5-5': 200_000,
+  'baai/bge-m3': 8_000,
+  'intfloat/multilingual-e5-large': 512,
+}
+
 /** Every model some provider serves, with the providers and agents on it. */
 export function models(): AiModel[] {
   const all = [...new Set(providers.flatMap((p) => p.models))]
@@ -120,6 +129,7 @@ export function models(): AiModel[] {
     agents: agentRefs(model),
     input_cost_per_mtok: prices[model]?.[0],
     output_cost_per_mtok: prices[model]?.[1],
+    context_tokens: contexts[model],
   }))
 }
 
@@ -138,14 +148,28 @@ export const rotation: Rotation = { routing_strategy: 'simple-shuffle', num_retr
 
 const spent: Record<string, number> = { [ids.console]: 128.4, [ids.brief]: 11.2, [ids.scam]: 8.1, [ids.listing]: 3.9, [ids.search]: 1.6, [ids.embed]: 0.3 }
 
-export const budgetState = { member_daily_usd: 5 as number | undefined }
+export const budgetState: Omit<Budgets, 'agents' | 'alerting'> = {
+  monthly_cap_usd: 300,
+  alert_pct: 80,
+  on_cap: 'stop_agents',
+  member_daily_usd: { moderator: 5, admin: 10 },
+  overrides: [
+    { member_id: '0193e000-0000-7000-8000-00000000c003', daily_usd: 7 },
+    { member_id: '0193e000-0000-7000-8000-00000000c004', daily_usd: 6 },
+  ],
+}
 
 export function budgets(): Budgets {
+  const total = Object.values(spent).reduce((a, b) => a + b, 0)
   return {
     agents: agents.map((a) => ({ agent_id: a.id, name: a.name, kind: a.kind, monthly_budget_usd: a.monthly_budget_usd, spent_usd: spent[a.id] ?? 0 })),
-    member_daily_usd: budgetState.member_daily_usd,
+    ...budgetState,
+    alerting: !!budgetState.monthly_cap_usd && total / budgetState.monthly_cap_usd >= (budgetState.alert_pct ?? 100) / 100,
   }
 }
+
+/** The month's spend so far over every agent. */
+export const monthSpent = () => Object.values(spent).reduce((a, b) => a + b, 0)
 
 const daily = [
   [2.4, 0.3, 0.2, 0.1], [3.4, 0.4, 0.2, 0.1], [4.9, 0.5, 0.3, 0.1], [4.1, 0.4, 0.2, 0.1], [5.4, 0.5, 0.3, 0.1], [1.6, 0.3, 0.1, 0.1],
@@ -165,9 +189,127 @@ export function spend(range: SpendRange): Spend {
     const agentsOf = order.map((agent_id, j) => ({ agent_id, usd: row[j] }))
     return { date: d.toISOString().slice(0, 10), total_usd: Math.round(agentsOf.reduce((s, a) => s + a.usd, 0) * 100) / 100, agents: agentsOf }
   })
-  return { range, start: days[0].date, end: days[n - 1].date, total_usd: Math.round(days.reduce((s, d) => s + d.total_usd, 0) * 100) / 100, days }
+  const scale = n / 30
+  const members = [
+    { member_id: '0193e000-0000-7000-8000-00000000c002', display_name: 'Nguyễn Thị Lan', usd: 38.2, requests: 312 },
+    { member_id: '0193e000-0000-7000-8000-00000000c004', display_name: 'Phạm Văn Minh', usd: 31.6, requests: 268 },
+    { member_id: '0193e000-0000-7000-8000-00000000c003', display_name: 'Lê Thu Hà', usd: 22.9, requests: 201 },
+    { member_id: '0193e000-0000-7000-8000-00000000c005', display_name: 'Đỗ Quang Tú', usd: 17.3, requests: 164 },
+  ].map((m) => ({ ...m, usd: Math.round(m.usd * scale * 100) / 100, requests: Math.round(m.requests * scale) }))
+  return { range, start: days[0].date, end: days[n - 1].date, total_usd: Math.round(days.reduce((s, d) => s + d.total_usd, 0) * 100) / 100, days, members }
 }
 
 export function pickable(): PickableAgent[] {
   return agents.filter((a) => a.kind === 'console' && a.enabled).map(({ id, name, icon, purpose }) => ({ id, name, icon, purpose, default: id === ids.console }))
+}
+
+const span = (range: SpendRange) => (range === '7d' ? 7 : range === '30d' ? 30 : 90)
+const dates = (n: number) =>
+  Array.from({ length: n }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (n - 1 - i))
+    return d.toISOString().slice(0, 10)
+  })
+const series = (base: number[], n: number) => dates(n).map((date, i) => ({ date, v: base[i % base.length] }))
+
+const usageBase: Record<string, number[]> = {
+  [ids.console]: [30, 42, 38, 55, 61, 48, 70, 66, 74, 80],
+  [ids.brief]: [2, 4, 3, 6, 5, 7, 6],
+  [ids.scam]: [600, 580, 640, 700, 660, 720, 750, 710, 780, 820],
+  [ids.listing]: [400, 440, 390, 500, 470, 520, 490, 550, 510, 540],
+  [ids.search]: [700, 740, 800, 770, 850, 900, 880, 940, 970, 990],
+  [ids.embed]: [1500, 1520, 1550, 1530, 1580, 1600, 1590, 1630, 1620, 1660],
+}
+
+/** Requests per agent by day; the mockups' sparklines, repeated over the range. */
+export function agentUsage(range: SpendRange) {
+  const n = span(range)
+  return {
+    items: agents.map((a) => {
+      const days = series(usageBase[a.id] ?? [1], n).map(({ date, v }) => ({ date, requests: Math.round(v / 7) }))
+      return { agent_id: a.id, requests: days.reduce((s, d) => s + d.requests, 0), days }
+    }),
+  }
+}
+
+export const health = [
+  { id: 'llm-upstream', requests_24h: 9120, share_pct: 48, success_pct: 99.9, p50_ms: 1100 },
+  { id: 'anthropic', requests_24h: 6270, share_pct: 33, success_pct: 99.7, p50_ms: 1300 },
+  { id: 'openrouter', requests_24h: 3610, share_pct: 19, success_pct: 99.2, p50_ms: 1600 },
+  { id: 'aws-bedrock', requests_24h: 0, share_pct: 0, success_pct: 0, p50_ms: 0, cooling_until: new Date(Date.now() + 25 * 60_000).toISOString(), last_error: 'Invalid API key · 3 errors' },
+]
+
+/** A provider's own list of models, added or not. */
+export function providerOptions(id: string) {
+  const p = providers.find((x) => x.id === id)
+  const catalogue: Record<string, string[]> = {
+    anthropic: ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-fable-5-2', 'claude-haiku-5-5', 'claude-opus-5', 'claude-sonnet-5', 'claude-haiku-5'],
+    'llm-upstream': ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-fable-5-2'],
+    openrouter: p?.models ?? [],
+    'aws-bedrock': ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5'],
+  }
+  const names = [...new Set([...(catalogue[id] ?? []), ...(p?.models ?? [])])]
+  return {
+    items: names.map((model) => ({
+      model,
+      tags: modelTags[model] ?? (model.includes('claude') ? ['Chat', 'Vision', 'Tool use'] : undefined),
+      input_cost_per_mtok: prices[model]?.[0],
+      output_cost_per_mtok: prices[model]?.[1],
+      context_tokens: contexts[model] ?? (model.includes('claude') ? 200_000 : undefined),
+      added: !!p?.models.includes(model),
+    })),
+  }
+}
+
+const toolBase: Record<string, [number[], number, number]> = {
+  ticket_get: [[20, 26, 31, 28, 35, 33, 38], 4, 51],
+  tickets_of_account: [[8, 9, 12, 10, 11, 9, 13], 0, 44],
+  account_get: [[30, 34, 29, 38, 41, 37, 44], 2, 42],
+  console_actions: [[6, 8, 7, 9, 8, 10, 9], 0, 30],
+  order_get: [[14, 18, 16, 20, 17, 22, 21], 1, 47],
+  listing_get: [[18, 21, 25, 22, 27, 24, 29], 6, 38],
+  report_cases_list: [[5, 6, 4, 7, 6, 8, 7], 0, 40],
+}
+
+/** Calls per tool and the latest calls. */
+export function toolsUsage(range: SpendRange) {
+  const n = span(range)
+  const now = Date.now()
+  return {
+    items: Object.entries(toolBase).map(([name, [base, failed, p50]]) => {
+      const days = series(base, n).map(({ date, v }) => ({ date, calls: v * 9 }))
+      return { name, calls: days.reduce((s, d) => s + d.calls, 0), failed: Math.round((failed * n) / 7), p50_ms: p50, days }
+    }),
+    recent: [
+      { tool: 'account_get', label: 'Đồ Cũ Gò Vấp', member_id: '0193e000-0000-7000-8000-00000000c002', duration_ms: 42, status: 'success' as const, ago: 2 },
+      { tool: 'listing_get', label: 'iPhone 13 Pro Max 256GB', member_id: '0193e000-0000-7000-8000-00000000c002', duration_ms: 38, status: 'success' as const, ago: 3 },
+      { tool: 'ticket_get', label: 'Khánh Linh · not received', member_id: '0193e000-0000-7000-8000-00000000c004', duration_ms: 51, status: 'success' as const, ago: 55 },
+      { tool: 'order_get', label: 'GHTK S1.A1.17373471', member_id: '0193e000-0000-7000-8000-00000000c004', duration_ms: 1800, status: 'failed' as const, ago: 56 },
+    ].map((r, i) => ({ call_id: `0194a000-0000-7000-8000-00000000000${i}`, turn_id: '0194b000-0000-7000-8000-000000000001', member_id: r.member_id, tool: r.tool, label: r.label, duration_ms: r.duration_ms, status: r.status, at: new Date(now - r.ago * 60_000).toISOString() })),
+  }
+}
+
+export const dashboards: { app: string; name: string; floor: 'moderator' | 'admin' }[] = [
+  { app: 'grafana', name: 'Grafana', floor: 'moderator' },
+  { app: 'restate', name: 'Restate', floor: 'admin' },
+  { app: 'litellm', name: 'LiteLLM', floor: 'admin' },
+  { app: 's3', name: 'RustFS', floor: 'admin' },
+  { app: 'db', name: 'pgweb', floor: 'admin' },
+  { app: 'argocd', name: 'Argo CD', floor: 'admin' },
+]
+
+/** Guardrail blocks per rule and the latest ones; the server reports loop_stopped and rate_limited for now. */
+export function guardrails(range: SpendRange) {
+  const n = span(range)
+  const now = Date.now()
+  return {
+    items: [
+      { rule: 'loop_stopped', count: Math.round((3 * n) / 7) },
+      { rule: 'rate_limited', count: Math.round((2 * n) / 7) },
+    ],
+    recent: [
+      { rule: 'loop_stopped', detail: 'Stopped after 6 listing_get calls', member_id: '0193e000-0000-7000-8000-00000000c004', turn_id: '0194b000-0000-7000-8000-000000000002', at: new Date(now - 20 * 3600_000).toISOString() },
+      { rule: 'rate_limited', detail: '30 questions in a minute', member_id: '0193e000-0000-7000-8000-00000000c005', turn_id: '0194b000-0000-7000-8000-000000000003', at: new Date(now - 26 * 3600_000).toISOString() },
+    ],
+  }
 }

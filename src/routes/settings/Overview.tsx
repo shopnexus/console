@@ -2,17 +2,17 @@ import { type ReactNode, useState } from 'react'
 import { Link } from 'react-router'
 import IconSpark from '~icons/material-symbols/auto-awesome-outline-rounded'
 import IconChevron from '~icons/material-symbols-light/chevron-right-rounded'
-import IconCloud from '~icons/material-symbols-light/cloud-outline'
+import IconForum from '~icons/material-symbols-light/forum-outline-rounded'
 import IconKey from '~icons/material-symbols-light/key-outline-rounded'
 import IconMembers from '~icons/material-symbols-light/group-outline-rounded'
 import IconOverview from '~icons/material-symbols-light/space-dashboard-outline-rounded'
 import IconPay from '~icons/material-symbols-light/payments-outline-rounded'
 import { SettingsShell } from '../../components/SettingsShell'
-import { Card, CardHead, IconTile, Meter, Notice, Segmented, Tag } from '../../components/ui'
+import { Card, CardHead, IconTile, Initial, Meter, Notice, Segmented, Tag } from '../../components/ui'
 import { ApiError } from '../../lib/api'
-import { time, usd } from '../../lib/format'
+import { int, time, usd } from '../../lib/format'
 import { useMembersToSee } from '../../lib/members'
-import { settingsFailure, type SpendRange, useAgents, useBudgets, useMembers, useProviders, useSpend } from '../../lib/settings'
+import { settingsFailure, type SpendRange, useAgents, useAgentUsage, useBudgets, useMembers, useSpend } from '../../lib/settings'
 import { SpendBars } from './SpendBars'
 
 /** Settings › Overview: spend over a range, the agents and their budgets, the providers, and members who need an admin. */
@@ -21,13 +21,17 @@ export function Overview() {
   const spend = useSpend(range)
   const agents = useAgents()
   const budgets = useBudgets()
-  const providers = useProviders()
+  const usage = useAgentUsage(range)
   const members = useMembers()
   const toSee = useMembersToSee(true)
   const s = spend.data
   const alist = agents.data?.items ?? []
   const order = alist.map((a) => a.id)
   const memberCount = members.data?.items.filter((m) => m.status === 'active').length
+  const consoleIds = alist.filter((a) => a.kind === 'console').map((a) => a.id)
+  const questions = usage.data?.items.filter((u) => consoleIds.includes(u.agent_id)).reduce((n, u) => n + u.requests, 0)
+  const byMember = s?.members ?? []
+  const topMember = Math.max(1, ...byMember.map((m) => m.usd))
   const near = budgets.data?.agents.filter((b) => b.monthly_budget_usd && b.spent_usd / b.monthly_budget_usd >= 0.8) ?? []
 
   return (
@@ -40,7 +44,7 @@ export function Overview() {
       ]}
     >
       {spend.error && <Notice>{settingsFailure(spend.error instanceof ApiError ? spend.error.code : undefined)}</Notice>}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card className="p-4">
           <div className="flex items-center gap-2.5">
             <IconTile>
@@ -65,15 +69,35 @@ export function Overview() {
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-2.5">
-            <IconTile tone="bg-inverse-primary/40 text-primary-container">
-              <IconCloud width={18} height={18} />
+            <IconTile tone="bg-tertiary-fixed text-on-tertiary-fixed-variant">
+              <IconForum width={18} height={18} />
             </IconTile>
-            <span className="text-body-small text-on-surface-variant">Providers</span>
+            <span className="text-body-small text-on-surface-variant">Agent questions</span>
           </div>
-          <p className="mt-3 text-headline-large tabular-nums">{providers.data?.items.length ?? '–'}</p>
-          <p className="mt-2 text-body-small text-on-surface-variant">
-            {providers.data ? `${new Set(providers.data.items.flatMap((p) => p.models)).size} models served` : ''}
+          <p className="mt-3 text-headline-large tabular-nums">{questions !== undefined ? int(questions) : '–'}</p>
+          <p className="mt-2 text-body-small text-on-surface-variant">to console agents</p>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-2.5">
+            <IconTile tone="bg-inverse-primary/40 text-primary-container">
+              <IconMembers width={18} height={18} />
+            </IconTile>
+            <span className="text-body-small text-on-surface-variant">Members using agents</span>
+          </div>
+          <p className="mt-3 text-headline-large tabular-nums">
+            {s?.members ? byMember.length : '–'}
+            {memberCount !== undefined && s?.members ? `/${memberCount}` : ''}
           </p>
+          <div className="mt-2 flex items-center gap-2 text-body-small text-on-surface-variant">
+            <span className="flex -space-x-1.5">
+              {byMember.slice(0, 5).map((m) => (
+                <span key={m.member_id} className="rounded-full ring-2 ring-surface-container-lowest">
+                  <Initial name={m.display_name} id={m.member_id} size={22} member />
+                </span>
+              ))}
+            </span>
+            {memberCount !== undefined && memberCount > byMember.length && s?.members ? `+${memberCount - byMember.length} haven't asked` : ''}
+          </div>
         </Card>
       </div>
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
@@ -112,6 +136,20 @@ export function Overview() {
             ))}
             {toSee.data?.length === 0 && <p className="py-2 text-body-medium text-on-surface-variant">Nothing to look at.</p>}
           </Card>
+          {byMember.length > 0 && (
+            <Card className="p-5 pb-3">
+              <CardHead title="By member" />
+              {byMember.map((m) => (
+                <div key={m.member_id} className="flex items-center gap-3 py-1.5">
+                  <Initial name={m.display_name} id={m.member_id} size={28} member />
+                  <span className="w-[110px] min-w-0 truncate text-body-medium">{m.display_name}</span>
+                  <Meter pct={(m.usd / topMember) * 100} tone="bg-primary/70" className="h-1.5 flex-1" />
+                  <span className="w-20 text-right tabular-nums text-body-small text-on-surface-variant">{int(m.requests)} questions</span>
+                  <span className="w-16 text-right text-label-medium tabular-nums">{usd(m.usd)}</span>
+                </div>
+              ))}
+            </Card>
+          )}
           {budgets.data && (
             <Card className="p-5 pb-3">
               <CardHead title="Budgets" right={<Link to="/settings/budgets" className="text-label-medium text-primary">Budgets</Link>} />

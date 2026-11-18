@@ -25,13 +25,14 @@ import IconTimer from '~icons/material-symbols-light/timer-outline'
 import { ModelTag, ProviderTile } from '../../components/AiBits'
 import { Select } from '../../components/Select'
 import { SettingsShell } from '../../components/SettingsShell'
-import { Btn, Card, IconBtn, Notice, Segmented, Tag } from '../../components/ui'
-import { price } from '../../lib/aiLook'
+import { Btn, Card, IconBtn, Meter, Notice, Segmented, Tag, Toggle } from '../../components/ui'
+import { contextSize, price } from '../../lib/aiLook'
 import { ApiError } from '../../lib/api'
-import { when } from '../../lib/format'
+import { duration, int, time, when } from '../../lib/format'
 import {
   kindName,
   type Provider,
+  type ProviderHealth,
   providerKinds,
   type Rotation,
   type RoutingStrategy,
@@ -39,6 +40,8 @@ import {
   strategyName,
   useModels,
   useProvider,
+  useProviderHealth,
+  useProviderModels,
   useProviders,
   useRotation,
   useSettingsCommands,
@@ -50,7 +53,12 @@ export function Providers() {
   const rotation = useRotation()
   const commands = useSettingsCommands()
   const navigate = useNavigate()
+  const health = useProviderHealth()
   const list = providers.data?.items ?? []
+  const healthOf = (id: string) => health.data?.items.find((h) => h.id === id)
+  const [now] = useState(() => Date.now())
+  const requests = health.data?.items.reduce((s, h) => s + h.requests_24h, 0) ?? 0
+  const success = requests ? (health.data?.items.reduce((s, h) => s + h.requests_24h * h.success_pct, 0) ?? 0) / requests : undefined
   const [dragging, setDragging] = useState<string>()
 
   // A drop puts the dragged provider in the target's place: it takes the target's order.
@@ -67,7 +75,8 @@ export function Providers() {
       title="Providers"
       icon={<IconCloud />}
       chips={[
-        [<IconCloud key="c" width={16} height={16} />, list.length === 1 ? '1 provider' : `${list.length} providers`],
+        [<IconCloud key="c" width={16} height={16} />, `${list.length === 1 ? '1 provider' : `${list.length} providers`} · ${list.filter((p) => p.enabled).length} on`],
+        ...(success !== undefined ? ([[<IconCheckCircle key="k" width={16} height={16} />, `${success.toFixed(1)}% success · 24h`]] as [ReactNode, ReactNode][]) : []),
         ...(rotation.data ? ([[<IconSwap key="s" width={16} height={16} />, `Rotating ${(strategyName[rotation.data.routing_strategy] ?? rotation.data.routing_strategy).toLowerCase()}`]] as [ReactNode, ReactNode][]) : []),
       ]}
       actions={
@@ -115,7 +124,8 @@ export function Providers() {
                 </div>
                 <NumberField label="Weight" value={p.weight} onSave={(weight) => commands.updateProvider.mutate({ id: p.id, weight })} />
                 <NumberField label="Order" value={p.order} min={1} onSave={(order) => commands.updateProvider.mutate({ id: p.id, order })} />
-                <span className="w-[200px] text-right">
+                <ProviderHealthCell h={healthOf(p.id)} now={now} />
+                <span className="w-[150px] text-right">
                   {p.mode === 'sync' ? (
                     <Tag tone="bg-secondary-container/70 text-on-secondary-container">
                       <IconSync width={14} height={14} />
@@ -124,10 +134,11 @@ export function Providers() {
                   ) : (
                     <Tag tone="bg-surface-container text-on-surface-variant">
                       <IconChecklist width={14} height={14} />
-                      Picked models
+                      Picked
                     </Tag>
                   )}
                 </span>
+                <Toggle on={p.enabled} label={p.enabled ? `Turn ${p.name} off` : `Turn ${p.name} on`} onChange={(enabled) => commands.updateProvider.mutate({ id: p.id, enabled })} />
               </div>
             </Card>
           </div>
@@ -135,6 +146,24 @@ export function Providers() {
         {providers.data && list.length === 0 && <p className="px-1 text-body-medium text-on-surface-variant">No providers yet.</p>}
       </div>
     </SettingsShell>
+  )
+}
+
+/** A provider's last 24 hours: its share of calls, success and p50, or "Paused until" while LiteLLM cools it down. */
+function ProviderHealthCell({ h, now }: { h?: ProviderHealth; now: number }) {
+  if (!h) return <div className="min-w-0 flex-1" />
+  const cooling = h.cooling_until && new Date(h.cooling_until).getTime() > now
+  return (
+    <div className="min-w-0 flex-1 leading-tight">
+      <div className="flex justify-between text-label-small font-normal text-on-surface-variant">
+        <span>24h requests · {int(h.requests_24h)}</span>
+        <span className="tabular-nums">{h.share_pct}%</span>
+      </div>
+      <Meter pct={h.share_pct} tone={cooling ? 'bg-error' : 'bg-primary'} className="mt-1.5 h-2" />
+      <p className={`mt-1.5 truncate tabular-nums text-body-small ${cooling ? 'text-error' : 'text-on-surface-variant'}`} title={h.last_error}>
+        {cooling ? `Paused until ${time(h.cooling_until!)}${h.last_error ? ` · ${h.last_error}` : ''}` : h.requests_24h ? `${h.success_pct}% · p50 ${duration(h.p50_ms)}` : (h.last_error ?? 'No calls')}
+      </p>
+    </div>
   )
 }
 
@@ -431,32 +460,25 @@ function ProviderForm({ provider }: { provider?: Provider }) {
 function ProviderModelsCard({ provider }: { provider: Provider }) {
   const models = useModels()
   const commands = useSettingsCommands()
-  const [name, setName] = useState('')
-  const [costIn, setCostIn] = useState('')
-  const [costOut, setCostOut] = useState('')
+  const options = useProviderModels(provider.id)
+  const choices = options.data?.items.filter((o) => !o.added && !provider.models.includes(o.model)) ?? []
+  const [pick, setPick] = useState<string>()
   const sync = provider.mode === 'sync'
   const info = (m: string) => models.data?.items.find((x) => x.model === m)
   const failure = commands.addProviderModel.error ?? commands.removeProviderModel.error
   function add() {
-    const model = name.trim()
-    if (!model) return
+    const o = choices.find((x) => x.model === pick)
+    if (!o) return
     commands.addProviderModel.mutate(
       {
         id: provider.id,
-        model,
-        ...(costIn ? { input_cost_per_mtok: Number(costIn) } : {}),
-        ...(costOut ? { output_cost_per_mtok: Number(costOut) } : {}),
+        model: o.model,
+        ...(o.input_cost_per_mtok !== undefined ? { input_cost_per_mtok: o.input_cost_per_mtok } : {}),
+        ...(o.output_cost_per_mtok !== undefined ? { output_cost_per_mtok: o.output_cost_per_mtok } : {}),
       },
-      {
-        onSuccess: () => {
-          setName('')
-          setCostIn('')
-          setCostOut('')
-        },
-      },
+      { onSuccess: () => setPick(undefined) },
     )
   }
-  const small = 'h-10 rounded-xl border border-hairline bg-surface-container-lowest px-3 text-body-medium outline-none focus:border-primary/50'
   return (
     <div>
       <div className="mb-3 flex items-center gap-3 px-1">
@@ -506,20 +528,29 @@ function ProviderModelsCard({ provider }: { provider: Provider }) {
         {provider.models.length === 0 && <p className="px-5 py-5 text-body-medium text-on-surface-variant">No models added.</p>}
       </Card>
       {!sync && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            add()
-          }}
-          className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/3 p-2.5"
-        >
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Model as the provider names it" maxLength={200} className={`${small} min-w-[220px] flex-1`} />
-          <input value={costIn} inputMode="decimal" onChange={(e) => setCostIn(e.target.value.replace(/[^\d.]/g, ''))} placeholder="$ in / 1M" className={`${small} w-[110px] tabular-nums`} />
-          <input value={costOut} inputMode="decimal" onChange={(e) => setCostOut(e.target.value.replace(/[^\d.]/g, ''))} placeholder="$ out / 1M" className={`${small} w-[110px] tabular-nums`} />
-          <Btn type="submit" kind="primary" icon={<IconAdd width={17} height={17} />} disabled={!name.trim() || commands.addProviderModel.isPending}>
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/3 p-2.5">
+          <div className="min-w-[260px] flex-1">
+            <Select
+              searchable
+              label="Add model"
+              placeholder={options.data ? (choices.length ? `Add one of ${choices.length} more models` : 'Every model is added') : 'Reading the provider’s models…'}
+              value={pick}
+              onChange={setPick}
+              disabled={choices.length === 0}
+              leading={<IconAdd width={18} height={18} className="text-primary" />}
+              options={choices.map((o) => ({
+                value: o.model,
+                label: o.model,
+                hint: [o.tags?.join(' · '), price(o.input_cost_per_mtok, o.output_cost_per_mtok) !== '–' ? `${price(o.input_cost_per_mtok, o.output_cost_per_mtok)} / 1M` : '', o.context_tokens ? `${contextSize(o.context_tokens)} context` : '']
+                  .filter(Boolean)
+                  .join(' · '),
+              }))}
+            />
+          </div>
+          <Btn kind="primary" icon={<IconAdd width={17} height={17} />} disabled={!pick || commands.addProviderModel.isPending} onClick={add}>
             Add model
           </Btn>
-        </form>
+        </div>
       )}
     </div>
   )

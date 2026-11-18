@@ -6,6 +6,7 @@ import IconBack from '~icons/material-symbols-light/arrow-back-rounded'
 import IconCheck from '~icons/material-symbols-light/check-rounded'
 import IconChevron from '~icons/material-symbols-light/chevron-right-rounded'
 import IconDesktop from '~icons/material-symbols-light/desktop-windows-outline-rounded'
+import IconForum from '~icons/material-symbols-light/forum-outline-rounded'
 import IconHistory from '~icons/material-symbols-light/history-rounded'
 import IconLock from '~icons/material-symbols-light/lock-outline'
 import IconModel from '~icons/material-symbols-light/neurology-outline-rounded'
@@ -13,10 +14,10 @@ import IconPay from '~icons/material-symbols-light/payments-outline-rounded'
 import { AgentIcon, ModelTag } from '../../components/AiBits'
 import { ModelPicker } from '../../components/ModelPicker'
 import { SettingsShell } from '../../components/SettingsShell'
-import { Btn, Card, CardHead, Meter, Notice, Tag, Toggle } from '../../components/ui'
-import { fillAt } from '../../lib/aiLook'
+import { Btn, Card, CardHead, Meter, Notice, Spark, Tag, Toggle } from '../../components/ui'
+import { fillAt, textAt } from '../../lib/aiLook'
 import { ApiError, shortId } from '../../lib/api'
-import { day, usd } from '../../lib/format'
+import { day, int, usd } from '../../lib/format'
 import {
   type AgentLimits,
   type AiAgent,
@@ -24,6 +25,7 @@ import {
   settingsFailure,
   useAgent,
   useAgents,
+  useAgentUsage,
   useAgentVersions,
   useBudgets,
   useMembers,
@@ -37,9 +39,11 @@ import { toolInfo, tools as toolList } from '../../lib/tools'
 export function Agents() {
   const agents = useAgents()
   const budgets = useBudgets()
+  const usage = useAgentUsage('7d')
   const commands = useSettingsCommands()
   const navigate = useNavigate()
   const items = agents.data?.items ?? []
+  const usageOf = (id: string) => usage.data?.items.find((u) => u.agent_id === id)
   const spentOf = (id: string) => budgets.data?.agents.find((b) => b.agent_id === id)?.spent_usd
   const spend = budgets.data?.agents.reduce((s, b) => s + b.spent_usd, 0)
   return (
@@ -61,6 +65,7 @@ export function Agents() {
       <div className="rise-list grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
         {items.map((a, i) => {
           const spent = spentOf(a.id)
+          const u = usageOf(a.id)
           return (
             <Card key={a.id} className="p-5">
               <div className="flex items-start gap-3">
@@ -87,6 +92,15 @@ export function Agents() {
                 <span className="flex-1 truncate text-label-medium">{a.model || 'No model yet'}</span>
                 <IconChevron width={18} height={18} className="text-on-surface-variant" />
               </Link>
+              {u && (
+                <div className="mt-4 flex items-end justify-between">
+                  <div>
+                    <p className="text-title-large tabular-nums">{int(u.requests)}</p>
+                    <p className="text-label-small font-normal text-on-surface-variant">requests · 7 days</p>
+                  </div>
+                  <Spark values={u.days.map((d) => d.requests)} tone={textAt(i)} />
+                </div>
+              )}
               {spent !== undefined && (
                 <div className="mt-4">
                   <div className="flex justify-between text-body-small">
@@ -158,6 +172,7 @@ function AgentForm({ agent }: { agent?: AiAgent }) {
   const models = useModels()
   const providers = useProviders()
   const budgets = useBudgets()
+  const usage = useAgentUsage('7d')
   const members = useMembers()
   const commands = useSettingsCommands()
   const [draft, setDraft] = useState<Draft>(() =>
@@ -218,6 +233,8 @@ function AgentForm({ agent }: { agent?: AiAgent }) {
   const chips: [ReactNode, ReactNode][] = []
   if (agent) {
     chips.push([<IconModel key="m" width={16} height={16} />, agent.model || 'No model'])
+    const u = usage.data?.items.find((x) => x.agent_id === agent.id)
+    if (u) chips.push([<IconForum key="f" width={16} height={16} />, `${int(u.requests)} requests · 7 days`])
     if (spent !== undefined) chips.push([<IconPay key="p" width={16} height={16} />, `${usd(spent)}${agent.monthly_budget_usd !== undefined ? ` / $${agent.monthly_budget_usd}` : ''}`])
   }
   const input = 'h-11 w-full rounded-xl border border-hairline bg-surface-container-lowest px-3.5 text-body-medium outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 disabled:text-on-surface-variant'

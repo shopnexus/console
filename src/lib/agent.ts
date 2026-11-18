@@ -410,6 +410,8 @@ export interface ToolCallDetail {
   /** The output was too long to keep whole. */
   output_spilled: boolean
   attempts: number
+  /** Each failed attempt's error. */
+  attempt_errors?: { attempt: number; error: string; at: string }[]
   started_at: string
   finished_at?: string
   duration_ms?: number

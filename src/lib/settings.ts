@@ -31,6 +31,7 @@ export interface AiModel {
   agents: Named[]
   input_cost_per_mtok?: number
   output_cost_per_mtok?: number
+  context_tokens?: number
 }
 
 /** AIModelList: the models, and every tag in order. */
@@ -58,6 +59,29 @@ export interface Provider {
   mode: ProviderMode
   models: string[]
   synced_at?: string
+  /** Off takes the provider's deployments out of rotation. */
+  enabled: boolean
+}
+
+/** One of a provider's models as the provider lists them; added says it is a deployment already. */
+export interface ProviderModelOption {
+  model: string
+  tags?: string[]
+  input_cost_per_mtok?: number
+  output_cost_per_mtok?: number
+  context_tokens?: number
+  added: boolean
+}
+
+/** A provider's last 24 hours, from LiteLLM. */
+export interface ProviderHealth {
+  id: string
+  requests_24h: number
+  share_pct: number
+  success_pct: number
+  p50_ms: number
+  cooling_until?: string
+  last_error?: string
 }
 
 /** AIProviderNew. */
@@ -73,7 +97,7 @@ export interface ProviderNew {
 }
 
 /** AIProviderPatch. */
-export type ProviderPatch = Partial<Pick<ProviderNew, 'name' | 'base_url' | 'api_key' | 'weight' | 'order' | 'mode'>>
+export type ProviderPatch = Partial<Pick<ProviderNew, 'name' | 'base_url' | 'api_key' | 'weight' | 'order' | 'mode'>> & { enabled?: boolean }
 
 /** LiteLLM's provider routes the console names; the server takes any route. */
 export const providerKinds: Record<string, string> = {
@@ -185,17 +209,35 @@ export interface AgentBudget {
   spent_usd: number
 }
 
+export type OnCap = 'stop_agents' | 'alert_only'
+
+export interface MemberDaily {
+  moderator: number
+  admin: number
+}
+
 /** AIBudgets. */
 export interface Budgets {
   agents: AgentBudget[]
-  /** What each member may spend a day through the console agents. */
-  member_daily_usd?: number
+  /** The month's cap over every agent, the share that alerts, and what happens at the cap. */
+  monthly_cap_usd?: number
+  alert_pct?: number
+  on_cap?: OnCap
+  /** The month's spend has passed the alert share. */
+  alerting?: boolean
+  /** What each member may spend a day through the console agents, by role, with overrides by member. */
+  member_daily_usd?: MemberDaily
+  overrides?: { member_id: string; daily_usd: number }[]
 }
 
 /** AIBudgetsPatch. */
 export interface BudgetsPatch {
   agents?: { agent_id: string; monthly_budget_usd: number | null }[]
-  member_daily_usd?: number | null
+  monthly_cap_usd?: number | null
+  alert_pct?: number
+  on_cap?: OnCap
+  member_daily_usd?: MemberDaily | null
+  overrides?: { member_id: string; daily_usd: number }[]
 }
 
 export type SpendRange = '7d' | '30d' | '90d'
@@ -207,6 +249,34 @@ export interface Spend {
   end: string
   total_usd: number
   days: { date: string; total_usd: number; agents: { agent_id: string; usd: number }[] }[]
+  /** Spend and questions by member over the range. */
+  members?: { member_id: string; display_name: string; usd: number; requests: number }[]
+}
+
+/** Requests per agent over a range, by day. */
+export interface AgentUsage {
+  agent_id: string
+  requests: number
+  days: { date: string; requests: number }[]
+}
+
+/** Calls per tool over a range, and the latest calls. */
+export interface ToolsUsage {
+  items: { name: string; display_name?: string; calls: number; failed: number; p50_ms: number; days: { date: string; calls: number }[] }[]
+  recent: { call_id: string; turn_id: string; member_id: string; tool: string; label: string; duration_ms: number; status: 'running' | 'success' | 'failed' | 'skipped'; at: string }[]
+}
+
+/** An ops dashboard and the lowest role that opens it. */
+export interface DashboardFloor {
+  app: string
+  name: string
+  floor: 'moderator' | 'admin'
+}
+
+/** Guardrail blocks per rule over a range, and the latest ones. */
+export interface GuardrailStats {
+  items: { rule: string; count: number }[]
+  recent: { rule: string; detail: string; member_id: string; turn_id: string; at: string }[]
 }
 
 /** ConsoleAgent: a console agent a member may pick in the ask box. */
@@ -234,6 +304,32 @@ export function useProviders() {
 export function useProvider(id: string | undefined) {
   const list = useProviders()
   return { ...list, data: id ? list.data?.items.find((p) => p.id === id) : undefined, missing: !!list.data && !list.data.items.some((p) => p.id === id) }
+}
+
+/** A provider's models as the provider lists them, added or not. */
+export function useProviderModels(id: string | undefined) {
+  return useQuery({ queryKey: key('provider-models', id ?? ''), enabled: !!id, queryFn: () => api<Page<ProviderModelOption>>(`${S}/providers/${id}/models`) })
+}
+
+export function useProviderHealth() {
+  return useQuery({ queryKey: key('provider-health'), queryFn: () => api<Page<ProviderHealth>>(`${S}/providers/health`), refetchInterval: 60_000 })
+}
+
+export function useAgentUsage(range: SpendRange) {
+  return useQuery({ queryKey: key('agent-usage', range), queryFn: () => api<Page<AgentUsage>>(`${S}/agents/usage?range=${range}`) })
+}
+
+export function useToolsUsage(range: SpendRange) {
+  return useQuery({ queryKey: key('tools', range), queryFn: () => api<ToolsUsage>(`${S}/tools?range=${range}`) })
+}
+
+/** The dashboards' floors; only admins read them, so off for anyone else. */
+export function useDashboards(enabled = true) {
+  return useQuery({ queryKey: key('dashboards'), enabled, queryFn: () => api<Page<DashboardFloor>>(`${S}/dashboards`), staleTime: 60_000 })
+}
+
+export function useGuardrails(range: SpendRange) {
+  return useQuery({ queryKey: key('guardrails', range), queryFn: () => api<GuardrailStats>(`${S}/guardrails?range=${range}`) })
 }
 
 export function useRotation() {
@@ -297,6 +393,7 @@ export function useSettingsCommands() {
     updateAgent: useCommand(settings, ({ id, ...a }: AgentPatch & { id: string }) => patch<AiAgent>(`${S}/agents/${id}`, a)),
     updateRotation: useCommand(settings, (r: RotationPatch) => patch<Rotation>(`${S}/rotation`, r)),
     updateBudgets: useCommand(settings, (b: BudgetsPatch) => patch<Budgets>(`${S}/budgets`, b)),
+    updateDashboard: useCommand(settings, (d: { app: string; floor: 'moderator' | 'admin' }) => patch<Page<DashboardFloor>>(`${S}/dashboards`, { items: [d] })),
   }
 }
 
