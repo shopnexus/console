@@ -1,11 +1,14 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useRef, useState } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import { useAccount } from './accounts'
-import { ApiError, api, post, shortId } from './api'
+import { ApiError, api, apiUrl, del, post, shortId } from './api'
+import { emptyRun, type LocalAction, reduceRun, type RunEvent, type RunState } from './run'
+import { SseParser } from './sse'
 import { useTicket } from './support'
 
-// The console agent's API: api/paths/console_agent.yaml and
-// api/schemas/console_agent.yaml on the server.
+// The console agent's API (spec 2026-11-18, "Architecture" and "Answer"):
+// a turn is posted and answered 202 {turn_id}; its events stream from
+// /v1/console/agent/turns/{id}/events and reconnect with Last-Event-ID.
 
 export type SubjectKind = 'ticket' | 'account'
 
@@ -18,52 +21,45 @@ export interface Conversation {
   updated_at: string
 }
 
-export interface Source {
-  /** The MCP tool, such as ticket_get. */
+/** A record of the phase-1 answers, before runs had events. */
+export interface LegacySource {
   tool: string
   label: string
   ids: string[]
 }
 
-export type TurnStatus = 'running' | 'succeeded' | 'failed' | 'cancelled' | 'timed_out'
+export type AttachmentKind = 'ticket' | 'account' | 'report'
+
+export interface Attachment {
+  kind: AttachmentKind
+  id: string
+  label?: string
+}
 
 export interface Turn {
   id: string
   /** The member who asked. */
   member_id: string
   text: string
-  answer?: string
-  sources: Source[]
-  status: TurnStatus
+  status: string
   created_at: string
+  agent_id?: string
+  skill_id?: string
+  attachments?: Attachment[]
+  /** Phase-1 turns carry their answer as text; newer ones replay their events. */
+  answer?: string
+  sources?: LegacySource[]
 }
 
 export interface ConversationDetail extends Conversation {
   turns: Turn[]
 }
 
-export interface Answer {
-  conversation_id: string
-  turn_id: string
-  answer: string
-  sources: Source[]
-}
-
 /** The longest question the server takes (agent_input_rejected above it). */
 export const maxQuestion = 2000
 
-/** Why a question got no answer, by the server's error code. */
-export type Failure =
-  | 'timeout'
-  | 'budget'
-  | 'rate_limited'
-  | 'unavailable'
-  | 'busy'
-  | 'closed'
-  | 'too_long'
-  | 'not_found'
-  | 'aborted'
-  | 'other'
+/** Why a question was refused, by the server's error code. */
+export type Failure = 'timeout' | 'budget' | 'rate_limited' | 'unavailable' | 'busy' | 'closed' | 'too_long' | 'not_found' | 'aborted' | 'other'
 
 const byCode: Record<string, Failure> = {
   agent_timeout: 'timeout',
@@ -71,6 +67,7 @@ const byCode: Record<string, Failure> = {
   agent_rate_limited: 'rate_limited',
   agent_unavailable: 'unavailable',
   agent_turn_in_progress: 'busy',
+  turn_in_progress: 'busy',
   agent_conversation_closed: 'closed',
   agent_input_rejected: 'too_long',
   agent_conversation_not_found: 'not_found',
@@ -88,9 +85,9 @@ export function failureOf(e: unknown): Failure {
   return 'other'
 }
 
-/** What the member reads for each failure; aborted is the member's own stop and says nothing. */
+/** What the member reads for each refusal; aborted is the member's own stop and says nothing. */
 export const failureText: Record<Failure, string> = {
-  timeout: 'No answer within 60 seconds.',
+  timeout: 'No answer within the time limit.',
   budget: 'Your daily budget is used up.',
   rate_limited: 'Too many questions in a few minutes. Try again later.',
   unavailable: 'The agent is unavailable. Try again later.',
@@ -102,64 +99,32 @@ export const failureText: Record<Failure, string> = {
   other: 'The question did not go through. Try again.',
 }
 
-export type Outcome = { ok: true; answer: Answer } | { ok: false; failure: Failure }
-
-/**
- * Asks in a conversation and waits for the whole answer (up to the agent's
- * 60 s). Never throws: a refusal, a timeout or the member's stop through
- * signal comes back as a failure. A question over maxQuestion is refused
- * here without a call.
- */
-export async function ask(conversationId: string, text: string, signal?: AbortSignal): Promise<Outcome> {
-  if (text.length > maxQuestion) return { ok: false, failure: 'too_long' }
-  try {
-    const answer = await api<Answer>(`/console/agent/conversations/${conversationId}/turns`, {
-      method: 'POST',
-      body: JSON.stringify({ text }),
-      signal,
-    })
-    return { ok: true, answer }
-  } catch (e) {
-    return { ok: false, failure: signal?.aborted ? 'aborted' : failureOf(e) }
-  }
-}
-
 /** Opens a record's shared conversation, or starts one of the caller's own without a subject. */
 export function openConversation(subject?: { kind: SubjectKind; id: string }) {
-  return post<Conversation>(
-    '/console/agent/conversations',
-    subject ? { subject_kind: subject.kind, subject_id: subject.id } : {},
-  )
+  return post<Conversation>('/console/agent/conversations', subject ? { subject_kind: subject.kind, subject_id: subject.id } : {})
 }
 
 const listKey = ['agent', 'conversations'] as const
-const detailKey = (id: string) => ['agent', 'conversation', id] as const
+export const detailKey = (id: string) => ['agent', 'conversation', id] as const
 
-/**
- * The member's chats: their own, and the shared chats of tickets and
- * accounts, newest activity first.
- */
+/** The member's chats: their own, and the shared chats of tickets and accounts, newest activity first. */
 export function useThreads() {
   const lists = useQueries({
     queries: (['', 'ticket', 'account'] as const).map((kind) => ({
       queryKey: [...listKey, kind],
-      queryFn: () =>
-        api<{ items: Conversation[] }>(`/console/agent/conversations${kind ? `?subject_kind=${kind}` : ''}`),
+      queryFn: () => api<{ items: Conversation[] }>(`/console/agent/conversations${kind ? `?subject_kind=${kind}` : ''}`),
     })),
   })
-  const items = lists
-    .flatMap((l) => l.data?.items ?? [])
-    .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+  const items = lists.flatMap((l) => l.data?.items ?? []).sort((a, b) => b.updated_at.localeCompare(a.updated_at))
   return { items, isPending: lists.some((l) => l.isPending), error: lists.find((l) => l.error)?.error }
 }
 
-/** One conversation with its turns; it reads again every 5 s while a turn is still running. */
+/** One conversation with its turns. */
 export function useConversation(id: string | undefined) {
   return useQuery({
     queryKey: detailKey(id ?? ''),
     enabled: !!id,
     queryFn: () => api<ConversationDetail>(`/console/agent/conversations/${id}`),
-    refetchInterval: (q) => (q.state.data?.turns.some((t) => t.status === 'running') ? 5000 : false),
     retry: (n, e) => !(e instanceof ApiError && e.status === 404) && n < 1,
   })
 }
@@ -172,79 +137,311 @@ export function useOpenConversation() {
   })
 }
 
-function without<T>(record: Record<string, T>, key: string): Record<string, T> {
-  const next = { ...record }
-  delete next[key]
-  return next
-}
-
-export interface Waiting {
+export interface TurnRequest {
   text: string
-  at: string
-}
-
-export interface Failed extends Waiting {
-  failure: Failure
+  agent_id?: string
+  attachments?: Attachment[]
+  skill_id?: string
 }
 
 /**
- * Sending questions: per conversation, the question waiting for its answer
- * and the last failure. stop aborts the waiting call. An answer goes into
- * the conversation's cache at once and both the chat and the list read
- * again.
+ * Posts a question; the agent stores the turn and answers 202 with its id.
+ * While a turn is paused or waiting the server refuses with turn_in_progress:
+ * the ask box sends a steer or the answer instead.
  */
-export function useAsk(memberId: string) {
-  const client = useQueryClient()
-  const [waiting, setWaiting] = useState<Record<string, Waiting>>({})
-  const [failed, setFailed] = useState<Record<string, Failed>>({})
-  const calls = useRef(new Map<string, AbortController>())
-
-  const send = useCallback(
-    async (conversationId: string, text: string): Promise<Outcome> => {
-      if (calls.current.has(conversationId)) return { ok: false, failure: 'busy' }
-      const controller = new AbortController()
-      calls.current.set(conversationId, controller)
-      const at = new Date().toISOString()
-      setFailed((f) => without(f, conversationId))
-      setWaiting((w) => ({ ...w, [conversationId]: { text, at } }))
-      const out = await ask(conversationId, text, controller.signal)
-      calls.current.delete(conversationId)
-      setWaiting((w) => without(w, conversationId))
-      if (out.ok) {
-        const { turn_id, answer, sources } = out.answer
-        client.setQueryData<ConversationDetail>(detailKey(conversationId), (d) =>
-          d && !d.turns.some((t) => t.id === turn_id)
-            ? {
-                ...d,
-                turns: [
-                  ...d.turns,
-                  { id: turn_id, member_id: memberId, text, answer, sources, status: 'succeeded', created_at: at },
-                ],
-              }
-            : d,
-        )
-        void client.invalidateQueries({ queryKey: ['agent'] })
-      } else if (out.failure !== 'aborted' && out.failure !== 'too_long') {
-        setFailed((f) => ({ ...f, [conversationId]: { text, at, failure: out.failure } }))
-      }
-      return out
-    },
-    [client, memberId],
-  )
-
-  const stop = useCallback((conversationId: string) => calls.current.get(conversationId)?.abort(), [])
-  const dismiss = useCallback((conversationId: string) => setFailed((f) => without(f, conversationId)), [])
-
-  return { waiting, failed, send, stop, dismiss }
+export function startTurn(conversationId: string, req: TurnRequest) {
+  return post<{ conversation_id?: string; turn_id: string }>(`/console/agent/conversations/${conversationId}/turns`, {
+    ...req,
+    attachments: req.attachments?.map(({ kind, id }) => ({ kind, id })),
+  })
 }
+
+/**
+ * Asking: posts the turn, puts it into the conversation's cache and starts
+ * following its events. A refusal comes back as a failure.
+ */
+export function useStartTurn(memberId: string) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ conversationId, req }: { conversationId: string; req: TurnRequest }) => {
+      if (req.text.length > maxQuestion) throw new ApiError(422, 'agent_input_rejected', 'too long')
+      const { turn_id } = await startTurn(conversationId, req)
+      const turn: Turn = {
+        id: turn_id,
+        member_id: memberId,
+        text: req.text,
+        status: 'RUNNING',
+        created_at: new Date().toISOString(),
+        agent_id: req.agent_id,
+        skill_id: req.skill_id,
+        attachments: req.attachments,
+      }
+      client.setQueryData<ConversationDetail>(detailKey(conversationId), (d) => (d && !d.turns.some((t) => t.id === turn_id) ? { ...d, turns: [...d.turns, turn] } : d))
+      followTurn(turn_id)
+      void client.invalidateQueries({ queryKey: listKey })
+      return turn
+    },
+  })
+}
+
+// ------------------------------------------------------------------ runs --
+// One store for every run the page has seen, keyed by turn id, so a run
+// keeps its state across pages and two views of one turn agree.
+
+const runs = new Map<string, RunState>()
+const listeners = new Map<string, Set<() => void>>()
+const streams = new Map<string, AbortController>()
+/** Turns whose stream the server does not have (phase-1 turns): they show their stored answer. */
+const missing = new Set<string>()
+
+function emit(id: string) {
+  listeners.get(id)?.forEach((f) => f())
+}
+
+export function dispatchRun(id: string, ev: RunEvent | LocalAction) {
+  const before = runs.get(id) ?? emptyRun()
+  const after = reduceRun(before, ev)
+  if (after !== before) {
+    runs.set(id, after)
+    emit(id)
+  }
+}
+
+export function runOf(id: string): RunState | undefined {
+  return runs.get(id)
+}
+
+const sleep = (ms: number, signal: AbortSignal) =>
+  new Promise<void>((resolve) => {
+    const t = setTimeout(resolve, ms)
+    signal.addEventListener('abort', () => {
+      clearTimeout(t)
+      resolve()
+    })
+  })
+
+/** Reads a turn's events after seq `after` until the stream ends. */
+async function readEvents(id: string, after: number, onEvent: (ev: RunEvent) => void, signal: AbortSignal) {
+  if (import.meta.env.VITE_MOCK_AI === '1') {
+    const { mockEvents } = await import('./mock/agent')
+    for await (const ev of mockEvents(id, after, signal)) onEvent(ev)
+    return
+  }
+  const res = await fetch(apiUrl(`/console/agent/turns/${id}/events`), {
+    credentials: 'include',
+    signal,
+    headers: { accept: 'text/event-stream', 'x-requested-with': 'shopnexus-console', ...(after ? { 'last-event-id': String(after) } : {}) },
+  })
+  if (!res.ok || !res.body) throw new ApiError(res.status, res.status === 404 ? 'not_found' : 'stream_failed', res.statusText)
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
+  const parser = new SseParser()
+  for (;;) {
+    const { value, done } = await reader.read()
+    if (done) return
+    for (const msg of parser.push(value)) {
+      try {
+        onEvent(JSON.parse(msg.data) as RunEvent)
+      } catch {
+        // A line that is not an event is skipped.
+      }
+    }
+  }
+}
+
+/**
+ * Follows a turn's events: replays from its last seen seq, reconnects with
+ * backoff when the stream drops, and stops at turn.finished, at a pause and
+ * while it waits for an answer (Continue, a steer or the answer opens it
+ * again). Closing the tab ends the stream, not the run.
+ */
+export function followTurn(id: string) {
+  if (streams.has(id) || missing.has(id)) return
+  const st = runs.get(id)
+  if (st?.phase === 'finished') return
+  const controller = new AbortController()
+  streams.set(id, controller)
+  void (async () => {
+    let backoff = 500
+    try {
+      while (!controller.signal.aborted) {
+        try {
+          await readEvents(id, runs.get(id)?.lastSeq ?? 0, (ev) => dispatchRun(id, ev), controller.signal)
+          backoff = 500
+        } catch (e) {
+          if (controller.signal.aborted) return
+          if (e instanceof ApiError && (e.status === 404 || e.status === 403)) {
+            missing.add(id)
+            emit(id)
+            return
+          }
+        }
+        const phase = runs.get(id)?.phase
+        if (phase === 'finished' || phase === 'paused' || phase === 'awaiting_input') return
+        await sleep(backoff, controller.signal)
+        backoff = Math.min(backoff * 2, 8000)
+      }
+    } finally {
+      streams.delete(id)
+    }
+  })()
+}
+
+/** A turn's run, following its stream while it is not finished. undefined until the first event, or for a phase-1 turn. */
+export function useRun(id: string | undefined): { run?: RunState; missing: boolean } {
+  const run = useSyncExternalStore(
+    (f) => {
+      if (!id) return () => undefined
+      const set = listeners.get(id) ?? new Set()
+      set.add(f)
+      listeners.set(id, set)
+      return () => set.delete(f)
+    },
+    () => (id ? runs.get(id) : undefined),
+  )
+  const gone = useSyncExternalStore(
+    (f) => {
+      if (!id) return () => undefined
+      const set = listeners.get(id) ?? new Set()
+      set.add(f)
+      listeners.set(id, set)
+      return () => set.delete(f)
+    },
+    () => (id ? missing.has(id) : false),
+  )
+  useEffect(() => {
+    if (id) followTurn(id)
+  }, [id])
+  return { run, missing: gone }
+}
+
+// -------------------------------------------------------------- controls --
+
+const turnPath = (id: string, action: string) => `/console/agent/turns/${id}/${action}`
+
+/** Pause takes effect before the next model call; the call in flight and its tools finish. */
+export const pauseTurn = (id: string) => post(turnPath(id, 'pause'))
+
+/** Stop now ends a running turn at once. */
+export const stopTurn = (id: string) => post(turnPath(id, 'stop'))
+
+/** End closes a paused turn. */
+export const endTurn = (id: string) => post(turnPath(id, 'end'))
+
+/** Continue resumes the same turn with no message. */
+export async function continueTurn(id: string) {
+  await post(turnPath(id, 'continue'))
+  dispatchRun(id, { type: 'local.resume' })
+  followTurn(id)
+}
+
+/**
+ * A steer: read before the run's next model call, or, on a paused run, it
+ * continues the run. The receipt shows Waiting until steer.read names it.
+ */
+export async function steerTurn(id: string, text: string) {
+  const r = await post<{ steer_id: string; resumed?: boolean }>(turnPath(id, 'steer'), { text })
+  dispatchRun(id, { type: 'local.steer', steer_id: r?.steer_id ?? crypto.randomUUID(), text, at: new Date().toISOString() })
+  if (r?.resumed || runs.get(id)?.phase === 'paused') dispatchRun(id, { type: 'local.resume' })
+  followTurn(id)
+}
+
+export type Answers = Record<string, string | string[]>
+
+/** The answers to the agent's clarifying questions; the run goes on. */
+export async function answerTurn(id: string, body: { answers: Answers }) {
+  await post(turnPath(id, 'input'), body)
+  dispatchRun(id, { type: 'local.resume' })
+  followTurn(id)
+}
+
+// ------------------------------------------------- tool calls, documents --
+
+export interface ToolCallDetail {
+  id: string
+  tool: string
+  status: 'running' | 'success' | 'failed' | 'skipped'
+  input?: unknown
+  output?: unknown
+  error?: string
+  started_at: string
+  duration_ms?: number
+  timing?: { queued: number; server: number; db: number | null; return: number }
+  attempts?: { attempt: number; error?: string; at: string }[]
+  step_title?: string
+  bytes?: number
+}
+
+/** One tool call's input, result and timing, for the tool panel. */
+export function useToolCall(id: string | undefined) {
+  return useQuery({ queryKey: ['agent', 'tool-call', id], enabled: !!id, queryFn: () => api<ToolCallDetail>(`/console/agent/tool-calls/${id}`) })
+}
+
+export type DocSection =
+  | { type: 'markdown'; markdown: string }
+  | { type: 'table'; columns: string[]; rows: (string | number)[][]; title?: string }
+  | { type: 'chart'; kind: 'bar' | 'stacked_bar' | 'line'; labels: string[]; series: { name: string; values: number[] }[]; title?: string }
+
+export interface AgentDocument {
+  id: string
+  title: string
+  version: number
+  versions: { version: number; at: string }[]
+  sections: DocSection[]
+  updated_at: string
+  /** The turn whose sources the document cites. */
+  turn_id?: string
+}
+
+/** A document the agent wrote, at a version (the newest without one). */
+export function useDocument(id: string | undefined, version?: number) {
+  return useQuery({
+    queryKey: ['agent', 'document', id, version ?? 'latest'],
+    enabled: !!id,
+    queryFn: () => api<AgentDocument>(`/console/agent/documents/${id}${version ? `?version=${version}` : ''}`),
+  })
+}
+
+export interface Skill {
+  id: string
+  name: string
+  slug: string
+  description: string
+  prompt: string
+  variables: string[]
+  created_by?: string
+  updated_at: string
+}
+
+/** Saved skills, shared with every member; / in the ask box lists them. */
+export function useSkills() {
+  return useQuery({ queryKey: ['agent', 'skills'], queryFn: () => api<{ items: Skill[] }>('/console/agent/skills'), staleTime: 60_000 })
+}
+
+export function useSkillCommands() {
+  const client = useQueryClient()
+  const done = () => client.invalidateQueries({ queryKey: ['agent', 'skills'] })
+  return {
+    create: useMutation({
+      mutationFn: (s: { name: string; description: string; prompt: string; variables?: string[] }) => post<Skill>('/console/agent/skills', s),
+      onSettled: done,
+    }),
+    remove: useMutation({ mutationFn: (id: string) => del(`/console/agent/skills/${id}`), onSettled: done }),
+  }
+}
+
+/** The {{variables}} a question names, for a skill made from it. */
+export function variablesOf(prompt: string): string[] {
+  return [...new Set([...prompt.matchAll(/\{\{\s*([a-z_][a-z0-9_]*)\s*\}\}/gi)].map((m) => m[1]))]
+}
+
+// ------------------------------------------------------------ labelling --
 
 /** "Ticket · Khánh Linh" or "Account · Hoàng Nam"; the short id until the name is read. */
 export function useSubjectLabel(kind: SubjectKind | undefined, id: string | undefined): string {
   const ticket = useTicket(kind === 'ticket' ? id : undefined)
   const account = useAccount(kind === 'account' ? id : undefined)
   if (!kind || !id) return ''
-  const name =
-    kind === 'ticket' ? ticket.data?.ticket.person.display_name : account.data?.display_name
+  const name = kind === 'ticket' ? ticket.data?.ticket.person.display_name : account.data?.display_name
   return `${kind === 'ticket' ? 'Ticket' : 'Account'} · ${name || shortId(id)}`
 }
 

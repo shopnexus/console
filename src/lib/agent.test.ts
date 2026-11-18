@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from './api'
-import { ask, dayGroup, failureOf, maxQuestion } from './agent'
+import { dayGroup, failureOf, startTurn, variablesOf } from './agent'
 
 function reply(status: number, body: unknown) {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
@@ -37,59 +37,32 @@ describe('failureOf', () => {
   })
 })
 
-describe('ask', () => {
-  it('posts the question with the console headers and returns the answer', async () => {
-    const answer = { conversation_id: 'c1', turn_id: 't1', answer: 'GHTK đã giao.', sources: [{ tool: 'ticket_get', label: 'Ticket', ids: ['x'] }] }
-    const fetch = vi.fn(async () => reply(200, answer))
+describe('startTurn', () => {
+  it('posts the question with the agent and attachments and returns the turn id', async () => {
+    const fetch = vi.fn(async () => reply(202, { turn_id: 't1' }))
     vi.stubGlobal('fetch', fetch)
 
-    await expect(ask('c1', 'Đơn này giao chưa?')).resolves.toEqual({ ok: true, answer })
+    await expect(
+      startTurn('c1', { text: 'Đơn này giao chưa?', agent_id: 'console-assistant', attachments: [{ kind: 'account', id: 'a1', label: 'Account · Hoàng Nam' }] }),
+    ).resolves.toEqual({ turn_id: 't1' })
 
     const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('http://api.test/v1/console/agent/conversations/c1/turns')
     expect(init.method).toBe('POST')
     expect(init.credentials).toBe('include')
-    expect(init.body).toBe(JSON.stringify({ text: 'Đơn này giao chưa?' }))
+    expect(JSON.parse(String(init.body))).toEqual({ text: 'Đơn này giao chưa?', agent_id: 'console-assistant', attachments: [{ kind: 'account', id: 'a1' }] })
     expect((init.headers as Record<string, string>)['x-requested-with']).toBe('shopnexus-console')
   })
 
-  it.each([
-    [504, 'agent_timeout', 'timeout'],
-    [429, 'agent_budget', 'budget'],
-    [503, 'agent_unavailable', 'unavailable'],
-    [422, 'agent_input_rejected', 'too_long'],
-  ])('returns a %i %s as %s without throwing', async (status, code, failure) => {
-    vi.stubGlobal('fetch', vi.fn(async () => refusal(status, code)))
-    await expect(ask('c1', 'Hỏi')).resolves.toEqual({ ok: false, failure })
+  it('throws the refusal with its code', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => refusal(409, 'agent_turn_in_progress')))
+    await expect(startTurn('c1', { text: 'x' })).rejects.toMatchObject({ status: 409, code: 'agent_turn_in_progress' })
   })
+})
 
-  it('refuses a question over the limit without a call', async () => {
-    const fetch = vi.fn()
-    vi.stubGlobal('fetch', fetch)
-    await expect(ask('c1', 'a'.repeat(maxQuestion + 1))).resolves.toEqual({ ok: false, failure: 'too_long' })
-    expect(fetch).not.toHaveBeenCalled()
-  })
-
-  it('stops waiting when the member aborts', async () => {
-    // A fetch that only ends when its signal aborts, as a slow agent would.
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(
-        (_url: string, init: RequestInit) =>
-          new Promise<Response>((_, reject) => {
-            init.signal?.addEventListener('abort', () => reject(new DOMException('stopped', 'AbortError')))
-          }),
-      ),
-    )
-    const controller = new AbortController()
-    const out = ask('c1', 'Hỏi', controller.signal)
-    controller.abort()
-    await expect(out).resolves.toEqual({ ok: false, failure: 'aborted' })
-  })
-
-  it('maps a network failure to other', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('Failed to fetch'))))
-    await expect(ask('c1', 'Hỏi')).resolves.toEqual({ ok: false, failure: 'other' })
+describe('variablesOf', () => {
+  it('lists the {{variables}} of a skill prompt once each', () => {
+    expect(variablesOf('Brief for {{period}} on {{ sellers }} and {{period}}')).toEqual(['period', 'sellers'])
   })
 })
 

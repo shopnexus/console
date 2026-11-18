@@ -45,3 +45,14 @@ export function useAnchor(ref: RefObject<HTMLElement | null>, open: boolean, sid
   }, [ref, open, side])
   return style
 }
+
+/** A clock that ticks once a second while on. */
+export function useNow(on: boolean): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!on) return
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [on])
+  return now
+}

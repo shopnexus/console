@@ -22,3 +22,21 @@
 @keyframes sn-spin {
   to { rotate: 360deg }
 }
+
+/* Print to PDF from the document panel prints the document alone. */
+@media print {
+  body.print-doc * {
+    visibility: hidden;
+  }
+  body.print-doc .doc-print,
+  body.print-doc .doc-print * {
+    visibility: visible;
+  }
+  body.print-doc .doc-print {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    border: 0;
+    box-shadow: none;
+  }
+}
