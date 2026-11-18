@@ -6,6 +6,7 @@ import IconPerson from '~icons/material-symbols-light/person-outline-rounded'
 import IconShield from '~icons/material-symbols-light/shield-person-outline-rounded'
 import IconTrend from '~icons/material-symbols-light/trending-up-rounded'
 import IconTune from '~icons/material-symbols-light/tune-rounded'
+import { Select } from '../../components/Select'
 import { SettingsShell } from '../../components/SettingsShell'
 import { Card, CardHead, Donut, Meter, Notice } from '../../components/ui'
 import { fillAt } from '../../lib/aiLook'
@@ -62,17 +63,18 @@ export function Budgets() {
               <div className="mt-5 grid grid-cols-3 gap-3 border-t border-hairline pt-4">
                 <NumberField label="Monthly budget" unit="USD" value={b.monthly_cap_usd} onSave={(monthly_cap_usd) => commands.updateBudgets.mutate({ monthly_cap_usd })} />
                 <NumberField label="Alert at" unit="%" value={b.alert_pct} onSave={(alert_pct) => commands.updateBudgets.mutate({ alert_pct })} />
-                <label className="block">
+                <div>
                   <span className="mb-1.5 block text-body-small text-on-surface-variant">When it runs out</span>
-                  <select
+                  <Select
+                    label="When it runs out"
                     value={b.on_cap}
-                    onChange={(e) => commands.updateBudgets.mutate({ on_cap: e.target.value as BudgetsT['on_cap'] })}
-                    className="h-10 w-full rounded-xl border border-hairline bg-surface-container-lowest px-3 text-body-medium outline-none"
-                  >
-                    <option value="stop_console">Stop console agents</option>
-                    <option value="stop_all">Stop every agent</option>
-                  </select>
-                </label>
+                    onChange={(on_cap: BudgetsT['on_cap']) => commands.updateBudgets.mutate({ on_cap })}
+                    options={[
+                      { value: 'stop_console', label: 'Stop console agents' },
+                      { value: 'stop_all', label: 'Stop every agent' },
+                    ]}
+                  />
+                </div>
               </div>
             </Card>
             <Card className="p-5 pb-3">

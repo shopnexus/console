@@ -24,6 +24,7 @@ import IconSwap from '~icons/material-symbols-light/swap-horiz-rounded'
 import IconSync from '~icons/material-symbols-light/sync-rounded'
 import IconTimer from '~icons/material-symbols-light/timer-outline'
 import { ModelTag, ProviderTile } from '../../components/AiBits'
+import { Select } from '../../components/Select'
 import { SettingsShell } from '../../components/SettingsShell'
 import { Btn, Card, Dot, IconBtn, Meter, Notice, Segmented, Spark, Tag, Toggle } from '../../components/ui'
 import { price, textAt } from '../../lib/aiLook'
@@ -350,21 +351,17 @@ function ProviderForm({ provider }: { provider?: Provider }) {
               <span className={label}>Name</span>
               <input value={draft.name} onChange={(e) => set({ name: e.target.value })} className={input} />
             </label>
-            <label className="block">
+            <div>
               <span className={label}>Type</span>
-              <span className="relative flex items-center">
-                <span className="pointer-events-none absolute left-3">
-                  <ProviderTile name={draft.name || '?'} index={index} size={22} />
-                </span>
-                <select value={draft.kind} onChange={(e) => set({ kind: e.target.value as ProviderKind })} className={`${input} appearance-none pl-11`}>
-                  {kinds.map((k) => (
-                    <option key={k} value={k}>
-                      {providerKindName[k]}
-                    </option>
-                  ))}
-                </select>
-              </span>
-            </label>
+              <Select
+                size="lg"
+                label="Type"
+                value={draft.kind}
+                onChange={(kind) => set({ kind })}
+                leading={<ProviderTile name={draft.name || '?'} index={index} size={22} />}
+                options={kinds.map((k) => ({ value: k, label: providerKindName[k] }))}
+              />
+            </div>
             <label className="block">
               <span className={label}>Base URL</span>
               <input value={draft.base_url} onChange={(e) => set({ base_url: e.target.value })} className={input} />

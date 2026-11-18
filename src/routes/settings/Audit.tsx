@@ -4,7 +4,6 @@ import IconCategory from '~icons/material-symbols-light/category-outline-rounded
 import IconCheck from '~icons/material-symbols-light/check-rounded'
 import IconDownload from '~icons/material-symbols-light/download-rounded'
 import IconEvent from '~icons/material-symbols-light/event-note-outline-rounded'
-import IconExpand from '~icons/material-symbols-light/expand-more-rounded'
 import IconFlag from '~icons/material-symbols-light/flag-outline-rounded'
 import IconHide from '~icons/material-symbols-light/visibility-off-outline'
 import IconHistory from '~icons/material-symbols-light/history-rounded'
@@ -16,6 +15,7 @@ import IconPersonOff from '~icons/material-symbols-light/person-off-outline-roun
 import IconShow from '~icons/material-symbols-light/visibility-outline'
 import IconTune from '~icons/material-symbols-light/tune-rounded'
 import IconUnlock from '~icons/material-symbols-light/lock-open-outline-rounded'
+import { Select } from '../../components/Select'
 import { SettingsShell } from '../../components/SettingsShell'
 import { Btn, Card, CardHead, Initial, Notice } from '../../components/ui'
 import { type Action, api, type Page, shortId } from '../../lib/api'
@@ -105,22 +105,17 @@ export function Audit() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
         <div>
           <div className="mb-4 flex items-center gap-2">
-            <label
-              className={`relative flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-label-medium font-normal ${
-                member ? 'border-primary/40 bg-primary/6 text-primary' : 'border-hairline bg-surface-container-lowest text-on-surface-variant'
-              }`}
-            >
-              <IconMembers width={16} height={16} />
-              <select value={member} onChange={(e) => setMember(e.target.value)} aria-label="Member" className="appearance-none bg-transparent pr-5 outline-none">
-                <option value="">Everyone</option>
-                {members.data?.items.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.display_name}
-                  </option>
-                ))}
-              </select>
-              <IconExpand width={16} height={16} className="pointer-events-none absolute right-2.5" />
-            </label>
+            <span className="w-[220px]">
+              <Select
+                size="sm"
+                label="Member"
+                value={member}
+                onChange={setMember}
+                leading={<IconMembers width={16} height={16} className="text-on-surface-variant" />}
+                tone={member ? 'border-primary/40 bg-primary/6 text-primary' : undefined}
+                options={[{ value: '', label: 'Everyone' }, ...(members.data?.items.map((m) => ({ value: m.id, label: m.display_name })) ?? [])]}
+              />
+            </span>
           </div>
           {log.error && <Notice>The audit log did not load.</Notice>}
           <Card className="p-5 pb-1">

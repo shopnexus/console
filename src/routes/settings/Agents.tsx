@@ -397,11 +397,9 @@ function NumberTile({
       <span className="mt-0.5 flex items-baseline gap-1">
         {prefix && <span className="text-title-large">{prefix}</span>}
         <input
-          type="number"
-          min={0}
-          max={max}
+          inputMode="numeric"
           value={value}
-          onChange={(e) => onChange(Math.max(0, Math.min(max ?? Infinity, Number(e.target.value) || 0)))}
+          onChange={(e) => onChange(Math.min(max ?? Infinity, Number(e.target.value.replace(/\D/g, '')) || 0))}
           className="w-full min-w-0 bg-transparent text-title-large tabular-nums outline-none"
         />
         <span className="shrink-0 text-body-small text-on-surface-variant">{unit}</span>

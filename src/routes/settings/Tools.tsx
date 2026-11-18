@@ -31,9 +31,10 @@ const groupLook: Record<ToolGroup, [ReactNode, string]> = {
 }
 
 /**
- * Settings › Tools: the read-only tools server gives the agents, with the
- * agents that may call each (an agent's own page turns them on and off),
- * and the dashboards in the sidebar with the lowest role that opens each.
+ * Settings › Tools: the read-only tools server gives the agents, one row
+ * each with the agents that may call it (an agent's own page turns them on
+ * and off), and the dashboards in the sidebar with the lowest role that
+ * opens each, which the server sets.
  */
 export function Tools() {
   const agents = useAgents()
@@ -47,47 +48,45 @@ export function Tools() {
         [<IconApps key="a" width={16} height={16} />, `${dashboards.length} dashboards`],
       ]}
     >
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_340px]">
-        <div>
-          <div className="mb-3 flex items-center gap-2 px-1">
-            <p className="text-title-small">What agents can read</p>
-            <Tag>
-              <IconLock width={13} height={13} />
-              Read-only
-            </Tag>
-          </div>
-          <div className="rise-list grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-            {tools.map((t) => {
-              const [icon, tint] = groupLook[t.group]
-              const users = alist.filter((a) => a.tools.includes(t.name))
-              return (
-                <Card key={t.name} className="p-4">
-                  <div className="flex items-start gap-3">
-                    <IconTile size={40} tone={tint}>
-                      {icon}
-                    </IconTile>
-                    <div className="min-w-0 flex-1 leading-tight">
-                      <p className="text-title-small">{t.label}</p>
-                      <p className="mt-0.5 text-label-small font-normal text-on-surface-variant">{t.name}</p>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-body-small text-on-surface-variant">{t.reads}</p>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {users.length === 0 && <span className="text-label-small font-normal text-on-surface-variant">No agent calls it</span>}
-                    {users.map((a) => (
-                      <span key={a.id} className="inline-flex h-6 items-center gap-1.5 rounded-full border border-hairline bg-surface-container-lowest px-2 text-label-small font-normal">
-                        <span className={`h-2 w-2 rounded-full ${fillAt(alist.indexOf(a))}`} />
-                        {a.name}
-                      </span>
-                    ))}
-                  </div>
-                </Card>
-              )
-            })}
-          </div>
+      <div className="mb-3 flex items-center gap-2 px-1">
+        <p className="text-title-small">What agents can read</p>
+        <Tag>
+          <IconLock width={13} height={13} />
+          Read-only
+        </Tag>
+      </div>
+      <Card className="overflow-hidden p-0">
+        <div className="rise-list">
+          {tools.map((t) => {
+            const [icon, tint] = groupLook[t.group]
+            const users = alist.filter((a) => a.tools.includes(t.name))
+            return (
+              <div key={t.name} className="flex items-center gap-4 border-t border-hairline px-5 py-3 first:border-t-0 hover:bg-on-surface/3">
+                <IconTile size={40} tone={tint}>
+                  {icon}
+                </IconTile>
+                <div className="w-[220px] min-w-0 leading-tight">
+                  <p className="truncate text-title-small">{t.label}</p>
+                  <p className="mt-0.5 truncate text-label-small font-normal text-on-surface-variant">{t.name}</p>
+                </div>
+                <p className="min-w-0 flex-1 text-body-small text-on-surface-variant">{t.reads}</p>
+                <div className="flex w-[300px] flex-wrap justify-end gap-1.5">
+                  {users.length === 0 && <span className="text-label-small font-normal text-on-surface-variant">No agent calls it</span>}
+                  {users.map((a) => (
+                    <span key={a.id} className="inline-flex h-6 items-center gap-1.5 rounded-full border border-hairline bg-surface-container-lowest px-2 text-label-small font-normal">
+                      <span className={`h-2 w-2 rounded-full ${fillAt(alist.indexOf(a))}`} />
+                      {a.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
+      </Card>
+      <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div>
-          <p className="mb-3 px-1 text-title-small">Tools in the sidebar</p>
+          <p className="mb-3 px-1 text-title-small">Tools in the nav</p>
           <Card className="p-4 py-2">
             {dashboards.map((d) => (
               <div key={d.app} className="flex items-center gap-3 py-2">
@@ -101,7 +100,7 @@ export function Tools() {
                 ) : (
                   <Tag tone="bg-surface-container text-on-surface-variant">
                     <IconShield width={13} height={13} />
-                    {roleName.admin}
+                    {roleName.admin}s
                   </Tag>
                 )}
               </div>

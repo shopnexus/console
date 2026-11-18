@@ -2,11 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import IconSpark from '~icons/material-symbols/auto-awesome-outline-rounded'
 import IconCheckCircle from '~icons/material-symbols-light/check-circle-outline-rounded'
-import IconExpand from '~icons/material-symbols-light/expand-more-rounded'
 import IconGavel from '~icons/material-symbols-light/gavel-rounded'
 import IconPhoto from '~icons/material-symbols-light/image-outline-rounded'
 import IconUndo from '~icons/material-symbols-light/undo-rounded'
 import { Crumbs, DotFact, Hero, JKHint, ListColumn, ListRow, StatusPill } from '../components/Panes'
+import { Select } from '../components/Select'
 import { Shell } from '../components/Shell'
 import { Btn, Card, CardHead, Check, Initial, Kbd, Notice, Segmented, Tag } from '../components/ui'
 import { useOpenConversation } from '../lib/agent'
@@ -370,20 +370,15 @@ function DecisionBar({ c }: { c: ReportCaseDetail }) {
               Suspend
             </button>
             {suspend && (
-              <span className="relative flex items-center">
-                <select
-                  value={days ?? ''}
-                  onChange={(e) => setDays(e.target.value === '' ? null : Number(e.target.value))}
-                  aria-label="Term"
-                  className="h-7 appearance-none rounded-full border border-error/40 bg-surface-container-lowest pl-2.5 pr-6 text-label-small text-error outline-none"
-                >
-                  {terms.map(([n, t]) => (
-                    <option key={t} value={n ?? ''}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-                <IconExpand width={15} height={15} className="pointer-events-none absolute right-1.5 text-error" />
+              <span className="w-[112px]">
+                <Select
+                  size="sm"
+                  label="Term"
+                  value={days === null ? 'none' : String(days)}
+                  onChange={(v) => setDays(v === 'none' ? null : Number(v))}
+                  tone="border-error/40 bg-surface-container-lowest text-error"
+                  options={terms.map(([n, t]) => ({ value: n === null ? 'none' : String(n), label: t }))}
+                />
               </span>
             )}
           </span>

@@ -7,12 +7,12 @@ import IconCheck from '~icons/material-symbols-light/check-rounded'
 import IconChevron from '~icons/material-symbols-light/chevron-right-rounded'
 import IconClose from '~icons/material-symbols-light/close-rounded'
 import IconFilter from '~icons/material-symbols-light/filter-list-rounded'
-import IconExpand from '~icons/material-symbols-light/expand-more-rounded'
 import IconSee from '~icons/material-symbols-light/visibility-outline'
 import IconUndo from '~icons/material-symbols-light/undo-rounded'
 import { ChatView } from '../components/chat/Chat'
 import { DotFact, JKHint, ListColumn, ListRow } from '../components/Panes'
 import { openConversation } from '../lib/agent'
+import { Select } from '../components/Select'
 import { Shell } from '../components/Shell'
 import { Btn, Card, IconBtn, Initial, Notice, Segmented } from '../components/ui'
 import { day, time, vnd, when } from '../lib/format'
@@ -76,23 +76,14 @@ function Queue({
               { value: 'resolved', label: 'Resolved' },
             ]}
           />
-          <label className="relative flex h-10 items-center gap-2 rounded-full border border-hairline bg-surface-container-lowest px-4 text-body-medium text-on-surface-variant">
-            <IconFilter width={17} height={17} />
-            <select
-              value={kind ?? ''}
-              onChange={(e) => onKind((e.target.value || null) as TicketKind | null)}
-              aria-label="Kind"
-              className="h-full flex-1 appearance-none bg-transparent outline-none"
-            >
-              <option value="">All kinds</option>
-              {(Object.keys(kindChip) as TicketKind[]).map((k) => (
-                <option key={k} value={k}>
-                  {kindChip[k]}
-                </option>
-              ))}
-            </select>
-            <IconExpand width={16} height={16} className="pointer-events-none" />
-          </label>
+          <Select
+            label="Kind"
+            value={kind ?? 'all'}
+            onChange={(v) => onKind(v === 'all' ? null : (v as TicketKind))}
+            className="rounded-full px-4"
+            leading={<IconFilter width={17} height={17} className="text-on-surface-variant" />}
+            options={[{ value: 'all', label: 'All kinds' }, ...(Object.keys(kindChip) as TicketKind[]).map((k) => ({ value: k, label: kindChip[k] }))]}
+          />
         </>
       }
       foot={<JKHint />}
