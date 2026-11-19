@@ -214,10 +214,7 @@ export interface TurnRequest {
  * the ask box sends a steer or the answer instead.
  */
 export function startTurn(conversationId: string, req: TurnRequest) {
-  return post<{ conversation_id?: string; turn_id: string }>(`/console/agent/conversations/${conversationId}/turns`, {
-    ...req,
-    attachments: req.attachments?.map(({ kind, id }) => ({ kind, id })),
-  })
+  return post<{ conversation_id?: string; turn_id: string }>(`/console/agent/conversations/${conversationId}/turns`, req)
 }
 
 /** A pending turn for a question the console is about to send: it shows at once. */

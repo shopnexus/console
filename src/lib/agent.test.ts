@@ -58,7 +58,7 @@ describe('failureOf', () => {
 })
 
 describe('startTurn', () => {
-  it('posts the question with the agent and attachments and returns the turn id', async () => {
+  it('posts the question with the agent and attachments, labels included, and returns the turn id', async () => {
     const fetch = vi.fn(async () => reply(202, { conversation_id: 'c1', turn_id: 't1' }))
     vi.stubGlobal('fetch', fetch)
 
@@ -70,7 +70,7 @@ describe('startTurn', () => {
     expect(url).toBe('http://api.test/v1/console/agent/conversations/c1/turns')
     expect(init.method).toBe('POST')
     expect(init.credentials).toBe('include')
-    expect(JSON.parse(String(init.body))).toEqual({ text: 'Đơn này giao chưa?', agent_id: 'console-assistant', attachments: [{ kind: 'account', id: 'a1' }] })
+    expect(JSON.parse(String(init.body))).toEqual({ text: 'Đơn này giao chưa?', agent_id: 'console-assistant', attachments: [{ kind: 'account', id: 'a1', label: 'Account · Hoàng Nam' }] })
     expect((init.headers as Record<string, string>)['x-requested-with']).toBe('shopnexus-console')
   })
 
