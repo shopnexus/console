@@ -35,6 +35,33 @@ describe('parseMarkdown', () => {
   })
 })
 
+describe('blocks beyond paragraphs', () => {
+  it('reads a fence whole, blank lines included, and one still open', () => {
+    const blocks = parseMarkdown('Before\n\n```mermaid\ngraph LR\n\n  A-->B\n```\n\nAfter\n\n```sql\nselect 1', known)
+    expect(blocks.map((b) => b.kind)).toEqual(['p', 'code', 'p', 'code'])
+    expect(blocks[1]).toEqual({ kind: 'code', lang: 'mermaid', text: 'graph LR\n\n  A-->B', open: false })
+    expect(blocks[3]).toEqual({ kind: 'code', lang: 'sql', text: 'select 1', open: true })
+  })
+
+  it('reads a table, a quote and a rule', () => {
+    const blocks = parseMarkdown('| Kind | Count |\n|---|--:|\n| Scam | **4** |\n\n> Checked [1]\n\n---', known)
+    expect(blocks.map((b) => b.kind)).toEqual(['table', 'quote', 'hr'])
+    expect(blocks[0]).toMatchObject({ kind: 'table', head: [[{ text: 'Kind' }], [{ text: 'Count' }]], rows: [[[{ text: 'Scam' }], [{ kind: 'bold' }]]] })
+    expect(blocks[1]).toMatchObject({ kind: 'quote', inline: [{ kind: 'text', text: 'Checked ' }, { kind: 'cite', n: 1 }] })
+  })
+
+  it('reads links, written and bare, without taking a citation for one', () => {
+    expect(parseInline('See [the listing](https://shopnexus.id.vn/listings/1) or https://shopnexus.id.vn/help. [2]', known)).toEqual([
+      { kind: 'text', text: 'See ' },
+      { kind: 'link', href: 'https://shopnexus.id.vn/listings/1', children: [{ kind: 'text', text: 'the listing' }] },
+      { kind: 'text', text: ' or ' },
+      { kind: 'link', href: 'https://shopnexus.id.vn/help', children: [{ kind: 'text', text: 'https://shopnexus.id.vn/help' }] },
+      { kind: 'text', text: '. ' },
+      { kind: 'cite', n: 2 },
+    ])
+  })
+})
+
 describe('citedIn and plain', () => {
   it('lists citations in order of first use and strips them for copy', () => {
     expect(citedIn('a [2] b [1] c [2]')).toEqual([2, 1])

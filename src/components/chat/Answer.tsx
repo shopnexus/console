@@ -16,6 +16,7 @@ import { count } from '../../lib/format'
 import { useMe } from '../../lib/session'
 import { useAnchor, useDismiss } from '../../lib/dom'
 import { SourceAvatar } from '../kindLook'
+import { Code, Mermaid } from './Mermaid'
 
 /** A source number set in the text: an 18px pill sitting just above the line (AI Portal's CitePill). */
 export function CitePill({ n, className = '' }: { n: number; className?: string }) {
@@ -170,6 +171,12 @@ function renderInline(xs: Inline[], turnId: string, streaming = false): ReactNod
         )
       case 'cite':
         return <Cite key={i} n={x.n} turnId={turnId} />
+      case 'link':
+        return (
+          <a key={i} href={x.href} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">
+            {renderInline(x.children, turnId)}
+          </a>
+        )
     }
   })
 }
@@ -201,6 +208,43 @@ export function Markdown({ md, turnId, sources, big = false, streaming = false }
             <p key={i} className={`whitespace-pre-wrap ${text}`}>
               {renderInline(b.inline, turnId, streaming)}
             </p>
+          )
+        }
+        if (b.kind === 'code') return b.lang === 'mermaid' ? <Mermaid key={i} code={b.text} open={b.open} /> : <Code key={i} text={b.text} />
+        if (b.kind === 'hr') return <hr key={i} className="border-outline-variant" />
+        if (b.kind === 'quote') {
+          return (
+            <blockquote key={i} className={`whitespace-pre-wrap border-l-[3px] border-outline-variant pl-3 text-on-surface-variant ${text}`}>
+              {renderInline(b.inline, turnId, streaming)}
+            </blockquote>
+          )
+        }
+        if (b.kind === 'table') {
+          return (
+            <div key={i} className="overflow-x-auto">
+              <table className={`w-full border-collapse ${text}`}>
+                <thead>
+                  <tr>
+                    {b.head.map((c, j) => (
+                      <th key={j} className="border-b border-outline-variant px-2 py-1.5 text-left text-title-small">
+                        {renderInline(c, turnId)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {b.rows.map((r, j) => (
+                    <tr key={j}>
+                      {r.map((c, k) => (
+                        <td key={k} className="border-b border-outline-variant/60 px-2 py-1.5 align-top">
+                          {renderInline(c, turnId, streaming)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )
         }
         const List = b.kind === 'ul' ? 'ul' : 'ol'
