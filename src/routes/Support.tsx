@@ -26,6 +26,7 @@ import {
   failureText,
   kindChip,
   kindLabel,
+  personName,
   shopNexusId,
   type Ticket,
   type TicketKind,
@@ -101,7 +102,7 @@ function Queue({
             on={t.ticket.id === active}
             onClick={() => navigate(`/support/${t.ticket.id}`)}
             avatar={<Initial name={t.person.display_name} id={t.person.id} size={38} />}
-            name={t.person.display_name || 'Deleted'}
+            name={personName(t.person)}
             when={when(t.last_message_at)}
             line={
               /* The last line is what the person or ShopNexus wrote. */
@@ -150,7 +151,7 @@ function Details({ d }: { d: ConsoleTicketDetail }) {
         <div className="relative flex items-center gap-3">
           <Initial name={p.display_name} id={p.id} size={44} status={d.person_status} />
           <div className="min-w-0 leading-tight">
-            <p className="truncate text-title-small">{p.display_name || 'Deleted'}</p>
+            <p className="truncate text-title-small">{personName(p)}</p>
             <p className="tabular-nums text-label-small font-normal text-on-surface-variant">
               {shortId(p.id)} · since {joined(d.joined_at)}
             </p>
@@ -231,7 +232,7 @@ function CustomerChat({ d, onFailure }: { d: ConsoleTicketDetail; onFailure?: (e
   // The detail carries the newest page; "Older messages" reads the ones before it.
   const [older, setOlder] = useState<{ items: ConsoleMessage[]; cursor?: string }>({ items: [], cursor: d.messages.next_cursor })
   const [reading, setReading] = useState(false)
-  const name = d.ticket.person.display_name || 'Deleted'
+  const name = personName(d.ticket.person)
   async function readOlder() {
     if (!older.cursor || reading) return
     setReading(true)
@@ -386,7 +387,7 @@ function Panel({ id }: { id: string }) {
           <Initial name={p.display_name} id={p.id} size={38} status={d.person_status} />
           <div className="min-w-0 flex-1 leading-tight">
             <p className="truncate text-title-small">
-              {p.display_name || 'Deleted'} · {kindLabel[t.kind].toLowerCase()}
+              {personName(p)} · {kindLabel[t.kind].toLowerCase()}
             </p>
             <p className="truncate text-label-small font-normal text-on-surface-variant">
               {t.status === 'resolved' && resolved ? `Resolved ${when(resolved.at)}` : `Opened ${day(t.opened_at)} ${time(t.opened_at)}`}
@@ -412,7 +413,7 @@ function Panel({ id }: { id: string }) {
             <Notice>{failureText(failure)}</Notice>
           </div>
         )}
-        <TicketAgent ticketId={t.id} label={`Ticket · ${p.display_name || 'Deleted'}`} />
+        <TicketAgent ticketId={t.id} label={`Ticket · ${personName(p)}`} />
       </div>
       <aside className="flex w-[340px] shrink-0 flex-col overflow-hidden border-l border-hairline bg-surface-container-low/50">
         <div className="p-3">

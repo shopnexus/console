@@ -5,7 +5,7 @@ import IconFlag from '~icons/material-symbols-light/flag-outline-rounded'
 import type { Attachment, AttachmentKind } from '../lib/agent'
 import { count, when } from '../lib/format'
 import { useCases } from '../lib/reports'
-import { kindChip, useQueue } from '../lib/support'
+import { kindChip, personName, useQueue } from '../lib/support'
 import { AccountSearch } from './AccountSearch'
 import { Segmented } from './ui'
 
@@ -66,10 +66,10 @@ function TicketPick({ onPick }: { onPick: (a: Attachment) => void }) {
       <Finder q={q} setQ={setQ} label="Find a ticket" />
       <p className="px-2 pb-1 pt-2 text-label-small text-on-surface-variant">Open</p>
       {items.map((t) => (
-        <button key={t.ticket.id} type="button" onClick={() => onPick({ kind: 'ticket', id: t.ticket.id, label: `Ticket · ${t.person.display_name || 'Deleted'}` })} className={row}>
+        <button key={t.ticket.id} type="button" onClick={() => onPick({ kind: 'ticket', id: t.ticket.id, label: `Ticket · ${personName(t.person)}` })} className={row}>
           <IconTicket width={16} height={16} className="shrink-0 text-on-surface-variant" />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-body-medium">{t.person.display_name || 'Deleted'}</span>
+            <span className="block truncate text-body-medium">{personName(t.person)}</span>
             <span className="block text-label-small font-normal tabular-nums text-on-surface-variant">
               {kindChip[t.ticket.kind]} · {when(t.ticket.opened_at)}
             </span>

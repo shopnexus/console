@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ApiError, api, type Page, post } from './api'
+import { ApiError, api, type Page, post, shortId } from './api'
 import { usePaged } from './paged'
 import type { PersonStatus } from './commerce'
 
@@ -27,6 +27,9 @@ export interface Person {
   deleted: boolean
   official?: boolean
 }
+
+/** The name the console shows: "Deleted" only for a deleted account, the id when no name is set. */
+export const personName = (p: Person) => (p.deleted ? 'Deleted' : p.display_name || shortId(p.id))
 
 export interface ConsoleTicket {
   ticket: Ticket
