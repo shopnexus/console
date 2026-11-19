@@ -1,5 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { type ReactNode, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import IconArticle from '~icons/material-symbols-light/article-outline-rounded'
 import IconFull from '~icons/material-symbols-light/open-in-full-rounded'
@@ -11,127 +10,53 @@ import { splitFigure, useArrival, useCountUp } from '../../lib/motion'
 import { type Inline, type MdBlock, parseMarkdown } from '../../lib/markdown'
 import { usePanel } from '../../lib/panel'
 import type { Block, ChartSeries, Figure, Source } from '../../lib/run'
-import { openLabel, sourceHref, sourceLabel, sourceMeta } from '../../lib/sources'
+import { clipped, openLabel, sourceHref, sourceLabel, sourceMeta } from '../../lib/sources'
 import { count } from '../../lib/format'
-import { useMe } from '../../lib/session'
-import { useAnchor, useDismiss } from '../../lib/dom'
 import { SourceAvatar } from '../kindLook'
 import { Code, Mermaid } from './Mermaid'
+import { CitePill, Claim, HoverCard, IdMention, RecordChip, SourceActions, SourceCard } from './Mention'
 
-/** A source number set in the text: an 18px pill sitting just above the line (AI Portal's CitePill). */
-export function CitePill({ n, className = '' }: { n: number; className?: string }) {
-  return (
-    <span
-      className={`mx-px inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-surface-container-high px-[5px] align-[2px] text-[11px] font-medium leading-none tabular-nums text-on-surface-variant ${className}`}
-    >
-      {n}
-    </span>
-  )
-}
-
-/** Opens after resting on it 200 ms, closes 150 ms after leaving; a click opens at once. */
-function useHoverOpen() {
-  const [open, setOpen] = useState(false)
-  const timer = useRef<number>(undefined)
-  useEffect(() => () => window.clearTimeout(timer.current), [])
-  const schedule = (next: boolean, ms: number) => {
-    window.clearTimeout(timer.current)
-    timer.current = window.setTimeout(() => setOpen(next), ms)
-  }
-  const set = useCallback((next: boolean) => {
-    window.clearTimeout(timer.current)
-    setOpen(next)
-  }, [])
-  const hover = {
-    onPointerEnter: (e: React.PointerEvent) => e.pointerType === 'mouse' && schedule(true, 200),
-    onPointerLeave: (e: React.PointerEvent) => e.pointerType === 'mouse' && schedule(false, 150),
-  }
-  return { open, set, hover }
-}
-
-/** A citation in the answer: the pill, previewing its source on rest or click, with the way into the record. */
+/** A marker no words back, left as its number: it previews its source on rest; a click opens the sources panel at it. */
 export function Cite({ n, turnId }: { n: number; turnId: string }) {
   const { sourcesOf, open: openPanel, panel } = usePanel()
-  const me = useMe()
-  const { open, set, hover } = useHoverOpen()
   const s = sourcesOf(turnId).find((x) => x.n === n)
-  // A click anywhere else closes it.
-  const dismiss = useCallback(() => set(false), [set])
-  const anchor = useDismiss<HTMLSpanElement>(open, dismiss, { ignore: '[data-cite-card]', escape: false })
-  // Above the mark where there is room, below it where there is not, kept inside the window.
-  const at = useAnchor(anchor, open, { side: 'auto', prefer: 'above', room: 240, gap: 6, width: 340, inset: 12, dx: -12 })
   if (!s) return <CitePill n={n} />
-  const href = sourceHref(s, me.role === 'admin')
-  const label = sourceLabel(s)
   const showing = panel?.kind === 'sources' && panel.turnId === turnId && panel.n === n
-  const action = 'flex h-7 items-center gap-1.5 rounded-lg px-1.5 transition-colors duration-150 hover:bg-on-surface/8'
   return (
-    <span ref={anchor} className="relative inline-block" {...hover}>
-      <button
-        type="button"
-        data-panel-trigger=""
-        onClick={() => {
-          set(false)
-          openPanel(showing ? undefined : { kind: 'sources', turnId, n })
-        }}
-        aria-label={`Source ${n}: ${label}`}
-        aria-pressed={showing}
-        className="rounded-full"
-      >
-        <CitePill n={n} className={`cursor-pointer transition-colors duration-[120ms] ${showing ? 'bg-primary text-on-primary' : 'hover:bg-surface-container-highest hover:text-on-surface'}`} />
-      </button>
-      {open &&
-        createPortal(
-        <span
-          role="dialog"
-          aria-label={`Source ${n}`}
-          data-cite-card=""
-          style={at}
-          {...hover}
-          className={`fixed z-50 block w-[340px] max-w-[calc(100vw-24px)] animate-pop rounded-2xl bg-surface-container-lowest p-3 text-left shadow-float ring-1 ring-hairline ${at.top === undefined ? 'origin-bottom-left' : 'origin-top-left'}`}
+    <HoverCard
+      label={`Source ${n}`}
+      width={340}
+      prefer="above"
+      room={240}
+      escape={false}
+      trigger={({ set }) => (
+        <button
+          type="button"
+          data-panel-trigger=""
+          onClick={() => {
+            set(false)
+            openPanel(showing ? undefined : { kind: 'sources', turnId, n })
+          }}
+          aria-label={`Source ${n}: ${sourceLabel(s)}`}
+          aria-pressed={showing}
+          className="rounded-full"
         >
-          <span className="flex min-w-0 items-center gap-2.5">
-            <SourceAvatar seed={label} />
-            <span className="min-w-0 flex-1 leading-4">
-              <span title={label} className="block truncate text-[13.5px] font-medium leading-5 text-on-surface">
-                {label}
-              </span>
-              <span className="block truncate text-[12px] text-outline">{sourceMeta(s)}</span>
-            </span>
-            <CitePill n={n} className="m-0 shrink-0" />
-          </span>
-          {s.quote && <span className="mt-2.5 block border-l-2 border-primary pl-3 text-[13px] leading-5 text-on-surface-variant">{clipped(s.quote)}</span>}
-          <span className="mt-2 flex items-center gap-2 text-[12.5px] font-medium text-on-surface">
-            {href && (
-              <Link to={href} className={`-ml-1.5 ${action}`}>
-                {openLabel(s)}
-                <IconOpen width={14} height={14} />
-              </Link>
-            )}
-            <button
-              type="button"
-              className={`${href ? '' : '-ml-1.5'} ${action} font-normal text-outline`}
-              onClick={() => {
-                set(false)
-                openPanel({ kind: 'sources', turnId, n })
-              }}
-            >
-              Show in sources
-            </button>
-          </span>
-        </span>,
-          document.body,
-        )}
-    </span>
+          <CitePill n={n} className={`cursor-pointer transition-colors duration-[120ms] ${showing ? 'bg-primary text-on-primary' : 'hover:bg-surface-container-highest hover:text-on-surface'}`} />
+        </button>
+      )}
+    >
+      {(close) => (
+        <>
+          <SourceCard s={s} />
+          <SourceActions s={s} turnId={turnId} close={close} />
+        </>
+      )}
+    </HoverCard>
   )
 }
 
-/** A quote cut to the length of a claim, at a line where there is one. */
-function clipped(value: string): string {
-  if (value.length <= 240) return value
-  const line = value.lastIndexOf('\n', 240)
-  return `${value.slice(0, line > 120 ? line : 240).trim()}…`
-}
+/** The plain words of inline Markdown: a record chip's name. */
+const textOf = (xs: Inline[]): string => xs.map((x) => ('text' in x ? x.text : 'children' in x ? textOf(x.children) : '')).join('')
 
 /** Words still arriving, each its own span keyed by its place, so only the new ones animate. */
 function streamed(text: string, key: string): ReactNode {
@@ -145,6 +70,13 @@ function streamed(text: string, key: string): ReactNode {
 function renderInline(xs: Inline[], turnId: string, streaming = false): ReactNode[] {
   return xs.map((x, i) => {
     // A span with its own marks arrives as one piece, since its marks are only whole once it is.
+    if (streaming && x.kind === 'claim') {
+      return (
+        <Claim key={i} ns={x.ns} turnId={turnId}>
+          {renderInline(x.children, turnId, true)}
+        </Claim>
+      )
+    }
     if (streaming && x.kind !== 'text') {
       return (
         <span key={`${i}-s`} className="stream-word">
@@ -171,6 +103,16 @@ function renderInline(xs: Inline[], turnId: string, streaming = false): ReactNod
         )
       case 'cite':
         return <Cite key={i} n={x.n} turnId={turnId} />
+      case 'record':
+        return <RecordChip key={i} kind={x.record} id={x.id} label={textOf(x.children)} turnId={turnId} />
+      case 'id':
+        return <IdMention key={i} id={x.id} turnId={turnId} />
+      case 'claim':
+        return (
+          <Claim key={i} ns={x.ns} turnId={turnId}>
+            {renderInline(x.children, turnId)}
+          </Claim>
+        )
       case 'link':
         return (
           <a key={i} href={x.href} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">
@@ -189,7 +131,8 @@ function renderInline(xs: Inline[], turnId: string, streaming = false): ReactNod
 export function Markdown({ md, turnId, sources, big = false, streaming = false }: { md: string; turnId: string; sources: Source[]; big?: boolean; streaming?: boolean }) {
   const blocks: MdBlock[] = useMemo(() => {
     const known = new Set(sources.map((s) => s.n))
-    return parseMarkdown(md, (n) => known.has(n))
+    const records = new Map(sources.map((s) => [s.n, s.record_id?.toLowerCase()]))
+    return parseMarkdown(md, (n) => known.has(n), (n) => records.get(n))
   }, [md, sources])
   const text = big ? 'text-body-large leading-[26px]' : 'text-body-medium leading-[23px]'
   return (

@@ -54,7 +54,7 @@ import { Btn, Mascot, Spinner } from '../ui'
 import { Blocks, SourceList, SourcesButton } from './Answer'
 import { ClarifyCard } from './Clarify'
 import { BudgetLock, type Chip, Composer, type ComposerMode, PausedStrip } from './Composer'
-import { DocumentPanel, Overlay, SourcesPanel, ToolPanel } from './Panels'
+import { DocumentPanel, Overlay, RecordPanel, SourcesPanel, ToolPanel } from './Panels'
 import { CompactionDivider, Compacting, RunCard, Waiting } from './Run'
 
 const attachTone: Record<Attachment['kind'], string> = {
@@ -771,6 +771,7 @@ export function ChatView({
           </Overlay>
         )}
         {panel?.kind === 'doc' && <DocumentPanel key={panel.id} id={panel.id} version={panel.version} sources={panelRun?.sources ?? []} turnId={panel.turnId ?? ''} />}
+        {panel?.kind === 'record' && <RecordPanel key={`${panel.record}-${panel.id}`} record={panel.record} id={panel.id} label={panel.label} turnId={panel.turnId} />}
       </div>
     </PanelContext>
   )

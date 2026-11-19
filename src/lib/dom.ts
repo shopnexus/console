@@ -1,4 +1,4 @@
-import { type CSSProperties, type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 interface DismissOptions {
   /** Presses inside these count as inside too, such as a menu in a portal. */
@@ -147,4 +147,30 @@ export function useCopy(): [boolean, (text: string) => void] {
     timer.current = setTimeout(() => setCopied(false), 1200)
   }, [])
   return [copied, copy]
+}
+
+/**
+ * Opens after resting on it 200 ms, closes 150 ms after leaving; a click
+ * opens at once and pins it, so leaving no longer closes it.
+ */
+export function useHoverOpen() {
+  const [open, setOpen] = useState(false)
+  const timer = useRef<number>(undefined)
+  const pinned = useRef(false)
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+  const schedule = (next: boolean, ms: number) => {
+    if (!next && pinned.current) return
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => setOpen(next), ms)
+  }
+  const set = useCallback((next: boolean, pin = next) => {
+    window.clearTimeout(timer.current)
+    pinned.current = next && pin
+    setOpen(next)
+  }, [])
+  const hover = {
+    onPointerEnter: (e: ReactPointerEvent) => e.pointerType === 'mouse' && schedule(true, 200),
+    onPointerLeave: (e: ReactPointerEvent) => e.pointerType === 'mouse' && schedule(false, 150),
+  }
+  return { open, set, hover }
 }

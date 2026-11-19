@@ -18,12 +18,14 @@ import { useCopy, useDismiss } from '../../lib/dom'
 import { usePanel } from '../../lib/panel'
 import { reducedMotion } from '../../lib/motion'
 import type { Source, SourceKind, ToolCall } from '../../lib/run'
-import { accountStatus, hasName, kindOf, kindPlural, openLabel, sourceHref, sourceKinds, sourceLabel, sourceMeta } from '../../lib/sources'
+import { accountStatus, hasName, idTail, kindName, kindOf, kindPlural, openLabel, sourceHref, sourceKinds, sourceLabel, sourceMeta } from '../../lib/sources'
 import { useMe } from '../../lib/session'
 import { toolInfo } from '../../lib/tools'
 import { IconBtn, Initial, Segmented, Tag } from '../ui'
 import { Chart, Markdown, Table } from './Answer'
 import { KindIcon, SourceBadge } from '../kindLook'
+import type { RecordKind } from '../../lib/markdown'
+import { RecordPreview } from './RecordPreview'
 
 /** The one panel shell beside a chat: a header, then a body that scrolls. bare fills the sheet a tool call floats in instead. */
 export function SidePanel({ width = 'w-[480px]', head, children, bare = false }: { width?: string; head: ReactNode; children: ReactNode; bare?: boolean }) {
@@ -535,6 +537,28 @@ export function DocumentPanel({ id, version, sources, turnId }: { id: string; ve
           )}
         </div>
       )}
+    </SidePanel>
+  )
+}
+
+/** A record the answer named, beside the chat: its preview at full height, so the member reads it without leaving. */
+export function RecordPanel({ record, id, label, turnId }: { record: RecordKind; id: string; label: string; turnId?: string }) {
+  return (
+    <SidePanel
+      width="w-[440px]"
+      head={
+        <>
+          <SourceBadge kind={record} size={28} tile />
+          <p className="text-title-small">{kindName(record)}</p>
+          <span className="font-mono text-[12px] text-outline">{idTail(id)}</span>
+          <span className="flex-1" />
+          <CloseBtn />
+        </>
+      }
+    >
+      <div className="p-5">
+        <RecordPreview kind={record} id={id} label={label} turnId={turnId} wide />
+      </div>
     </SidePanel>
   )
 }

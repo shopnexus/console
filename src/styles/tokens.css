@@ -298,6 +298,8 @@
   --shadow-*: initial;
   --shadow-lift: 0 1px 2px 0 rgb(16 24 22 / 0.06), 0 0 0 1px var(--md-lift-ring);
   --shadow-float: 0 12px 32px 0 rgb(16 24 22 / 0.14), 0 0 0 1px var(--md-lift-ring);
+  /* A card over the answer's text: a clear outline and a deeper shadow, so it never reads as part of the text. */
+  --shadow-pop: 0 0 0 1px var(--md-outline-variant), 0 2px 6px 0 rgb(16 24 22 / 0.08), 0 18px 44px -12px rgb(16 24 22 / 0.3);
   /* The soft look: a card that rests on the white page without a ring. */
   --shadow-soft: 0 1px 2px 0 rgb(16 24 22 / 0.04), 0 6px 24px -8px rgb(16 24 22 / 0.1);
 

@@ -78,3 +78,13 @@ export const sourceHref = (s: Source, admin = false) => recordHref(s.kind, s.rec
 
 /** "Open account", "Open report case", "Open audit log". */
 export const openLabel = (s: Source) => `Open ${kindName(s.kind).toLowerCase()}`
+
+/** A quote cut to the length of a claim, at a line where there is one. */
+export function clipped(value: string): string {
+  if (value.length <= 240) return value
+  const line = value.lastIndexOf('\n', 240)
+  return `${value.slice(0, line > 120 ? line : 240).trim()}…`
+}
+
+/** "…f9e8": the end of an id, since UUIDv7 ids of one day share their start. */
+export const idTail = (id: string) => `…${id.slice(-4)}`
