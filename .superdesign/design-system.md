@@ -88,8 +88,8 @@ Four tiles, then a list and a column. No greeting.
 The agent works for the member, never for a user. It reads through read-only
 tools and proposes; the member acts. Most work happens in a chat with it.
 
-- A record opens on the agent's chat: a ticket on its read and the reply it
-  wrote, a report on its case read. Each answer starts with the sources it
+- A report opens on the agent's case read; a ticket opens on the customer's
+  chat, with the agent in tabs beside it (Hỗ trợ). Each answer starts with the sources it
   read as 24 px chips, then one or two plain sentences, then blocks.
 - Blocks are 12 px cards with a header (icon, title, `v1` with tabular figures), a body
   and a footer of actions on `surfaceContainerLow`:
@@ -123,21 +123,41 @@ tools and proposes; the member acts. Most work happens in a chat with it.
 
 ## Hỗ trợ
 
+Customer chat first since 2026-11-20 (`tools/build_soft_ticket.py`,
+`soft-ticket-*`); the agent-in-the-middle drafts stay on the canvas.
+
 - Every ticket is its own chat between a person and ShopNexus. Members
   answer in it as ShopNexus; the person sees only "ShopNexus", and the
   member's name shows here under each reply ("Lan · 09:05") and in the
   audit log.
-- Three panes in the work card: the 320 px queue (Đang mở and Đã xử lý as a
-  segmented control, a kind filter, rows with the person, the last line, the
-  kind and "Soạn sẵn" when a reply is ready; `j` and `k` move), the agent's
-  chat in the middle, and a 340 px column with two tabs.
-- Chat khách is the person's chat, with a "Mới" divider and its own box for a
-  reply written by hand. Thông tin holds the person (status, verified phone,
-  since, orders, delivered, reports), the order (price, COD đồng kiểm, the
-  carrier and code, the address, the carrier's events with the proof of
-  delivery), the seller (rating, orders, any pattern the agent found) and the
-  person's other tickets. Facts there put the label at the start and the
-  value at the end.
+- The nav sits as its 64 px rail; then the 310 px queue (Open and Resolved
+  as a segmented control, a kind filter, rows with the person, the last
+  line and the kind; `j` and `k` move), the customer's chat in the middle
+  and the agent's 420 px panel on the end side.
+- The middle: a header with the person, the kind, how long they wait and
+  Resolve; a strip of the order (photo, price, COD) and the shipment (the
+  carrier's last event, who signed); the thread, with a "New" divider;
+  and the reply box, "Shown as ShopNexus". Resting on the person's message
+  offers "Ask agent", which puts it in the agent's box as a quote.
+- A ticket has no agent chat of its own. Each tab of the panel is an
+  ordinary chat of the member's that mentions the ticket, so it is in the
+  history like any other. A tab carries its number, a spinner while the
+  agent works and a dot when an answer is unread. `+` or `N` opens a tab
+  with the ticket already mentioned and four starters about it.
+- The agent's reply to the person lands in the reply box as a draft, marked
+  with the tab it came from; Ctrl ↵ sends, Esc drops it. Nothing is sent
+  without the member. The queue shows no "Reply ready": a draft comes only
+  from a tab the member asked.
+- Keys: Ctrl [ and Ctrl ] move between tabs; Ctrl K opens the switcher
+  (this ticket's tabs with 1–9, then other chats); Ctrl / moves between the
+  reply box and the agent's box. Not Ctrl 1–9 or Ctrl Tab: the browser
+  keeps them.
+- The agent's box: `/` lists commands first (`/new question` opens a tab
+  and asks, `/clear` starts the tab over with the old chat kept in history,
+  `/reply how` drafts into the reply box, `/summary`, `/close`), then the
+  skills that fit the ticket. `@` is the one mention key: the ticket's own
+  records first (the person, the order, the shipment, the seller), then
+  recent ones.
 - Closing a carrier request sends "Đã ghi nhận hãng <name>." in the chat,
   marked "Tự gửi khi đóng".
 

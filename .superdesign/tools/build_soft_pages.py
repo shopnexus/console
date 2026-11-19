@@ -185,14 +185,14 @@ READY = f'<span class="ml-auto flex items-center gap-1 text-primary">{gi("materi
 
 # --- Support ---
 
-def support_queue():
+def support_queue(ready=True):
     q = [("K", "Khánh Linh", "Mình hỏi bảo vệ rồi, không ai nhận giúp cả.", "09:41", "Not received", "bg-primary", True, True),
          ("T", "Võ Thanh Tâm", "Mình không đổi được số điện thoại…", "09:20", "Other", "bg-outline", True, False),
          ("S", "Shop Cây Cảnh Thủ Đức", "Mình giao trong ngày, khách hay hỏi Ahamove.", "08:55", "Carrier request", "bg-tertiary", False, False),
          ("N", "Trương Bảo Ngọc", "Bạn kiểm tra lại với bưu cục Cầu Giấy giúp mình.", "08:30", "Not received", "bg-primary", True, False),
          ("P", "Nguyễn Văn Phúc", "App hay tự thoát khi mình quay video.", "Yesterday", "Other", "bg-outline", False, False),
          ("Đ", "Đồ Cũ Hải Châu", "Mình gửi nội tỉnh Đà Nẵng.", "Yesterday", "Carrier request", "bg-tertiary", True, False)]
-    rows = "".join(row(on, ch, n, l, w, kind(k, t) + (READY if r else "")) for ch, n, l, w, k, t, r, on in q)
+    rows = "".join(row(on, ch, n, l, w, kind(k, t) + (READY if r and ready else "")) for ch, n, l, w, k, t, r, on in q)
     bar = f'{seg(["Open · 7", "Resolved"])}<div class="mt-2 flex h-10 items-center gap-2 rounded-full border hair bg-white px-4 text-[14px] text-on-surface-variant">{gi("filter-list-rounded", 17)}All kinds{gi("expand-more-rounded", 16)}</div>'
     return list_col(bar, rows, f'<p class="flex items-center gap-1.5 border-t hair px-4 py-3 text-[12.5px] text-on-surface-variant">{kbd("j")}{kbd("k")}Next, previous</p>')
 
