@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { useDragWidth } from '../lib/dom'
 import { Link, useNavigate } from 'react-router'
 import IconBack from '~icons/material-symbols-light/arrow-back-rounded'
 import IconChevron from '~icons/material-symbols-light/chevron-right-rounded'
@@ -176,6 +177,18 @@ export function Missing({ error, what, gone: goneText, className = '' }: { error
   return (
     <div className={`flex flex-1 items-center justify-center text-body-medium text-on-surface-variant ${className}`}>
       {gone ? (goneText ?? `There is no such ${what}.`) : `The ${what} did not load.`}
+    </div>
+  )
+}
+
+/** The edge a side panel is dragged from: a hairline that turns teal on rest; double-click resets it. */
+export function DragEdge({ drag }: { drag: ReturnType<typeof useDragWidth> }) {
+  return (
+    <div
+      {...drag.handle}
+      className="group absolute inset-y-0 left-0 z-20 w-2 cursor-col-resize outline-none"
+    >
+      <span className="block h-full w-0.5 bg-transparent transition-colors duration-150 group-hover:bg-primary/50 group-focus-visible:bg-primary group-active:bg-primary" />
     </div>
   )
 }

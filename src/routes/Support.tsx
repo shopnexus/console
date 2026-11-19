@@ -14,14 +14,14 @@ import IconInfo from '~icons/material-symbols-light/info-outline-rounded'
 import IconShip from '~icons/material-symbols-light/local-shipping-outline-rounded'
 import IconSpark from '~icons/material-symbols/auto-awesome-outline-rounded'
 import { RecordAgent } from '../components/chat/RecordAgent'
-import { DotFact, JKHint, ListColumn, ListRow } from '../components/Panes'
+import { DotFact, DragEdge, JKHint, ListColumn, ListRow } from '../components/Panes'
 import type { Attachment } from '../lib/agent'
 import type { Command } from '../lib/commands'
 import { Select } from '../components/Select'
 import { Shell } from '../components/Shell'
 import { Btn, Card, IconBtn, Initial, Kbd, Notice, Segmented } from '../components/ui'
 import { shortId } from '../lib/api'
-import { useListKeys } from '../lib/dom'
+import { useDragWidth, useListKeys } from '../lib/dom'
 import { day, time, vnd, when } from '../lib/format'
 import {
   type ConsoleMessage,
@@ -30,6 +30,7 @@ import {
   failureText,
   kindChip,
   kindLabel,
+  ticketTitle,
   personName,
   shopNexusId,
   type Ticket,
@@ -473,6 +474,7 @@ function Panel({ id }: { id: string }) {
   const [replyError, setReplyError] = useState<unknown>(null)
   const [info, setInfo] = useState(false)
   const [reply, setReply] = useState<ReplyDraft>({ text: '' })
+  const side = useDragWidth('console-ticket-agent-width', { initial: 420, min: 340, rest: 440 })
   // An answer goes in the box unless the member is writing one there by hand.
   const putReply = useCallback((text: string) => setReply((r) => (r.text.trim() && !r.fromAgent ? { ...r, offered: text } : { text, fromAgent: true })), [])
 
@@ -546,7 +548,11 @@ function Panel({ id }: { id: string }) {
         <Facts d={d} />
         <CustomerChat key={t.id} d={d} reply={reply} onReply={setReply} onFailure={setReplyError} />
       </div>
-      <aside className="flex w-[420px] shrink-0 flex-col overflow-hidden border-l border-hairline bg-surface-container-low/50">
+      <aside
+        style={{ width: side.width, maxWidth: `calc(100% - ${side.rest}px)` }}
+        className="relative flex min-w-[340px] shrink-0 flex-col overflow-hidden border-l border-hairline bg-surface-container-low/50"
+      >
+        <DragEdge drag={side} />
         {info ? (
           <>
             <p className="flex h-[53px] shrink-0 items-center border-b border-hairline px-4 text-title-small">Details</p>
@@ -556,7 +562,7 @@ function Panel({ id }: { id: string }) {
           </>
         ) : (
           <RecordAgent
-            record={{ kind: 'ticket', id: t.id, label: `Ticket · ${name}` }}
+            record={{ kind: 'ticket', id: t.id, label: ticketTitle(t, d.messages.items.find((m) => m.message.id === t.first_message_id)?.message.text) }}
             here={{ title: 'In this ticket', items: ticketRecords(d) }}
             starters={startersOf(d)}
             commands={ticketCommands}

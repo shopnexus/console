@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useRef } from 'react'
+import { type ReactNode, useCallback, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router'
 import IconOpen from '~icons/material-symbols-light/north-east-rounded'
@@ -32,7 +32,8 @@ export function CitePill({ n, className = '' }: { n: number; className?: string 
 /**
  * A card over the text, opened from an inline trigger: on rest after 200 ms,
  * or pinned by a click until a press elsewhere. inline keeps a trigger that
- * runs over lines (a claim) wrapping with the text.
+ * runs over lines (a claim) wrapping with the text. A card inside another's
+ * trigger (a pill in a claim) opens alone; own(e) says an event is this card's.
  */
 export function HoverCard({
   label,
@@ -50,23 +51,27 @@ export function HoverCard({
   room?: number
   inline?: boolean
   escape?: boolean
-  trigger: (s: { open: boolean; set: (next: boolean, pin?: boolean) => void }) => ReactNode
+  trigger: (s: { open: boolean; set: (next: boolean, pin?: boolean) => void; own: (e: { target: EventTarget }) => boolean }) => ReactNode
   children: (close: () => void) => ReactNode
 }) {
-  const { open, set, hover } = useHoverOpen()
+  const id = useId()
+  const ownTarget = useCallback((t: EventTarget) => t instanceof Element && t.closest('[data-hover-card]')?.getAttribute('data-hover-card') === id, [id])
+  const own = useCallback((e: { target: EventTarget }) => ownTarget(e.target), [ownTarget])
+  const { open, set, hover } = useHoverOpen(ownTarget)
   const card = useRef<HTMLDivElement>(null)
   const close = useCallback(() => set(false), [set])
   const anchor = useDismiss<HTMLSpanElement>(open, close, { also: [card], escape })
   const at = useAnchor(anchor, open, { side: 'auto', prefer, room, gap: 6, width, inset: 12, dx: -12 })
   return (
-    <span ref={anchor} className={inline ? '' : 'relative inline-block'} {...hover}>
-      {trigger({ open, set })}
+    <span ref={anchor} data-hover-card={id} className={inline ? '' : 'relative inline-block'} {...hover}>
+      {trigger({ open, set, own })}
       {open &&
         createPortal(
           <div
             ref={card}
             role="dialog"
             aria-label={label}
+            data-hover-card={id}
             style={at}
             {...hover}
             className={`fixed z-50 max-w-[calc(100vw-24px)] animate-pop rounded-2xl bg-surface-container-lowest p-3.5 text-left text-on-surface shadow-pop ${at.top === undefined ? 'origin-bottom-left' : 'origin-top-left'}`}
@@ -145,16 +150,17 @@ export function Claim({ ns, turnId, children }: { ns: number[]; turnId: string; 
       room={240}
       inline
       escape={false}
-      trigger={({ open, set }) => (
+      trigger={({ open, set, own }) => (
         <span
           role="button"
           tabIndex={0}
           data-panel-trigger=""
-          onClick={() => {
+          onClick={(e) => {
+            if (!own(e)) return
             set(false)
             openPanel(showing ? undefined : { kind: 'sources', turnId, n: sources[0].n })
           }}
-          onKeyDown={(e) => e.key === 'Enter' && openPanel({ kind: 'sources', turnId, n: sources[0].n })}
+          onKeyDown={(e) => own(e) && e.key === 'Enter' && openPanel({ kind: 'sources', turnId, n: sources[0].n })}
           className={`cursor-pointer rounded-[4px] underline decoration-dotted decoration-[1.5px] underline-offset-[5px] transition-colors duration-[120ms] ${open || showing ? 'bg-primary/6 decoration-primary' : 'decoration-outline hover:decoration-primary'}`}
         >
           {children}
@@ -191,9 +197,12 @@ const chip = (on: boolean) =>
   `mx-px inline-flex h-[23px] max-w-[280px] items-center gap-[5px] whitespace-nowrap rounded-full pl-[3px] pr-[9px] align-middle text-[13.5px] font-medium leading-none text-primary transition-colors duration-[120ms] ${on ? 'bg-primary/13 ring-[1.5px] ring-inset ring-primary' : 'bg-primary/7 hover:bg-primary/13'}`
 
 /** A record the answer names: a teal pill with the kind or the person's initial; it previews the record in place. */
-export function RecordChip({ kind, id, label, turnId }: { kind: RecordKind; id: string; label: string; turnId: string }) {
-  const { panel } = usePanel()
+export function RecordChip({ kind, id, label: written, turnId }: { kind: RecordKind; id: string; label: string; turnId: string }) {
+  const { panel, sourcesOf } = usePanel()
   const beside = panel?.kind === 'record' && panel.record === kind && panel.id === id
+  // A ticket goes by its request, as its source names it, whatever the answer wrote.
+  const source = kind === 'ticket' ? sourcesOf(turnId).find((s) => s.record_id?.toLowerCase() === id.toLowerCase()) : undefined
+  const label = source && hasName(source) ? sourceLabel(source) : written
   const named = label.trim() !== '' && !noName.test(label.trim())
   const name = named ? label.trim() : 'No name'
   return (

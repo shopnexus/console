@@ -1,4 +1,4 @@
-import { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 interface DismissOptions {
   /** Presses inside these count as inside too, such as a menu in a portal. */
@@ -151,26 +151,102 @@ export function useCopy(): [boolean, (text: string) => void] {
 
 /**
  * Opens after resting on it 200 ms, closes 150 ms after leaving; a click
- * opens at once and pins it, so leaving no longer closes it.
+ * opens at once and pins it. own tells its parts from a nested card's.
  */
-export function useHoverOpen() {
+export function useHoverOpen(own: (target: EventTarget) => boolean = () => true) {
   const [open, setOpen] = useState(false)
   const timer = useRef<number>(undefined)
   const pinned = useRef(false)
+  const want = useRef(false)
   useEffect(() => () => window.clearTimeout(timer.current), [])
   const schedule = (next: boolean, ms: number) => {
     if (!next && pinned.current) return
+    if (want.current === next) return
+    want.current = next
     window.clearTimeout(timer.current)
     timer.current = window.setTimeout(() => setOpen(next), ms)
   }
   const set = useCallback((next: boolean, pin = next) => {
     window.clearTimeout(timer.current)
     pinned.current = next && pin
+    want.current = next
     setOpen(next)
   }, [])
   const hover = {
-    onPointerEnter: (e: ReactPointerEvent) => e.pointerType === 'mouse' && schedule(true, 200),
+    onPointerOver: (e: ReactPointerEvent) => e.pointerType === 'mouse' && (own(e.target) ? schedule(true, 200) : schedule(false, 100)),
     onPointerLeave: (e: ReactPointerEvent) => e.pointerType === 'mouse' && schedule(false, 150),
   }
   return { open, set, hover }
+}
+
+/**
+ * A side panel's width, dragged from its inner edge and kept in this browser
+ * under key. rest is the room the pane beside it keeps.
+ */
+export function useDragWidth(key: string, { initial, min, rest }: { initial: number; min: number; rest: number }) {
+  const [width, setWidth] = useState(() => {
+    try {
+      const v = Number(localStorage.getItem(key))
+      return v >= min ? v : initial
+    } catch {
+      return initial
+    }
+  })
+  const drag = useRef<{ x: number; w: number; room: number; last: number } | null>(null)
+  const keep = useCallback(
+    (w: number) => {
+      try {
+        if (w === initial) localStorage.removeItem(key)
+        else localStorage.setItem(key, String(w))
+      } catch {
+        // Not kept; the width still holds on this page.
+      }
+    },
+    [key, initial],
+  )
+  const roomOf = (el: HTMLElement) => (el.parentElement?.parentElement?.clientWidth ?? Infinity) - rest
+  const clamp = (w: number, room: number) => Math.round(Math.max(min, Math.min(w, room)))
+  const set = (w: number, el: HTMLElement) => {
+    const next = clamp(w, roomOf(el))
+    setWidth(next)
+    keep(next)
+  }
+  const handle = {
+    role: 'separator',
+    'aria-orientation': 'vertical' as const,
+    'aria-label': 'Resize panel',
+    'aria-valuenow': width,
+    'aria-valuemin': min,
+    tabIndex: 0,
+    onPointerDown: (e: ReactPointerEvent<HTMLElement>) => {
+      if (e.button !== 0) return
+      e.preventDefault()
+      e.currentTarget.setPointerCapture(e.pointerId)
+      drag.current = { x: e.clientX, w: width, room: roomOf(e.currentTarget), last: width }
+      document.body.style.cursor = 'col-resize'
+    },
+    onPointerMove: (e: ReactPointerEvent<HTMLElement>) => {
+      const d = drag.current
+      if (!d) return
+      d.last = clamp(d.w + d.x - e.clientX, d.room)
+      setWidth(d.last)
+    },
+    onLostPointerCapture: () => {
+      const d = drag.current
+      if (!d) return
+      drag.current = null
+      document.body.style.cursor = ''
+      keep(d.last)
+    },
+    onDoubleClick: (e: ReactMouseEvent<HTMLElement>) => set(initial, e.currentTarget),
+    onKeyDown: (e: ReactKeyboardEvent<HTMLElement>) => {
+      const step = e.shiftKey ? 64 : 16
+      if (e.key === 'ArrowLeft') set(width + step, e.currentTarget)
+      else if (e.key === 'ArrowRight') set(width - step, e.currentTarget)
+      else if (e.key === 'Home') set(initial, e.currentTarget)
+      else return
+      e.preventDefault()
+    },
+  }
+  return { width, rest, handle }
 }

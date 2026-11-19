@@ -82,6 +82,17 @@ export const kindLabel: Record<TicketKind, string> = {
   other: 'Other request',
 }
 
+/**
+ * A ticket by its request, as its card in the chat heads it: "Carrier
+ * request · GHN", "Not received · Áo khoác", an other request's first words.
+ * The agent's sources name tickets the same way.
+ */
+export function ticketTitle(t: Ticket, firstText?: string): string {
+  const first = t.kind === 'other' ? firstText?.replace(/\s+/g, ' ').trim() : undefined
+  const about = t.carrier_name || t.order?.title || (first && (first.length > 60 ? `${first.slice(0, 59)}…` : first))
+  return about ? `${kindLabel[t.kind]} · ${about}` : kindLabel[t.kind]
+}
+
 /** The queue's kind filter. */
 export const kindChip: Record<TicketKind, string> = {
   not_received: 'Not received',

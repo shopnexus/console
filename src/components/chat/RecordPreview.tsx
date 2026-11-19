@@ -16,7 +16,7 @@ import { usePanel } from '../../lib/panel'
 import { reasonLabel, reasonsOf, useCase } from '../../lib/reports'
 import { idTail, kindName, recordHref } from '../../lib/sources'
 import { useMe } from '../../lib/session'
-import { failureText, kindChip, type Person, shopNexusId, useTicket, useTicketCommands } from '../../lib/support'
+import { failureText, type Person, shopNexusId, ticketTitle, useTicket, useTicketCommands } from '../../lib/support'
 import { toolInfo } from '../../lib/tools'
 import { IconBtn, Initial, Tag } from '../ui'
 import { KindIcon } from '../kindLook'
@@ -179,7 +179,7 @@ function TicketPreview(p: PreviewProps) {
   }
   return (
     <>
-      <Head p={p} title={p.label} meta={`Ticket · ${kindChip[t.kind]} · opened ${when(t.opened_at)}`} />
+      <Head p={p} title={ticketTitle(t, d.messages.items.find((m) => m.message.id === t.first_message_id)?.message.text)} meta={`Ticket · opened ${when(t.opened_at)}`} />
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[12.5px]">
         {waiting}
         <span className="text-outline">from</span>
