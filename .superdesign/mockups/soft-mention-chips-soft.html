@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mentions · Inline · Soft · Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { theme: { extend: {
+  colors: {'primary':'#005049','on-primary':'#FFFFFF','primary-container':'#066A61','on-primary-container':'#97E7DB','secondary':'#47645F','on-secondary':'#FFFFFF','secondary-container':'#C7E6E0','on-secondary-container':'#4B6863','tertiary':'#773115','on-tertiary':'#FFFFFF','tertiary-container':'#95482A','on-tertiary-container':'#FFCDBC','tertiary-fixed':'#FFDBCF','on-tertiary-fixed-variant':'#773215','error':'#BA1A1A','on-error':'#FFFFFF','error-container':'#FFDAD6','surface':'#F7FAF8','surface-container-lowest':'#FFFFFF','surface-container-low':'#F1F4F2','surface-container':'#EBEFED','surface-container-high':'#E6E9E7','surface-container-highest':'#E0E3E1','on-surface':'#181C1C','on-surface-variant':'#3E4947','outline':'#6E7977','outline-variant':'#BEC9C6','inverse-surface':'#2D3130','inverse-on-surface':'#EEF1EF','inverse-primary':'#85D5C9'},
+  fontSize: {'display-large':['57px',{lineHeight:'64px',fontWeight:'400',letterSpacing:'-0.25px'}],'display-medium':['45px',{lineHeight:'52px',fontWeight:'400',letterSpacing:'0'}],'display-small':['36px',{lineHeight:'44px',fontWeight:'400',letterSpacing:'0'}],'headline-medium':['28px',{lineHeight:'36px',fontWeight:'400',letterSpacing:'0'}],'headline-small':['24px',{lineHeight:'32px',fontWeight:'400',letterSpacing:'0'}],'title-large':['22px',{lineHeight:'28px',fontWeight:'400',letterSpacing:'0'}],'title-medium':['16px',{lineHeight:'24px',fontWeight:'500',letterSpacing:'0.15px'}],'title-small':['14px',{lineHeight:'20px',fontWeight:'500',letterSpacing:'0.1px'}],'body-large':['16px',{lineHeight:'24px',fontWeight:'400',letterSpacing:'0.5px'}],'body-medium':['14px',{lineHeight:'20px',fontWeight:'400',letterSpacing:'0.25px'}],'body-small':['12px',{lineHeight:'16px',fontWeight:'400',letterSpacing:'0.4px'}],'label-large':['14px',{lineHeight:'20px',fontWeight:'500',letterSpacing:'0.1px'}],'label-medium':['12px',{lineHeight:'16px',fontWeight:'500',letterSpacing:'0.5px'}],'label-small':['11px',{lineHeight:'16px',fontWeight:'500',letterSpacing:'0.5px'}]},
+  borderRadius: {'xs':'4px','sm':'8px','md':'12px','lg':'16px','lg-plus':'20px','xl':'28px','xl-plus':'32px'},
+  fontFamily: { sans: ['"Be Vietnam Pro"', 'system-ui', 'sans-serif'], mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'] },
+  boxShadow: { float: '0 1px 3px 0 rgba(0,0,0,.30), 0 4px 8px 3px rgba(0,0,0,.15)' },
+} } };
+</script>
+<script src="https://code.iconify.design/iconify-icon/3.0.2/iconify-icon.min.js"></script>
+<style>
+  :root { --md-primary: #005049; --md-on-primary: #FFFFFF; --md-primary-container: #066A61; --md-on-primary-container: #97E7DB; --md-secondary: #47645F; --md-on-secondary: #FFFFFF; --md-secondary-container: #C7E6E0; --md-on-secondary-container: #4B6863; --md-tertiary: #773115; --md-on-tertiary: #FFFFFF; --md-tertiary-container: #95482A; --md-on-tertiary-container: #FFCDBC; --md-tertiary-fixed: #FFDBCF; --md-on-tertiary-fixed-variant: #773215; --md-error: #BA1A1A; --md-on-error: #FFFFFF; --md-error-container: #FFDAD6; --md-surface: #F7FAF8; --md-surface-container-lowest: #FFFFFF; --md-surface-container-low: #F1F4F2; --md-surface-container: #EBEFED; --md-surface-container-high: #E6E9E7; --md-surface-container-highest: #E0E3E1; --md-on-surface: #181C1C; --md-on-surface-variant: #3E4947; --md-outline: #6E7977; --md-outline-variant: #BEC9C6; --md-inverse-surface: #2D3130; --md-inverse-on-surface: #EEF1EF; --md-inverse-primary: #85D5C9;
+    --spatial: linear(0, 0.107, 0.321, 0.539, 0.719, 0.848, 0.931, 0.979, 1.004, 1.014, 1.015, 1.011, 1.006, 1.003, 1);
+    --effects: linear(0, 0.286, 0.625, 0.826, 0.924, 0.968, 0.987, 0.995, 1); }
+  html, body { background: var(--md-surface); font-family: "Be Vietnam Pro", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .state { position: relative; isolation: isolate; }
+  .state::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: currentColor; opacity: 0;
+    pointer-events: none; transition: opacity 140ms var(--effects); }
+  .state:hover::after { opacity: .08; }
+  .state:active::after { opacity: .1; }
+  @keyframes caret { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }
+  .caret { width: 2px; height: 28px; background: var(--md-primary); animation: caret 1.06s steps(1) infinite; }
+  @keyframes drift { 0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)) } 50% { transform: translateY(-10px) rotate(calc(var(--r, 0deg) + 8deg)) } }
+  .drift { animation: drift 9s var(--effects) infinite; }
+
+  html, body { background: #fff; }
+  body { font-family: "Be Vietnam Pro", system-ui, sans-serif; letter-spacing: -0.006em; color: var(--md-on-surface); }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .hair { border-color: color-mix(in srgb, var(--md-outline-variant) 70%, white); }
+  .ringh { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--md-outline-variant) 70%, white); }
+  .side { background: #F7F9F8; }
+  .hov:hover { background: color-mix(in srgb, var(--md-on-surface) 5%, transparent); }
+  /* A popover over text: a clear outline and a lifted shadow, so it never reads as part of the answer. */
+  .float { box-shadow: 0 0 0 1px color-mix(in srgb, var(--md-outline-variant) 85%, white), 0 2px 6px rgba(16,24,22,.08), 0 18px 44px -12px rgba(16,24,22,.30); }
+  .ans { font-size: 15px; line-height: 26px; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 7px 0 4px; border-radius: 7px;
+    vertical-align: middle; font-size: 13.5px; font-weight: 500; line-height: 1; white-space: nowrap;
+    background: var(--md-surface-container-low); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--md-outline-variant) 60%, white); }
+  .chip:hover, .chip.on { background: var(--md-surface-container); }
+  .chip.on { box-shadow: inset 0 0 0 1.5px var(--md-primary); }
+  .glyph { width: 17px; height: 17px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--md-primary) 9%, white); color: var(--md-primary); }
+  .ini { width: 17px; height: 17px; border-radius: 99px; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600; color: #fff; }
+  .tail { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11.5px; font-weight: 400; color: var(--md-outline); }
+  .cite { display: inline-flex; height: 18px; min-width: 18px; align-items: center; justify-content: center; border-radius: 99px;
+    padding: 0 5px; vertical-align: 2px; font-size: 11px; font-weight: 500; line-height: 1;
+    background: var(--md-surface-container-high); color: var(--md-on-surface-variant); margin: 0 1px; }
+  /* Chip looks, picked on the root div: s-soft, s-text, s-tint. */
+  .s-soft .chip { background: var(--md-surface-container-low); box-shadow: none; height: 23px; border-radius: 6px; padding: 0 7px 0 5px; }
+  .s-soft .chip:hover, .s-soft .chip.on { background: var(--md-surface-container-high); }
+  .s-soft .chip.on { box-shadow: inset 0 0 0 1.5px var(--md-primary); }
+  .s-soft .glyph, .s-text .glyph { background: transparent; width: 15px; }
+  .s-text .chip { background: transparent; box-shadow: none; padding: 0 3px 0 2px; height: 23px; border-radius: 5px; gap: 4px; font-weight: 500;
+    text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--md-outline-variant) 80%, white); text-underline-offset: 4px; text-decoration-thickness: 1px; }
+  .s-text .chip > span:not(.tail):not(.ini):not(.glyph):not(.relative) { text-decoration: inherit; }
+  .s-text .chip:hover, .s-text .chip.on { background: var(--md-surface-container); text-decoration-color: var(--md-primary); }
+  .s-tint .chip { background: color-mix(in srgb, var(--md-primary) 7%, white); box-shadow: none; color: var(--md-primary); height: 23px; border-radius: 99px; padding: 0 9px 0 4px; }
+  .s-tint .chip:hover, .s-tint .chip.on { background: color-mix(in srgb, var(--md-primary) 13%, white); }
+  .s-tint .chip.on { box-shadow: inset 0 0 0 1.5px var(--md-primary); }
+  .s-tint .glyph { background: #fff; border-radius: 99px; }
+  .s-tint .tail { color: color-mix(in srgb, var(--md-primary) 55%, white); }
+  /* A claim with a source and no record: a dotted line, the source on rest. */
+  .claim { text-decoration: underline dotted; text-decoration-color: var(--md-outline); text-underline-offset: 5px; text-decoration-thickness: 1.5px; cursor: default; }
+  .claim:hover, .claim.on { text-decoration-color: var(--md-primary); background: color-mix(in srgb, var(--md-primary) 6%, transparent); border-radius: 4px; }
+  .skel { background: linear-gradient(90deg, var(--md-surface-container-highest) 0%, var(--md-surface-container) 50%, var(--md-surface-container-highest) 100%); }
+
+</style>
+</head>
+<body>
+<div class="s-soft flex h-[900px] w-[1440px] overflow-hidden bg-white"><nav class="side flex w-[260px] shrink-0 flex-col border-r hair px-3 pb-3 pt-3">
+  <div class="flex h-10 items-center gap-2 px-1.5"><img src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/d0e7dcea-fa3d-477d-9b2a-e072f17a3ee7/brand-assets/console-logo/favicon.svg" alt="ShopNexus" class="h-7 w-7 rounded-[8px]"><span class="text-[15px] font-semibold">ShopNexus</span></div>
+  <a id="new" href="#new" class="hov mt-3 flex h-9 items-center gap-3 rounded-[10px] px-2.5 text-[14px] font-medium"><iconify-icon icon="material-symbols:edit-square-outline" width="19" height="19" class="inline-block shrink-0 "></iconify-icon>New chat</a>
+  <a id="search" href="#search" class="hov flex h-9 items-center gap-3 rounded-[10px] px-2.5 text-[14px] text-on-surface-variant"><iconify-icon icon="material-symbols:search-rounded" width="19" height="19" class="inline-block shrink-0 "></iconify-icon>Search</a>
+  <div class="my-2 h-px bg-outline-variant/40"></div><a id="nav-support" href="#support" class="hov flex h-9 items-center gap-3 rounded-[10px] px-2.5 text-[14px] text-on-surface-variant"><iconify-icon icon="material-symbols:support-agent" width="19" height="19" class="inline-block shrink-0 "></iconify-icon><span>Support</span><span class=tnum style=margin-left:auto;font-size:12px>2</span></a><a id="nav-reports" href="#reports" class="hov flex h-9 items-center gap-3 rounded-[10px] px-2.5 text-[14px] text-on-surface-variant"><iconify-icon icon="material-symbols:flag-outline-rounded" width="19" height="19" class="inline-block shrink-0 "></iconify-icon><span>Reports</span></a><a id="nav-accounts" href="#accounts" class="hov flex h-9 items-center gap-3 rounded-[10px] px-2.5 text-[14px] text-on-surface-variant"><iconify-icon icon="material-symbols:group-outline-rounded" width="19" height="19" class="inline-block shrink-0 "></iconify-icon><span>Accounts</span></a>
+  <p class="px-2.5 pb-1 pt-5 text-[12px] text-outline">Today</p><a id="c0" href="#c0" class="bg-on-surface/[.06] font-medium block truncate rounded-[10px] px-2.5 py-2 text-[14px]">Ai đang cần hỗ trợ</a><a id="c1" href="#c1" class="hov block truncate rounded-[10px] px-2.5 py-2 text-[14px]">Tin súng hơi đăng tuần này</a><a id="c2" href="#c2" class="hov block truncate rounded-[10px] px-2.5 py-2 text-[14px]">Nhóm Đồ Cũ Gò Vấp</a><a id="c3" href="#c3" class="hov block truncate rounded-[10px] px-2.5 py-2 text-[14px]">Son Dior 999 có phải hàng giả</a>
+  <span class="flex-1"></span>
+  <a id="me" href="#me" class="hov flex h-12 items-center gap-2.5 rounded-[12px] px-2"><span class="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-primary text-[13px] font-semibold text-white">L</span>
+    <span class="leading-tight"><span class="block text-[14px] font-medium">Nguyễn Thị Lan</span><span class="block text-[12px] text-outline">Moderator</span></span></a>
+</nav><main class="flex min-w-0 flex-1 flex-col"><div class="min-h-0 flex-1 overflow-hidden"><div class="mx-auto max-w-[760px] px-8 pt-10"><div class="flex justify-end"><p class="rounded-[18px] bg-surface-container px-4 py-2.5 text-[15px]">hiện tại có ai cần hỗ trợ ko</p></div>
+<div class="mt-6 flex gap-4"><img src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/d0e7dcea-fa3d-477d-9b2a-e072f17a3ee7/content-assets/art-ai-reading/art_ai_reading.webp" alt="" class="h-8 w-8 shrink-0 rounded-full bg-primary/[.07] object-contain p-0.5">
+  <div class="min-w-0 flex-1"><div class="flex items-center gap-2 text-[13.5px] text-on-surface-variant"><iconify-icon icon="material-symbols:neurology-outline-rounded" width="16" height="16" class="inline-block shrink-0 "></iconify-icon>Worked for 15 s <span class="text-outline">· 2 steps</span><iconify-icon icon="material-symbols:expand-more-rounded" width="16" height="16" class="inline-block shrink-0 text-outline"></iconify-icon></div><div class="ans mt-4 space-y-4"><p>Hiện có <span class="claim"><b class=font-semibold>2 ticket đang mở</b> và <b class=font-semibold>0 ca báo cáo đang mở</b></span>.</p><ol class="space-y-3"><li class="flex gap-2.5"><span class="w-4 shrink-0 text-on-surface-variant">1.</span><span><span class="relative inline-block"><a id="tk1" href="#tk1" class="chip on"><span class="glyph"><iconify-icon icon="material-symbols:support-agent" width="14" height="14" class="inline-block shrink-0 "></iconify-icon></span><span class="">Mermaid và link tin đăng</span></a><span id="peek-ticket" class="float absolute left-0 top-[30px] z-20 block w-[420px] rounded-2xl bg-white p-3.5 text-left font-normal" style="line-height:normal">
+  <span class="flex items-start gap-2.5"><span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-primary/[.08] text-primary"><iconify-icon icon="material-symbols:support-agent" width="17" height="17" class="inline-block shrink-0 "></iconify-icon></span>
+    <span class="min-w-0 flex-1"><span class="block truncate text-[14.5px] font-medium">Mermaid và link tin đăng</span>
+      <span class="mt-0.5 block text-[12.5px] text-outline">Ticket · Other · opened 15:18</span></span>
+    <a id="tp-side" href="#tp-side" title="Expand beside chat" class="hov flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant"><iconify-icon icon="material-symbols:right-panel-open-outline-rounded" width="17" height="17" class="inline-block shrink-0 "></iconify-icon></a>
+    <a id="tp-open" href="#tp-open" title="Open in Support" class="hov -mr-1 flex h-8 w-8 items-center justify-center rounded-lg text-outline"><iconify-icon icon="material-symbols:north-east-rounded" width="16" height="16" class="inline-block shrink-0 "></iconify-icon></a></span><span class="mt-2.5 flex flex-wrap items-center gap-1.5 text-[12.5px]"><span class="flex items-center gap-1.5 rounded-full bg-primary/[.08] px-2.5 py-1 font-medium text-primary"><span class="h-1.5 w-1.5 rounded-full bg-primary"></span>Waiting on us · 1 h 25 min</span>
+    <span class="text-outline">from</span><a id="u1" href="#u1" class="chip "><span class="ini" style="background:#6E7977">?</span><span class="text-on-surface-variant">No name</span><span class="tail">…f9e8</span></a></span>
+  <span class="mt-3 block space-y-2 rounded-[14px] bg-surface-container-low/70 p-2.5"><span class="block max-w-[82%]"><span class="block rounded-[14px] rounded-bl-[5px] bg-surface-container px-3 py-1.5 text-[13px] leading-[19px]">Xin chào, tôi cần hỗ trợ</span><span class="mt-0.5 block text-[11px] text-outline">15:18</span></span><span class="flex justify-end"><span class="max-w-[82%]"><span class="block rounded-[14px] rounded-br-[5px] bg-primary px-3 py-1.5 text-[13px] leading-[19px] text-white">Chào bạn, bạn cần ShopNexus hỗ trợ việc gì ạ?</span><span class="mt-0.5 block text-right text-[11px] text-outline">15:31 · Lan</span></span></span><span class="block max-w-[82%]"><span class="block rounded-[14px] rounded-bl-[5px] bg-surface-container px-3 py-1.5 text-[13px] leading-[19px]"><span class="font-mono text-[12px]">```mermaid graph TD; A--&gt;B ```</span><br><a id="lst" href="#lst" class="chip "><img src="https://images.unsplash.com/photo-1632661674596-df8be070a5c5?w=64&h=64&fit=crop" alt="" class="h-[17px] w-[17px] rounded-[5px] object-cover"><span class="">iPhone 13 Pro 256GB</span></a></span><span class="mt-0.5 block text-[11px] text-outline">16:43</span></span></span>
+  <span class="mt-3 flex items-center gap-2 rounded-[14px] border hair bg-white py-1.5 pl-3.5 pr-1.5"><span class="flex-1 text-[13.5px] text-outline">Reply to this customer…</span>
+    <a id="tp-send" href="#tp-send" class="flex h-8 w-8 items-center justify-center rounded-full bg-surface-container text-outline"><iconify-icon icon="material-symbols:arrow-upward-rounded" width="17" height="17" class="inline-block shrink-0 "></iconify-icon></a></span>
+  <span class="mt-2.5 flex items-center gap-2 text-[12px] text-outline"><iconify-icon icon="material-symbols:format-list-bulleted-rounded" width="14" height="14" class="inline-block shrink-0 "></iconify-icon>Read in <span class="text-on-surface-variant">Support tickets open</span>· step 2</span>
+</span></span> của <a id="u1-2" href="#u1" class="chip "><span class="ini" style="background:#6E7977">?</span><span class="text-on-surface-variant">No name</span><span class="tail">…f9e8</span></a>, mở 15:18.
+ Tin cuối là của người dùng lúc 16:43, nên ticket <b class="font-semibold">đang chờ mình trả lời</b>. Nội dung chỉ có định dạng markdown, một đoạn mermaid và link tới <a id="lst-2" href="#lst" class="chip "><img src="https://images.unsplash.com/photo-1632661674596-df8be070a5c5?w=64&h=64&fit=crop" alt="" class="h-[17px] w-[17px] rounded-[5px] object-cover"><span class="">iPhone 13 Pro 256GB</span></a>, không nói rõ cần gì. Tôi chưa mở tin đăng đó; bạn nên xem tin và hỏi lại họ cần hỗ trợ gì.</span></li><li class="flex gap-2.5"><span class="w-4 shrink-0 text-on-surface-variant">2.</span><span><a id="tk2" href="#tk2" class="chip "><span class="glyph"><iconify-icon icon="material-symbols:support-agent" width="14" height="14" class="inline-block shrink-0 "></iconify-icon></span><span class="">“ib”</span></a> của <a id="u2" href="#u2" class="chip "><span class="relative inline-flex"><span class="ini" style="background:#4D8A83">T</span><span class="absolute -bottom-px -right-px h-[7px] w-[7px] rounded-full ring-[1.5px] ring-white" style="background:#6E7977"></span></span><span class="">Tục tĩu…</span><span class="tail">…324f</span></a>, mở 15:02.
+ Tin cuối là của ShopNexus lúc 15:47, nhờ họ nói rõ vấn đề (tin gốc chỉ có “ib”) và đổi tên hiển thị. Ticket <b class="font-semibold">đang chờ người dùng</b>, chưa cần làm gì thêm.</span></li></ol>
+<p>Cả hai ticket đều chưa nêu vấn đề cụ thể và chưa thuộc nhóm hàng cấm, hàng giả hay lừa đảo, nên tôi chưa đề xuất xử lý tài khoản hay tin đăng nào.</p></div><div class="mt-4 flex items-center gap-4 text-[13px] text-outline"><iconify-icon icon="material-symbols:content-copy-outline-rounded" width="16" height="16" class="inline-block shrink-0 "></iconify-icon><iconify-icon icon="material-symbols:refresh-rounded" width="16" height="16" class="inline-block shrink-0 "></iconify-icon><span>15 s · 1.9K tokens</span><span class="text-on-surface-variant">5 sources</span></div></div></div></div></div><div class="mx-auto w-full max-w-[760px] px-8 pb-6">
+  <div class="rounded-[20px] border hair bg-white px-5 pb-3 pt-4 shadow-[0_6px_24px_-10px_rgba(16,24,22,.12)]">
+    <p class="min-h-[28px] text-[15px] text-outline">Ask about a ticket, a report or an account</p>
+    <div class="flex items-center"><a id="att" href="#att" class="hov -ml-2 flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant"><iconify-icon icon="material-symbols:add-rounded" width="20" height="20" class="inline-block shrink-0 "></iconify-icon></a>
+      <span class="flex-1"></span><a id="send" href="#send" class="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white"><iconify-icon icon="material-symbols:arrow-upward-rounded" width="19" height="19" class="inline-block shrink-0 "></iconify-icon></a></div>
+  </div></div></main></div>
+</body></html>
