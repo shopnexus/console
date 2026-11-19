@@ -113,10 +113,22 @@ after the mascot.
   the sidebar.
 - Clarifying questions are numbered cards of options with Continue and
   Use defaults. A spent budget replaces the ask box until midnight.
-- The ask box takes `/` for skills, `@` and `+` for a ticket, report or
-  account, and the agent picker.
-- Support shows the ticket's shared chat with the agent in the middle and
-  the customer's chat and Details in a 340 px column.
+- The ask box takes `/` for the page's commands and the skills, `@` and `+`
+  for a ticket, report or account (the page's own records first), and the
+  agent picker. A record's labels reach the console only; the agent gets
+  the kind and id.
+- Support puts the customer's chat in the middle, under the order and its
+  shipment, and the agent in a 420 px panel of tabs (`RecordAgent`). A
+  ticket has no chat of its own: each tab is a chat of the member's that
+  mentions the ticket, listed by the server's mention filter. `+` or `N`
+  opens a tab with the ticket in its box and four starters. The box takes
+  `/new question`, `/clear` (the tab starts over, the chat stays in the
+  history), `/close`, `/reply how` (the answer lands in the reply box) and
+  `/summary`; every answer has Use in reply. Nothing reaches the customer
+  until the member sends it. Ctrl [ and Ctrl ] move between tabs, Ctrl K
+  opens the switcher (1 to 9 jump), Ctrl / moves between the reply box and
+  the agent's box; the browser keeps Ctrl 1 to 9 and Ctrl Tab. Details
+  takes the panel's place from the header.
 
 ## Records
 

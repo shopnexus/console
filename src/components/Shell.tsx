@@ -87,7 +87,8 @@ function Sidebar({ rail, toggle }: { rail: boolean; toggle: () => void }) {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if ((e.key === 'n' || e.key === 'N') && !typing(e)) {
+      // A page that took N for itself (a record's agent tabs) has prevented it.
+      if ((e.key === 'n' || e.key === 'N') && !typing(e) && !e.defaultPrevented) {
         e.preventDefault()
         newChat()
       }

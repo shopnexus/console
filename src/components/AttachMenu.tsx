@@ -7,17 +7,37 @@ import { count, when } from '../lib/format'
 import { useCases } from '../lib/reports'
 import { kindChip, personName, useQueue } from '../lib/support'
 import { AccountSearch } from './AccountSearch'
+import { RecordIcon } from './kindLook'
 import { Segmented } from './ui'
 
 /**
  * The ask box's + and @ menu: an open ticket by the person's name or the
  * ticket's id, a waiting report case, or an account by its exact id, email
- * or phone number.
+ * or phone number. here comes first: the records of the page the chat sits on.
  */
-export function AttachMenu({ onPick }: { onPick: (a: Attachment) => void }) {
+/** Records offered first in the @ menu, under a title such as "In this ticket". */
+export interface NearRecords {
+  title: string
+  items: Attachment[]
+}
+
+export function AttachMenu({ onPick, here }: { onPick: (a: Attachment) => void; here?: NearRecords }) {
   const [tab, setTab] = useState<AttachmentKind>('ticket')
   return (
     <div>
+      {here && here.items.length > 0 && (
+        <div className="mb-2 border-b border-hairline pb-2">
+          <p className="px-2 pb-1 text-label-small text-on-surface-variant">{here.title}</p>
+          {here.items.map((a) => (
+            <button key={a.kind + a.id} type="button" onClick={() => onPick(a)} className={row}>
+              <span className="shrink-0 text-on-surface-variant">
+                <RecordIcon kind={a.kind} size={16} />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-body-medium">{a.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <Segmented
         full
         label="Attach"

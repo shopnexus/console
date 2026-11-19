@@ -9,6 +9,7 @@ import IconPlay from '~icons/material-symbols-light/play-arrow-rounded'
 import IconRetry from '~icons/material-symbols-light/refresh-rounded'
 import IconBolt from '~icons/material-symbols-light/bolt-outline-rounded'
 import IconDown from '~icons/material-symbols-light/arrow-downward-rounded'
+import IconReply from '~icons/material-symbols-light/reply-rounded'
 import {
   type Answers,
   answerTurn,
@@ -23,7 +24,6 @@ import {
   type Skill,
   steerTurn,
   stopTurn,
-  type SubjectKind,
   type Turn,
   useConversation,
   useRun,
@@ -47,7 +47,8 @@ import { answerBlocks, type Block, canContinue, counts, elapsed, isLive, outcome
 import { plain } from '../../lib/markdown'
 import { useMe } from '../../lib/session'
 import { usePickableAgents } from '../../lib/settings'
-import { AttachMenu } from '../AttachMenu'
+import type { Command } from '../../lib/commands'
+import { AttachMenu, type NearRecords } from '../AttachMenu'
 import { RecordIcon } from '../kindLook'
 import { Btn, Mascot, Spinner } from '../ui'
 import { Blocks, SourceList, SourcesButton } from './Answer'
@@ -256,6 +257,7 @@ const TurnView = memo(function TurnView({
   onAsk,
   onRetry,
   onDismiss,
+  onReply,
 }: {
   turn: Turn
   last: boolean
@@ -263,6 +265,8 @@ const TurnView = memo(function TurnView({
   onAsk?: (text: string) => void
   onRetry?: (turn: Turn) => void
   onDismiss?: (turn: Turn) => void
+  /** Puts an answer in the reply box of the page the chat sits on. */
+  onReply?: (text: string) => void
 }) {
   const { run } = useRun(turn.id, turn)
   const [busy, setBusy] = useState(false)
@@ -288,6 +292,12 @@ const TurnView = memo(function TurnView({
   const quiet = turn.failed ? false : !run || (isLive(run) && run.steps.length === 0 && run.toolOrder.length === 0 && !run.draft && blocks.length === 0 && run.thinking.length === 0)
   const [sourcesOpen, setSourcesOpen] = useState(false)
   const textOf = useMemo(() => texts.map((b) => plain(b.markdown)).join('\n\n'), [texts])
+  // An answer asked for the reply box (/reply) lands there once, when it finishes.
+  useEffect(() => {
+    if (!onReply || !finished || !textOf || !turn.client_key || !replyKeys.has(turn.client_key)) return
+    replyKeys.delete(turn.client_key)
+    onReply(textOf)
+  }, [onReply, finished, textOf, turn.client_key])
   return (
     <div className="space-y-4">
       <div className={arrived ? 'animate-rise' : ''}>
@@ -347,6 +357,11 @@ const TurnView = memo(function TurnView({
                     </span>
                   </ReplyButton>
                 )}
+                {onReply && textOf && (
+                  <ReplyButton label="Use in reply" onClick={() => onReply(textOf)}>
+                    <IconReply width={16} height={16} />
+                  </ReplyButton>
+                )}
                 {onAsk && run.outcome?.status !== 'BUDGET' && (
                   <ReplyButton label="Ask again" onClick={() => onAsk(turn.text)}>
                     <IconRetry width={16} height={16} />
@@ -375,29 +390,48 @@ const TurnView = memo(function TurnView({
   )
 })
 
+/** Client keys of the turns whose answer goes to the reply box; kept here so a new chat's move to its real id keeps them. */
+const replyKeys = new Set<string>()
+
 const composerMode: Partial<Record<RunPhase, ComposerMode>> = { running: 'running', pausing: 'pausing', paused: 'paused', awaiting_input: 'awaiting' }
 
 /**
  * The chat: its turns and the ask box, with the sources or a document
  * beside it and a tool call floating over it. Without a conversation it is the new
- * chat home; the first question opens one. subject opens a record's shared
- * chat instead.
+ * chat home; the first question opens one. A record's page passes the
+ * record as attach, its nearby records as here, and its own commands.
  */
 export function ChatView({
   conversationId,
-  subject,
   header,
   empty,
   onCreated,
+  onReady,
   placeholder,
+  attach,
+  here,
+  commands,
+  onReply,
+  firstAsk,
+  compact = false,
 }: {
   conversationId?: string
-  subject?: { kind: SubjectKind; id: string; label: string }
   header?: ReactNode
-  /** What a new chat shows above the ask box. */
-  empty?: (box: ReactNode) => ReactNode
+  /** What a new chat shows above the ask box; ask sends a question in it. */
+  empty?: (box: ReactNode, ask: (text: string) => void) => ReactNode
+  /** A new chat moved under its temporary id; onReady gets the real one for it. Without them the chat goes to /agent. */
   onCreated?: (id: string) => void
+  onReady?: (id: string, temp: string) => void
   placeholder?: string
+  /** Records a new chat starts with in its ask box. */
+  attach?: Attachment[]
+  here?: NearRecords
+  commands?: Command[]
+  onReply?: (text: string) => void
+  /** A question a new chat asks as it opens. */
+  firstAsk?: string
+  /** The narrow side-panel layout. */
+  compact?: boolean
 }) {
   const me = useMe()
   const navigate = useNavigate()
@@ -413,8 +447,9 @@ export function ChatView({
   const [draft, setDraft] = useState('')
   // A record's page opens a new chat with the record attached (askHref).
   const [attachments, setAttachments] = useState<Attachment[]>(() => {
-    const a = conversationId ? undefined : attachmentFromParams(params)
-    return a ? [a] : []
+    if (conversationId) return []
+    const a = attachmentFromParams(params)
+    return [...(attach ?? []), ...(a ? [a] : [])]
   })
   const [skill, setSkill] = useState<Skill>()
   const [agentId, setAgentId] = useState<string | undefined>(() => params.get('agent') ?? undefined)
@@ -496,7 +531,7 @@ export function ChatView({
     if (conversation.data) toBottom()
   }, [conversation.data?.id, toBottom]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function ask(text: string) {
+  async function ask(text: string, opts?: { toReply?: boolean }) {
     setError(undefined)
     // The box clears and keeps its focus at once; the question shows as a pending turn.
     const keep = { attachments, skill }
@@ -504,8 +539,11 @@ export function ChatView({
     setAttachments([])
     setSkill(undefined)
     stick(true)
-    const req: TurnRequest = { text, agent_id: chosenAgent, attachments: keep.attachments.length ? keep.attachments : undefined, skill_id: keep.skill?.id }
+    // The server takes labels of at most 120 characters.
+    const attached = keep.attachments.map((x) => ({ ...x, label: x.label?.slice(0, 120) }))
+    const req: TurnRequest = { text, agent_id: chosenAgent, attachments: attached.length ? attached : undefined, skill_id: keep.skill?.id }
     const pending = pendingTurn(me.id, req)
+    if (opts?.toReply && pending.client_key) replyKeys.add(pending.client_key)
     if (!conversationId) {
       // A new chat moves at once under a temporary id; the conversation and the turn are made in the background.
       const temp = `new-${crypto.randomUUID()}`
@@ -522,8 +560,9 @@ export function ChatView({
   /** Posts a pending turn in the chat; a turn already open takes the text as a steer instead. A new chat moves to its real id once it has one. */
   async function postPending(chatId: string, pending: Turn, req: TurnRequest) {
     try {
-      await sendTurn(client, chatId, pending, req, subject && { kind: subject.kind, id: subject.id }, (id) => {
-        if (location.pathname.endsWith(chatId)) navigate(`/agent/${id}`, { replace: true })
+      await sendTurn(client, chatId, pending, req, (id) => {
+        if (onReady) onReady(id, chatId)
+        else if (location.pathname.endsWith(chatId)) navigate(`/agent/${id}`, { replace: true })
       })
     } catch (e) {
       if (failureOf(e) === 'busy' && lastTurn && lastRun && (isLive(lastRun) || lastRun.phase === 'paused')) {
@@ -563,7 +602,6 @@ export function ChatView({
   }
 
   const chips: Chip[] = [
-    ...(subject && !conversationId ? [{ key: 'subject', icon: <RecordIcon kind={subject.kind} size={13} />, label: subject.label }] : []),
     ...attachments.map((a) => ({
       key: a.kind + a.id,
       icon: <RecordIcon kind={a.kind} size={13} />,
@@ -599,6 +637,7 @@ export function ChatView({
         chips={chips}
         attachMenu={(close) => (
           <AttachMenu
+            here={here}
             onPick={(a) => {
               close()
               setAttachments((xs) => (xs.some((x) => x.kind === a.kind && x.id === a.id) ? xs : [...xs, a]))
@@ -607,6 +646,8 @@ export function ChatView({
         )}
         skills={skills.data?.items ?? []}
         onSkill={setSkill}
+        commands={commands}
+        onCommand={(c, arg) => c.run(arg, { ask: (t, o) => void latest.current.ask(t, o) })}
         onMakeSkill={
           lastTurn
             ? (name) =>
@@ -629,7 +670,7 @@ export function ChatView({
         }
         error={error}
         hold={hold}
-        up={!!conversationId}
+        up={!!conversationId || compact}
         inputRef={box}
       />
     </>
@@ -653,10 +694,17 @@ export function ChatView({
     sourcesOf: (turnId) => runOf(turnId)?.sources ?? [],
   }), [panel, sourcesPanel, closePanel])
   // The turns get callbacks that keep their identity, so a token or a key press redraws only what changed.
-  const latest = useRef({ send, postPending })
+  const latest = useRef({ send, postPending, ask })
   useLayoutEffect(() => {
-    latest.current = { send, postPending }
+    latest.current = { send, postPending, ask }
   })
+  // A chat opened with a question asks it once, as if typed.
+  const asked = useRef(false)
+  useEffect(() => {
+    if (!firstAsk || conversationId || asked.current) return
+    asked.current = true
+    void latest.current.ask(firstAsk)
+  }, [firstAsk, conversationId])
   const onAsk = useCallback((text: string) => void latest.current.send(text), [])
   const onRetry = useCallback((t: Turn) => void latest.current.postPending(conversationId!, t, { text: t.text, agent_id: t.agent_id, attachments: t.attachments, skill_id: t.skill_id }), [conversationId])
   const onDismiss = useCallback((x: Turn) => x.client_key && dropTurn(client, conversationId!, x.client_key), [client, conversationId])
@@ -668,7 +716,7 @@ export function ChatView({
     <PanelContext value={api}>
       <div className="relative flex min-h-0 min-w-0 flex-1">
         {!threaded && empty ? (
-          empty(composer)
+          empty(composer, (t) => void latest.current.ask(t))
         ) : (
           <section className="flex min-w-0 flex-1 flex-col">
             {header}
@@ -678,7 +726,7 @@ export function ChatView({
               className="flex min-h-0 flex-1 flex-col overflow-y-auto"
             >
               <span className="flex-1" />
-              <div ref={thread} className="mx-auto w-full max-w-[800px] space-y-7 px-8 py-6">
+              <div ref={thread} className={`mx-auto w-full max-w-[800px] space-y-7 ${compact ? 'px-4 py-4' : 'px-8 py-6'}`}>
                 {notFound && <p className="text-body-medium text-on-surface-variant">{failureText.not_found}</p>}
                 {turns.map((t, i) => (
                   <TurnView
@@ -689,11 +737,12 @@ export function ChatView({
                     onAsk={onAsk}
                     onRetry={onRetry}
                     onDismiss={onDismiss}
+                    onReply={onReply}
                   />
                 ))}
               </div>
             </div>
-            <div className="relative mx-auto w-full max-w-[800px] px-8 pb-5">
+            <div className={`relative mx-auto w-full max-w-[800px] ${compact ? 'px-3 pb-3' : 'px-8 pb-5'}`}>
               {!atBottom && turns.length > 0 && (
                 <button
                   type="button"

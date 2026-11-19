@@ -177,9 +177,12 @@ export function useAskAgent() {
   return { ask, pending: open.isPending }
 }
 
-/** A subject's shared conversation, opened (or made) once per view. */
-export function useSubjectConversation(kind: SubjectKind, id: string) {
-  return useQuery({ queryKey: ['agent', 'subject', kind, id], queryFn: () => openConversation({ kind, id }), staleTime: Infinity })
+/** The member's own chats that mention a record, as the record's agent tabs. */
+export function useMentionThreads(kind: AttachmentKind, id: string) {
+  return useQuery({
+    queryKey: [...listKey, 'mention', kind, id],
+    queryFn: () => api<{ items: Conversation[] }>(`/console/agent/conversations?${new URLSearchParams({ mention_kind: kind, mention_id: id })}`),
+  })
 }
 
 // A record's page opens a new chat with the record attached: ?attach=order:<id>&label=Order SN-1042.
@@ -293,7 +296,6 @@ export async function sendTurn(
   chatId: string,
   pending: Turn,
   req: TurnRequest,
-  subject: { kind: SubjectKind; id: string } | undefined,
   onReady: (id: string) => void,
 ) {
   if (!isTempChat(chatId)) {
@@ -304,7 +306,7 @@ export async function sendTurn(
   const made = !conversationId
   if (!conversationId) {
     try {
-      conversationId = (await openConversation(subject)).id
+      conversationId = (await openConversation()).id
     } catch (e) {
       putTurn(client, chatId, { ...pending, failed: failureText[failureOf(e)] || failureText.other })
       return

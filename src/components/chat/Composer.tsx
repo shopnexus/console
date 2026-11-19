@@ -1,6 +1,7 @@
 import { type ReactNode, type Ref, useCallback, useState } from 'react'
 import IconAdd from '~icons/material-symbols-light/add-rounded'
 import IconBolt from '~icons/material-symbols-light/bolt-outline-rounded'
+import IconCommand from '~icons/material-symbols-light/keyboard-command-key'
 import IconCheck from '~icons/material-symbols-light/check-rounded'
 import IconClose from '~icons/material-symbols-light/close-rounded'
 import IconExpand from '~icons/material-symbols-light/expand-more-rounded'
@@ -11,11 +12,14 @@ import IconRoute from '~icons/material-symbols-light/alt-route-rounded'
 import IconSend from '~icons/material-symbols-light/arrow-upward-rounded'
 import IconStop from '~icons/material-symbols-light/stop-rounded'
 import { maxQuestion, type Skill } from '../../lib/agent'
+import { type Command, matchCommands, parseCommand } from '../../lib/commands'
 import { useDismiss } from '../../lib/dom'
 import { compact, count } from '../../lib/format'
 import type { PickableAgent } from '../../lib/settings'
 import { AgentIcon } from '../AiBits'
 import { Btn, Kbd } from '../ui'
+
+const noCommands: Command[] = []
 
 /** What the ask box does with a message: ask, steer a running or paused run, or answer the agent's question. */
 export type ComposerMode = 'idle' | 'running' | 'pausing' | 'paused' | 'awaiting'
@@ -107,42 +111,65 @@ const skillTones = [
   'bg-inverse-primary/40 text-primary-container',
 ]
 
-/** The / menu: every saved skill, filtered by what follows the slash, and "Make a skill from this chat". */
-function SkillsMenu({
+const shownSkillsOf = (skills: Skill[], filter: string) =>
+  skills.filter((s) => !filter || s.slug.includes(filter.toLowerCase()) || s.name.toLowerCase().includes(filter.toLowerCase()))
+
+/** The / menu: the chat's commands that match (filtered by the caller), then every saved skill, filtered by what follows the slash, and "Make a skill from this chat". */
+function SlashMenu({
+  commands,
   skills,
   filter,
   active,
+  onCommand,
   onPick,
   onMake,
   up,
 }: {
+  commands: Command[]
   skills: Skill[]
   filter: string
   active: number
+  onCommand: (c: Command) => void
   onPick: (s: Skill) => void
   onMake?: (name: string) => void
   up: boolean
 }) {
   const [naming, setNaming] = useState(false)
   const [name, setName] = useState('')
-  const shown = skills.filter((s) => !filter || s.slug.includes(filter.toLowerCase()) || s.name.toLowerCase().includes(filter.toLowerCase()))
+  const cmds = commands
+  const shown = shownSkillsOf(skills, filter)
+  const row = (on: boolean) => `flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left ${on ? 'bg-primary/6' : 'hover:bg-surface-container-low'}`
   return (
-    <div className={`absolute left-0 z-30 w-[460px] animate-pop rounded-4xl border border-hairline bg-surface-container-lowest p-2 shadow-float ${up ? 'bottom-[calc(100%+10px)] origin-bottom-left' : 'top-[calc(100%+10px)] origin-top-left'}`}>
+    <div className={`absolute left-0 z-30 w-[min(460px,100%)] min-w-[320px] animate-pop rounded-4xl border border-hairline bg-surface-container-lowest p-2 shadow-float ${up ? 'bottom-[calc(100%+10px)] origin-bottom-left' : 'top-[calc(100%+10px)] origin-top-left'}`}>
       <div className="flex items-center gap-2 px-3 pb-2 pt-1.5 text-label-small font-normal text-on-surface-variant">
         <IconBolt width={15} height={15} />
-        Skills
+        {commands.length > 0 ? 'Commands and skills' : 'Skills'}
         <span className="flex-1" />
         <Kbd>↑</Kbd>
         <Kbd>↓</Kbd>
         <Kbd>↵</Kbd>
       </div>
+      {cmds.map((c, i) => (
+        <button key={c.name} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => onCommand(c)} className={row(i === active)}>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-primary/8 text-primary">
+            <IconCommand width={18} height={18} />
+          </span>
+          <span className="min-w-0 flex-1 leading-tight">
+            <span className="block text-title-small">
+              /{c.name} {c.arg && <span className="font-normal text-on-surface-variant">{c.arg}</span>}
+            </span>
+            <span className="mt-0.5 block truncate text-body-small text-on-surface-variant">{c.description}</span>
+          </span>
+        </button>
+      ))}
+      {cmds.length > 0 && shown.length > 0 && <p className="px-3 pb-1 pt-2 text-label-small font-normal text-on-surface-variant">Skills</p>}
       {shown.map((s, i) => (
         <button
           key={s.id}
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onPick(s)}
-          className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left ${i === active ? 'bg-primary/6' : 'hover:bg-surface-container-low'}`}
+          className={row(cmds.length + i === active)}
         >
           <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] ${skillTones[i % skillTones.length]}`}>
             <IconBolt width={18} height={18} />
@@ -155,7 +182,7 @@ function SkillsMenu({
           </span>
         </button>
       ))}
-      {shown.length === 0 && <p className="px-3 py-2 text-body-medium text-on-surface-variant">No skill matches.</p>}
+      {shown.length === 0 && cmds.length === 0 && <p className="px-3 py-2 text-body-medium text-on-surface-variant">No skill matches.</p>}
       {onMake && (
         <div className="mt-1 border-t border-hairline px-3 pb-1 pt-2.5 text-body-small text-on-surface-variant">
           {naming ? (
@@ -192,7 +219,7 @@ function SkillsMenu({
 /**
  * The one ask box. It asks, or, while a run works, steers it ("read before
  * its next step"); Pause is the run's main control and becomes Stop now.
- * / lists the skills, @ and + attach a record, and the agent picker and the
+ * / lists the chat's commands and the skills, @ and + attach a record, and the agent picker and the
  * context meter sit beside send. Enter sends, Shift+Enter breaks the line,
  * Escape pauses.
  */
@@ -208,6 +235,8 @@ export function Composer({
   skills = [],
   onSkill,
   onMakeSkill,
+  commands = noCommands,
+  onCommand,
   agents = [],
   agentId,
   onAgent,
@@ -230,6 +259,9 @@ export function Composer({
   skills?: Skill[]
   onSkill?: (s: Skill) => void
   onMakeSkill?: (name: string) => void
+  /** Commands run on Enter in place of a question. */
+  commands?: Command[]
+  onCommand?: (c: Command, arg: string) => void
   agents?: PickableAgent[]
   agentId?: string
   onAgent?: (id: string) => void
@@ -253,7 +285,9 @@ export function Composer({
   const slash = /^\/(\S*)$/.exec(value)
   const showSkills = skillsOpen || !!slash
   const filter = slash?.[1] ?? ''
-  const shownSkills = skills.filter((s) => !filter || s.slug.includes(filter.toLowerCase()) || s.name.toLowerCase().includes(filter.toLowerCase()))
+  const shownCommands = onCommand ? matchCommands(commands, filter) : []
+  const shownSkills = shownSkillsOf(skills, filter)
+  const menuLength = shownCommands.length + shownSkills.length
   const text = value.trim()
   const over = value.length > maxQuestion
   const steering = mode === 'running' || mode === 'pausing' || mode === 'paused'
@@ -266,8 +300,26 @@ export function Composer({
     setActive(0)
   }
 
+  function runCommand(c: Command, arg = '', picked = false) {
+    setSkillsOpen(false)
+    setActive(0)
+    // Picked from the menu, a command that takes words waits for them; Enter then runs it.
+    if (picked && c.arg) {
+      onChange(`/${c.name} `)
+      return
+    }
+    onChange('')
+    onCommand?.(c, arg)
+  }
+
   function send() {
     if (text === '' || over || blocked) return
+    const cmd = onCommand ? parseCommand(text, commands) : undefined
+    const c = cmd ? commands.find((x) => x.name === cmd.name) : undefined
+    if (c && cmd) {
+      runCommand(c, cmd.arg)
+      return
+    }
     onSend(text)
   }
 
@@ -316,15 +368,17 @@ export function Composer({
             setActive(0)
           }}
           onKeyDown={(e) => {
-            if (showSkills && shownSkills.length > 0) {
+            if (showSkills && menuLength > 0) {
               if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                 e.preventDefault()
-                setActive((a) => (a + (e.key === 'ArrowDown' ? 1 : -1) + shownSkills.length) % shownSkills.length)
+                setActive((a) => (a + (e.key === 'ArrowDown' ? 1 : -1) + menuLength) % menuLength)
                 return
               }
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
-                pickSkill(shownSkills[Math.min(active, shownSkills.length - 1)])
+                const at = Math.min(active, menuLength - 1)
+                if (at < shownCommands.length) runCommand(shownCommands[at], '', true)
+                else pickSkill(shownSkills[at - shownCommands.length])
                 return
               }
             }
@@ -422,7 +476,9 @@ export function Composer({
           {attachMenu(() => setAttachOpen(false))}
         </div>
       )}
-      {showSkills && onSkill && <SkillsMenu skills={skills} filter={filter} active={active} onPick={pickSkill} onMake={onMakeSkill} up={up} />}
+      {showSkills && (onSkill || shownCommands.length > 0) && (
+        <SlashMenu commands={shownCommands} skills={onSkill ? skills : []} filter={filter} active={active} onCommand={(c) => runCommand(c, '', true)} onPick={pickSkill} onMake={onMakeSkill} up={up} />
+      )}
     </div>
   )
 }

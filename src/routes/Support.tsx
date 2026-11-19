@@ -10,12 +10,16 @@ import IconClose from '~icons/material-symbols-light/close-rounded'
 import IconFilter from '~icons/material-symbols-light/filter-list-rounded'
 import IconSee from '~icons/material-symbols-light/visibility-outline'
 import IconUndo from '~icons/material-symbols-light/undo-rounded'
-import { ChatView } from '../components/chat/Chat'
+import IconInfo from '~icons/material-symbols-light/info-outline-rounded'
+import IconShip from '~icons/material-symbols-light/local-shipping-outline-rounded'
+import IconSpark from '~icons/material-symbols/auto-awesome-outline-rounded'
+import { RecordAgent } from '../components/chat/RecordAgent'
 import { DotFact, JKHint, ListColumn, ListRow } from '../components/Panes'
-import { useSubjectConversation } from '../lib/agent'
+import type { Attachment } from '../lib/agent'
+import type { Command } from '../lib/commands'
 import { Select } from '../components/Select'
 import { Shell } from '../components/Shell'
-import { Btn, Card, IconBtn, Initial, Notice, Segmented } from '../components/ui'
+import { Btn, Card, IconBtn, Initial, Kbd, Notice, Segmented } from '../components/ui'
 import { shortId } from '../lib/api'
 import { useListKeys } from '../lib/dom'
 import { day, time, vnd, when } from '../lib/format'
@@ -224,11 +228,22 @@ function Details({ d }: { d: ConsoleTicketDetail }) {
   )
 }
 
-/** The person's chat with ShopNexus, oldest first, with its own box for a reply written by hand. */
-function CustomerChat({ d, onFailure }: { d: ConsoleTicketDetail; onFailure?: (e: unknown) => void }) {
+/** A reply being written: by hand, or the agent's answer put there from a tab. An answer that arrives over a reply written by hand waits as offered. */
+export interface ReplyDraft {
+  text: string
+  fromAgent?: boolean
+  offered?: string
+}
+
+const maxReply = 1000
+
+/** The person's chat with ShopNexus, oldest first, with the reply box under it. */
+function CustomerChat({ d, reply, onReply, onFailure }: { d: ConsoleTicketDetail; reply: ReplyDraft; onReply: (r: ReplyDraft) => void; onFailure?: (e: unknown) => void }) {
   const t = d.ticket.ticket
   const commands = useTicketCommands(t.id)
-  const [text, setText] = useState('')
+  const text = reply.text
+  const setText = (v: string) => onReply({ ...reply, text: v, fromAgent: reply.fromAgent && v !== '' })
+  const over = text.length > maxReply
   // The detail carries the newest page; "Older messages" reads the ones before it.
   const [older, setOlder] = useState<{ items: ConsoleMessage[]; cursor?: string }>({ items: [], cursor: d.messages.next_cursor })
   const [reading, setReading] = useState(false)
@@ -265,13 +280,13 @@ function CustomerChat({ d, onFailure }: { d: ConsoleTicketDetail; onFailure?: (e
   function send(e?: FormEvent) {
     e?.preventDefault()
     const body = text.trim()
-    if (!body || commands.reply.isPending) return
-    commands.reply.mutate(body, { onSuccess: () => setText(''), onError: onFailure })
+    if (!body || over || commands.reply.isPending) return
+    commands.reply.mutate(body, { onSuccess: () => onReply({ text: '' }), onError: onFailure })
   }
 
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 py-5">
         {older.cursor && (
           <button onClick={readOlder} disabled={reading} className="mx-auto h-8 rounded-full px-4 text-label-medium text-primary hover:bg-on-surface/5 disabled:opacity-60">
             Older messages
@@ -298,10 +313,10 @@ function CustomerChat({ d, onFailure }: { d: ConsoleTicketDetail; onFailure?: (e
             <div key={m.id}>
               {label}
               {/* Messages stay as the person and the members wrote them. */}
-              <div className={`max-w-[85%] ${mine ? 'ml-auto' : ''}`}>
+              <div className={`max-w-[72%] ${mine ? 'ml-auto' : ''}`}>
                 <div
-                  className={`whitespace-pre-wrap rounded-[18px] px-3.5 py-2.5 text-body-small ${
-                    mine ? 'rounded-br-[6px] bg-primary/10' : 'rounded-bl-[6px] bg-surface-container-lowest shadow-soft'
+                  className={`whitespace-pre-wrap rounded-[20px] px-4 py-2.5 text-body-medium ${
+                    mine ? 'rounded-br-[6px] bg-primary/10' : 'rounded-bl-[6px] bg-surface-container-low'
                   }`}
                 >
                   {first && (
@@ -330,8 +345,31 @@ function CustomerChat({ d, onFailure }: { d: ConsoleTicketDetail; onFailure?: (e
         })}
         <div ref={end} />
       </div>
-      <form onSubmit={send} className="px-3 pb-3">
-        <div className="rounded-[18px] border border-hairline bg-surface-container-lowest shadow-soft focus-within:border-primary/40">
+      <form onSubmit={send} data-reply-box className="px-6 pb-5">
+        <div className="overflow-hidden rounded-5xl border border-hairline bg-surface-container-lowest shadow-soft focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-primary/10">
+          {reply.offered && (
+            <p className="flex items-center gap-1.5 bg-primary/6 px-4 py-2 text-label-small text-primary">
+              <IconSpark width={14} height={14} />
+              The agent wrote a reply
+              <span className="flex-1" />
+              <button type="button" onClick={() => onReply({ text: reply.offered ?? '', fromAgent: true })} className="rounded-full px-2 py-0.5 hover:bg-on-surface/5">
+                Use it
+              </button>
+              <button type="button" onClick={() => onReply({ ...reply, offered: undefined })} className="rounded-full px-2 py-0.5 font-normal text-on-surface-variant hover:bg-on-surface/5">
+                Keep mine
+              </button>
+            </p>
+          )}
+          {reply.fromAgent && (
+            <p className="flex items-center gap-1.5 px-4 pt-3 text-label-small text-primary">
+              <IconSpark width={14} height={14} />
+              From the agent
+              <span className="flex-1" />
+              <button type="button" onClick={() => onReply({ text: '' })} className="rounded-full px-2 py-0.5 font-normal text-on-surface-variant hover:bg-on-surface/5">
+                Discard
+              </button>
+            </p>
+          )}
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -339,9 +377,9 @@ function CustomerChat({ d, onFailure }: { d: ConsoleTicketDetail; onFailure?: (e
               if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) send()
             }}
             rows={2}
-            maxLength={1000}
+            aria-invalid={over}
             placeholder={`Reply to ${name}…`}
-            className="block w-full resize-none bg-transparent px-4 pt-3 text-body-small outline-none placeholder:text-on-surface-variant/80"
+            className="field-sizing-content block max-h-[220px] min-h-[52px] w-full resize-none bg-transparent px-4 pt-3 text-body-medium outline-none placeholder:text-on-surface-variant/80"
           />
           <div className="flex items-center gap-2 px-3 pb-2.5">
             <span className="flex items-center gap-1 text-label-small font-normal text-on-surface-variant">
@@ -349,10 +387,19 @@ function CustomerChat({ d, onFailure }: { d: ConsoleTicketDetail; onFailure?: (e
               Shown as ShopNexus
             </span>
             <span className="flex-1" />
+            {over ? (
+              <span role="alert" className="text-label-small font-normal text-error">
+                {text.length}/{maxReply}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-label-small font-normal text-on-surface-variant">
+                <Kbd>Ctrl ↵</Kbd>Send
+              </span>
+            )}
             <button
               type="submit"
               title="Send (Ctrl+Enter)"
-              disabled={!text.trim() || commands.reply.isPending}
+              disabled={!text.trim() || over || commands.reply.isPending}
               className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-on-primary disabled:opacity-40"
             >
               <IconSend width={17} height={17} />
@@ -364,12 +411,83 @@ function CustomerChat({ d, onFailure }: { d: ConsoleTicketDetail; onFailure?: (e
   )
 }
 
+/** The order and its shipment, above the customer's chat. */
+function Facts({ d }: { d: ConsoleTicketDetail }) {
+  const o = d.order
+  if (!o) return null
+  const cell = 'flex min-w-0 flex-1 items-center gap-2.5 rounded-2xl border border-hairline bg-surface-container-lowest px-3 py-2'
+  return (
+    <div className="flex shrink-0 gap-2 border-b border-hairline px-6 py-3">
+      <Link to={`/orders/${o.id}`} className={`${cell} hover:border-primary/30`}>
+        <span className="min-w-0 leading-tight">
+          <span className="block truncate text-label-medium">{o.title}</span>
+          <span className="block truncate tabular-nums text-label-small font-normal text-on-surface-variant">{vnd(o.price)} · COD with inspection</span>
+        </span>
+      </Link>
+      {o.carrier && (
+        <div className={cell}>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
+            <IconShip width={18} height={18} />
+          </span>
+          <span className="min-w-0 leading-tight">
+            <span className="block truncate text-label-medium">
+              {o.shipment_status ? (shipmentStatus[o.shipment_status] ?? o.shipment_status) : 'No carrier event'}
+              {o.delivered_at && ` · ${when(o.delivered_at)}`}
+            </span>
+            <span className="block truncate tabular-nums text-label-small font-normal text-on-surface-variant">
+              {o.carrier.toUpperCase()} · {o.tracking_code}
+            </span>
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** The records of a ticket a chat can mention: the person, the order and its seller. */
+function ticketRecords(d: ConsoleTicketDetail): Attachment[] {
+  const p = d.ticket.person
+  const o = d.order
+  return [
+    { kind: 'account', id: p.id, label: `Account · ${personName(p)}` },
+    ...(o ? [{ kind: 'order' as const, id: o.id, label: `Order · ${o.title}` }, { kind: 'account' as const, id: o.seller.id, label: `Seller · ${o.seller.display_name}` }] : []),
+  ]
+}
+
+/** What a new tab offers to ask about the ticket. */
+function startersOf(d: ConsoleTicketDetail): string[] {
+  const name = personName(d.ticket.person)
+  const o = d.order
+  return [
+    ...(o?.carrier ? [`Did ${o.carrier.toUpperCase()} really deliver it?`] : []),
+    `What should I tell ${name}?`,
+    ...(o ? [`Has ${o.seller.display_name} had tickets like this before?`] : []),
+    'Summarize this ticket',
+  ]
+}
+
 function Panel({ id }: { id: string }) {
   const navigate = useNavigate()
   const detail = useTicket(id)
   const commands = useTicketCommands(id)
   const [replyError, setReplyError] = useState<unknown>(null)
-  const [side, setSide] = useState<'chat' | 'info'>('chat')
+  const [info, setInfo] = useState(false)
+  const [reply, setReply] = useState<ReplyDraft>({ text: '' })
+  // An answer goes in the box unless the member is writing one there by hand.
+  const putReply = useCallback((text: string) => setReply((r) => (r.text.trim() && !r.fromAgent ? { ...r, offered: text } : { text, fromAgent: true })), [])
+
+  // Ctrl / moves between the reply box and the agent's box.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!e.ctrlKey || e.key !== '/') return
+      e.preventDefault()
+      const inReply = (e.target as HTMLElement).closest('[data-reply-box]')
+      document.querySelector<HTMLTextAreaElement>(inReply ? '[data-agent-panel] textarea' : '[data-reply-box] textarea')?.focus()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   if (!detail.data) {
     return <section className="flex flex-1 items-center justify-center">{detail.isError && <Notice>This ticket did not load.</Notice>}</section>
   }
@@ -377,22 +495,31 @@ function Panel({ id }: { id: string }) {
   const d = detail.data
   const t = d.ticket.ticket
   const p = d.ticket.person
+  const name = personName(p)
   const resolved = [...t.events].reverse().find((e) => e.kind === 'resolved')
-  const order = d.order
+  const ticketCommands: Command[] = [
+    {
+      name: 'reply',
+      arg: 'how',
+      description: `Draft a reply to ${name} into the reply box`,
+      run: (how, chat) =>
+        chat.ask(`Write the reply to send to ${name} in this ticket, in Vietnamese, as ShopNexus. Give only the message.${how ? ` ${how}` : ''}`, { toReply: true }),
+    },
+    { name: 'summary', description: 'The ticket so far, for a note or a handoff', run: (_, chat) => chat.ask(`Summarize this ticket so far for a handoff: what ${name} asked, what was done, what is left.`) },
+  ]
 
   return (
     <section className="flex min-w-0 flex-1 animate-pane overflow-hidden">
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-3 border-b border-hairline px-6">
+        <header className="flex h-16 shrink-0 items-center gap-3 px-6">
           <Initial name={p.display_name} id={p.id} size={38} status={d.person_status} />
           <div className="min-w-0 flex-1 leading-tight">
             <p className="truncate text-title-small">
-              {personName(p)} · {kindLabel[t.kind].toLowerCase()}
+              {name} · {kindLabel[t.kind].toLowerCase()}
             </p>
             <p className="truncate text-label-small font-normal text-on-surface-variant">
               {t.status === 'resolved' && resolved ? `Resolved ${when(resolved.at)}` : `Opened ${day(t.opened_at)} ${time(t.opened_at)}`}
-              {order ? ` · ${order.title}` : ''}
-              {order?.carrier ? ` · ${order.carrier.toUpperCase()}` : ''}
+              {d.others.length > 0 ? ` · ${d.others.length} other ticket${d.others.length > 1 ? 's' : ''}` : ''}
             </p>
           </div>
           {t.status === 'open' ? (
@@ -404,43 +531,41 @@ function Panel({ id }: { id: string }) {
               Reopen
             </Btn>
           )}
+          <IconBtn title="Details" aria-pressed={info} onClick={() => setInfo((v) => !v)} className={info ? 'bg-primary/8 text-primary' : ''}>
+            <IconInfo width={19} height={19} />
+          </IconBtn>
           <IconBtn title="Close (Esc)" onClick={() => navigate('/support')}>
             <IconClose width={18} height={18} />
           </IconBtn>
         </header>
         {failure !== null && failure !== undefined && (
-          <div className="px-6 pt-3">
+          <div className="px-6 pb-3">
             <Notice>{failureText(failure)}</Notice>
           </div>
         )}
-        <TicketAgent ticketId={t.id} label={`Ticket · ${personName(p)}`} />
+        <Facts d={d} />
+        <CustomerChat key={t.id} d={d} reply={reply} onReply={setReply} onFailure={setReplyError} />
       </div>
-      <aside className="flex w-[340px] shrink-0 flex-col overflow-hidden border-l border-hairline bg-surface-container-low/50">
-        <div className="p-3">
-          <Segmented
-            full
-            label="Side"
-            value={side}
-            onChange={setSide}
-            items={[
-              { value: 'chat', label: 'Customer chat' },
-              { value: 'info', label: 'Details' },
-            ]}
+      <aside className="flex w-[420px] shrink-0 flex-col overflow-hidden border-l border-hairline bg-surface-container-low/50">
+        {info ? (
+          <>
+            <p className="flex h-[53px] shrink-0 items-center border-b border-hairline px-4 text-title-small">Details</p>
+            <div className="flex min-h-0 flex-1 flex-col pt-3">
+              <Details d={d} />
+            </div>
+          </>
+        ) : (
+          <RecordAgent
+            record={{ kind: 'ticket', id: t.id, label: `Ticket · ${name}` }}
+            here={{ title: 'In this ticket', items: ticketRecords(d) }}
+            starters={startersOf(d)}
+            commands={ticketCommands}
+            onReply={putReply}
           />
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col">{side === 'chat' ? <CustomerChat key={t.id} d={d} onFailure={setReplyError} /> : <Details d={d} />}</div>
+        )}
       </aside>
     </section>
   )
-}
-
-/** The agent's chat about the ticket: the ticket's shared conversation, opened (or made) on first view. */
-function TicketAgent({ ticketId, label }: { ticketId: string; label: string }) {
-  const conv = useSubjectConversation('ticket', ticketId)
-  if (!conv.data) {
-    return <div className="flex flex-1 items-center justify-center">{conv.isError && <Notice>The agent's chat did not open.</Notice>}</div>
-  }
-  return <ChatView key={conv.data.id} conversationId={conv.data.id} subject={{ kind: 'ticket', id: ticketId, label }} placeholder="Ask the agent or change the reply…" />
 }
 
 /** Support: the ticket queue, and the ticket in the URL beside it. */
