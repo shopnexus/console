@@ -462,17 +462,35 @@ export function ChatView({
 
   // The thread follows its newest line while the member is at the bottom; scrolled up, it stays put and offers a jump back.
   const scroller = useRef<HTMLDivElement>(null)
+  const thread = useRef<HTMLDivElement>(null)
   const [atBottom, setAtBottom] = useState(true)
-  const seq = lastRun?.lastSeq ?? 0
+  const follow = useRef(true)
+  const lastTop = useRef(0)
+  const stick = useCallback((v: boolean) => {
+    follow.current = v
+    setAtBottom(v)
+  }, [])
   const toBottom = useCallback((smooth = false) => {
     const el = scroller.current
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' })
   }, [])
+  // Only a scroll upward leaves the bottom, so a smooth scroll down or growing text never stops the follow.
+  const onScroll = useCallback(() => {
+    const el = scroller.current
+    if (!el) return
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) stick(true)
+    else if (el.scrollTop < lastTop.current) stick(false)
+    lastTop.current = el.scrollTop
+  }, [stick])
+  const threaded = !!conversationId || !empty
+  // Any growth of the thread (a token, the reveal, an opened step) keeps the end in view while following.
   useEffect(() => {
-    if (atBottom) toBottom()
-    // atBottom is read, not followed: scrolling back down needs no jump.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [turns.length, seq, toBottom])
+    const el = thread.current
+    if (!el) return
+    const ro = new ResizeObserver(() => follow.current && toBottom())
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [toBottom, threaded])
   // The thread opens at its end.
   useEffect(() => {
     if (conversation.data) toBottom()
@@ -485,7 +503,7 @@ export function ChatView({
     setDraft('')
     setAttachments([])
     setSkill(undefined)
-    setAtBottom(true)
+    stick(true)
     const req: TurnRequest = { text, agent_id: chosenAgent, attachments: keep.attachments.length ? keep.attachments : undefined, skill_id: keep.skill?.id }
     const pending = pendingTurn(me.id, req)
     if (!conversationId) {
@@ -648,22 +666,19 @@ export function ChatView({
 
   return (
     <PanelContext value={api}>
-      <div className="relative flex min-w-0 flex-1">
-        {!conversationId && empty ? (
+      <div className="relative flex min-h-0 min-w-0 flex-1">
+        {!threaded && empty ? (
           empty(composer)
         ) : (
           <section className="flex min-w-0 flex-1 flex-col">
             {header}
             <div
               ref={scroller}
-              onScroll={(e) => {
-                const el = e.currentTarget
-                setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80)
-              }}
+              onScroll={onScroll}
               className="flex min-h-0 flex-1 flex-col overflow-y-auto"
             >
               <span className="flex-1" />
-              <div className="mx-auto w-full max-w-[800px] space-y-7 px-8 py-6">
+              <div ref={thread} className="mx-auto w-full max-w-[800px] space-y-7 px-8 py-6">
                 {notFound && <p className="text-body-medium text-on-surface-variant">{failureText.not_found}</p>}
                 {turns.map((t, i) => (
                   <TurnView
@@ -683,7 +698,7 @@ export function ChatView({
                 <button
                   type="button"
                   onClick={() => {
-                    setAtBottom(true)
+                    stick(true)
                     toBottom(true)
                   }}
                   className="absolute -top-12 left-1/2 inline-flex h-9 -translate-x-1/2 animate-fade items-center gap-1.5 rounded-full border border-hairline bg-surface-container-lowest px-3.5 text-label-medium shadow-float"
