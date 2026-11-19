@@ -207,12 +207,11 @@ function ReplyButton({ label, pressed = false, onClick, children }: { label: str
 /**
  * How long a turn took and, when the agent knows them, its tokens and cost,
  * as quiet text after the reply actions (AI Portal's turn meta). It opens
- * the turn's details. Answers show it on hover or focus only; the latest
- * shows it while it runs, without a time, since the activity line already
- * ticks. What is unknown or zero is left out, and with nothing left it is
+ * the turn's details. Every answer shows it; the latest shows it while it
+ * runs too, without a time, since the activity line already ticks. What is unknown or zero is left out, and with nothing left it is
  * not drawn.
  */
-function TurnMeta({ run, always }: { run: RunState; always: boolean }) {
+function TurnMeta({ run }: { run: RunState }) {
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const ref = useDismiss<HTMLDivElement>(open, close)
@@ -240,10 +239,7 @@ function TurnMeta({ run, always }: { run: RunState; always: boolean }) {
     ] as [string, string | false | undefined][]
   ).filter((r): r is [string, string] => !!r[1])
   return (
-    <div
-      ref={ref}
-      className={`relative transition-opacity duration-[120ms] ${always || open ? '' : 'opacity-0 group-focus-within/answer:opacity-100 group-hover/answer:opacity-100 [@media(pointer:coarse)]:opacity-100'}`}
-    >
+    <div ref={ref} className="relative">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -406,7 +402,7 @@ function RunTurn({
                     <IconRetry width={16} height={16} />
                   </ReplyButton>
                 )}
-                <TurnMeta run={run} always={false} />
+                <TurnMeta run={run} />
                 <SourcesButton sources={run.sources} open={sourcesOpen} onToggle={() => setSourcesOpen((o) => !o)} />
               </div>
               {run.sources.length > 0 && (
@@ -420,7 +416,7 @@ function RunTurn({
           )}
           {run && last && isLive(run) && (
             <div className="-ml-1.5 flex">
-              <TurnMeta run={run} always />
+              <TurnMeta run={run} />
             </div>
           )}
         </div>

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from './api'
 import { QueryClient } from '@tanstack/react-query'
-import { type ConversationDetail, dayGroup, detailKey, failureOf, pendingTurn, postTurn, startTurn, type Turn, variablesOf, withLocalTurns } from './agent'
+import { type ConversationDetail, dayGroup, detailKey, failureOf, pendingTurn, postTurn, runOf, seedTurn, startTurn, type Turn, variablesOf, withLocalTurns } from './agent'
 
 function reply(status: number, body: unknown) {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
@@ -119,5 +119,37 @@ describe('a second question in a chat', () => {
       ['t1', undefined],
       ['t2', pending.client_key],
     ])
+  })
+})
+
+describe('a finished turn opened again', () => {
+  it('replays its events, so the steps, the time and the follow-ups come back', async () => {
+    const at = (sec: number) => new Date(Date.UTC(2026, 10, 19, 9, 0, sec)).toISOString()
+    const events = [
+      { seq: 1, at: at(0), type: 'turn.started', agent: { id: 'a', name: 'Console assistant' }, model: 'm', deadline_s: 60 },
+      { seq: 2, at: at(1), type: 'tool.started', call_id: 'c1', tool: 'accounts_count', label: 'accounts' },
+      { seq: 3, at: at(2), type: 'tool.finished', call_id: 'c1', status: 'success', duration_ms: 40 },
+      { seq: 4, at: at(3), type: 'usage', input_tokens: 900, output_tokens: 100, cost_usd: 0.02, provider: 'p' },
+      { seq: 5, at: at(4), type: 'block', block: { type: 'text', markdown: 'None yet.' } },
+      { seq: 6, at: at(4), type: 'block', block: { type: 'follow_ups', items: ['How many tickets are open?'] } },
+      { seq: 7, at: at(9), type: 'turn.finished', status: 'SUCCEEDED', continuable: false },
+    ]
+    const sse = events.map((e) => `id: ${e.seq}\ndata: ${JSON.stringify(e)}\n\n`).join('')
+    const fetch = vi.fn(async () => new Response(sse, { status: 200, headers: { 'content-type': 'text/event-stream' } }))
+    vi.stubGlobal('fetch', fetch)
+    const turn: Turn = {
+      id: 'replayed-1', member_id: 'me', text: 'How many accounts?', answer: 'None yet.', status: 'succeeded',
+      blocks: [{ type: 'text', markdown: 'None yet.' }], sources: [], continuable: false, steers: [], last_seq: 7, created_at: at(0),
+      usage: { input_tokens: 900, output_tokens: 100, cost_usd: 0.02 },
+    }
+    seedTurn(turn)
+    expect(runOf(turn.id)?.toolOrder).toEqual([])
+    await vi.waitFor(() => expect(runOf(turn.id)?.toolOrder).toEqual(['c1']))
+    const run = runOf(turn.id)!
+    expect(String((fetch.mock.calls[0] as unknown as [string])[0])).toContain('/console/agent/turns/replayed-1/events')
+    expect(run.phase).toBe('finished')
+    expect(run.finishedAt).toBe(at(9))
+    expect(run.usage).toMatchObject({ input: 900, output: 100, costUsd: 0.02 })
+    expect(run.blocks.map((b) => b.type)).toEqual(['text', 'follow_ups'])
   })
 })

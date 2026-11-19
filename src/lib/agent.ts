@@ -452,10 +452,32 @@ export function followTurn(id: string) {
 export function seedTurn(turn: Turn) {
   if (turn.status === 'pending' || turn.failed) return
   if (!runs.has(turn.id) && turn.status !== 'running') {
-    runs.set(turn.id, { ...runFromView(turn), lastSeq: turn.last_seq })
+    const seeded = { ...runFromView(turn), lastSeq: turn.last_seq }
+    runs.set(turn.id, seeded)
     emit(turn.id)
+    if (turn.last_seq > 0) void replayTurn(turn, seeded)
   }
   if (turn.status === 'running') followTurn(turn.id)
+}
+
+/**
+ * The turn view has the answer and how the run ended, not its steps, tool
+ * calls or thinking. A turn that is not running reads its events once from
+ * the start, and the view fills in what they leave out. The result replaces
+ * the seeded run only while nothing else (a stream, a continue) changed it.
+ */
+async function replayTurn(turn: Turn, seeded: RunState) {
+  if (streams.has(turn.id)) return
+  let s = emptyRun()
+  try {
+    await readEvents(turn.id, 0, (ev) => (s = reduceRun(s, ev)), new AbortController().signal)
+  } catch {
+    // The view's run stays.
+    return
+  }
+  if (runs.get(turn.id) !== seeded || s.lastSeq === 0) return
+  runs.set(turn.id, reduceRun(s, { type: 'local.view', view: turn, lastSeq: turn.last_seq }))
+  emit(turn.id)
 }
 
 /** A turn's run: from the store, else drawn from the turn view for a turn that is not running. */
