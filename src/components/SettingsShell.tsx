@@ -105,7 +105,7 @@ export function SettingsShell({
         <MemberMenu rail={false} />
       </nav>
       <main className="vt-work flex min-w-0 flex-1 flex-col overflow-hidden">
-        <section className="band relative shrink-0 overflow-hidden border-b border-hairline px-10 pb-6 pt-8">
+        <section className="band relative z-10 shrink-0 border-b border-hairline px-10 pb-6 pt-8">
           <div aria-hidden className="dots pointer-events-none absolute inset-0" />
           <div className="relative flex items-center gap-4">
             <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] bg-surface-container-lowest text-primary shadow-soft [&>svg]:h-7 [&>svg]:w-7">
