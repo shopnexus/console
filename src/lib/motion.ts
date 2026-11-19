@@ -44,12 +44,12 @@ export function revealEnd(text: string, progress: number): number {
 }
 
 /**
- * The part of text to show while it arrives. It starts empty when animate is
- * set on the first render and full otherwise, so a reply read from history is
- * there at once; once text stops arriving it plays out the rest.
+ * The part of text to show while it arrives. Text already there on the first
+ * render shows whole, so a chat opened again does not replay its answer; with
+ * animate, what arrives after is revealed, and plays out once it stops.
  */
 export function useSmoothReveal(text: string, animate: boolean): { shown: string; revealing: boolean } {
-  const [start] = useState(() => (animate ? 0 : text.length))
+  const [start] = useState(() => text.length)
   const reveal = useRef<Reveal>({ progress: start, speed: 0 })
   const [shownLength, setShownLength] = useState(start)
   const textRef = useRef(text)
