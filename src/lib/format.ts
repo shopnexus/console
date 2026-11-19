@@ -5,6 +5,9 @@ const dayFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric'
 const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 const intFmt = new Intl.NumberFormat('en-US')
 
+/** A day in milliseconds. */
+export const DAY = 86_400_000
+
 /** "10:04". */
 export const time = (iso: string | number | Date) => timeFmt.format(new Date(iso))
 
@@ -76,3 +79,6 @@ export function greeting(hour = new Date().getHours()): string {
 
 /** The first name of a Vietnamese full name: its last word. */
 export const firstName = (name: string) => name.trim().split(/\s+/).pop() ?? name
+
+/** "1 report", "3 reports"; give the plural when it is not the noun plus s. */
+export const count = (n: number, one: string, many = `${one}s`) => `${int(n)} ${n === 1 ? one : many}`

@@ -12,7 +12,7 @@ import IconSend from '~icons/material-symbols-light/arrow-upward-rounded'
 import IconStop from '~icons/material-symbols-light/stop-rounded'
 import { maxQuestion, type Skill } from '../../lib/agent'
 import { useDismiss } from '../../lib/dom'
-import { compact } from '../../lib/format'
+import { compact, count } from '../../lib/format'
 import type { PickableAgent } from '../../lib/settings'
 import { AgentIcon } from '../AiBits'
 import { Btn, Kbd } from '../ui'
@@ -434,7 +434,7 @@ export function PausedStrip({ steps, onContinue, onEnd, busy }: { steps: number;
       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-container-highest text-on-surface-variant">
         <IconPause width={16} height={16} />
       </span>
-      <p className="flex-1 text-body-medium">Paused after {steps === 1 ? '1 step' : `${steps} steps`}</p>
+      <p className="flex-1 text-body-medium">Paused after {count(steps, 'step')}</p>
       <Btn onClick={onEnd} disabled={busy}>
         End
       </Btn>

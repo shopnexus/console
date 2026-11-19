@@ -1,5 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react'
+import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import IconOpen from '~icons/material-symbols-light/north-east-rounded'
 import { shipmentStatus } from '../lib/commerce'
@@ -13,13 +12,16 @@ import IconSee from '~icons/material-symbols-light/visibility-outline'
 import IconUndo from '~icons/material-symbols-light/undo-rounded'
 import { ChatView } from '../components/chat/Chat'
 import { DotFact, JKHint, ListColumn, ListRow } from '../components/Panes'
-import { openConversation } from '../lib/agent'
+import { useSubjectConversation } from '../lib/agent'
 import { Select } from '../components/Select'
 import { Shell } from '../components/Shell'
 import { Btn, Card, IconBtn, Initial, Notice, Segmented } from '../components/ui'
+import { shortId } from '../lib/api'
+import { useListKeys } from '../lib/dom'
 import { day, time, vnd, when } from '../lib/format'
 import {
   type ConsoleMessage,
+  type ConsoleTicket,
   type ConsoleTicketDetail,
   failureText,
   kindChip,
@@ -34,6 +36,8 @@ import {
   useTicket,
   useTicketCommands,
 } from '../lib/support'
+
+const noTickets: ConsoleTicket[] = []
 
 const kindDot: Record<TicketKind, string> = { not_received: 'bg-primary', carrier_request: 'bg-on-surface-variant', other: 'bg-outline' }
 
@@ -148,7 +152,7 @@ function Details({ d }: { d: ConsoleTicketDetail }) {
           <div className="min-w-0 leading-tight">
             <p className="truncate text-title-small">{p.display_name || 'Deleted'}</p>
             <p className="tabular-nums text-label-small font-normal text-on-surface-variant">
-              {p.id.slice(0, 8)} · since {joined(d.joined_at)}
+              {shortId(p.id)} · since {joined(d.joined_at)}
             </p>
           </div>
         </div>
@@ -171,7 +175,7 @@ function Details({ d }: { d: ConsoleTicketDetail }) {
               <Link to={`/accounts/${d.order.seller.id}`} className="hover:underline">
                 {d.order.seller.display_name}
               </Link>{' '}
-              <span className="tabular-nums text-on-surface-variant">{d.order.seller.id.slice(0, 8)}</span>
+              <span className="tabular-nums text-on-surface-variant">{shortId(d.order.seller.id)}</span>
             </Fact>
             {d.order.carrier && (
               <Fact label={d.order.carrier.toUpperCase()}>
@@ -431,7 +435,7 @@ function Panel({ id }: { id: string }) {
 
 /** The agent's chat about the ticket: the ticket's shared conversation, opened (or made) on first view. */
 function TicketAgent({ ticketId, label }: { ticketId: string; label: string }) {
-  const conv = useQuery({ queryKey: ['agent', 'subject', 'ticket', ticketId], queryFn: () => openConversation({ kind: 'ticket', id: ticketId }), staleTime: Infinity })
+  const conv = useSubjectConversation('ticket', ticketId)
   if (!conv.data) {
     return <div className="flex flex-1 items-center justify-center">{conv.isError && <Notice>The agent's chat did not open.</Notice>}</div>
   }
@@ -447,24 +451,10 @@ export function Support() {
   const queue = useQueue(status, kind)
 
   // j and k move through the queue, Enter opens the selection, Escape closes it.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      const target = e.target as HTMLElement
-      if (target.closest('input, textarea, select, [contenteditable]')) return
-      const items = queue.items ?? []
-      const at = items.findIndex((t) => t.ticket.id === id)
-      if (e.key === 'j' || e.key === 'k') {
-        const next = items[Math.min(items.length - 1, Math.max(0, at + (e.key === 'j' ? 1 : -1)))]
-        if (next) navigate(`/support/${next.ticket.id}`)
-      } else if (e.key === 'Enter' && at < 0 && items[0]) {
-        navigate(`/support/${items[0].ticket.id}`)
-      } else if (e.key === 'Escape' && id) {
-        navigate('/support')
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [queue.items, id, navigate])
+  const isOpen = useCallback((t: ConsoleTicket) => t.ticket.id === id, [id])
+  const open = useCallback((t: ConsoleTicket) => navigate(`/support/${t.ticket.id}`), [navigate])
+  const close = useCallback(() => navigate('/support'), [navigate])
+  useListKeys(queue.items ?? noTickets, isOpen, open, id ? close : undefined, true)
 
   return (
     <Shell railFirst>

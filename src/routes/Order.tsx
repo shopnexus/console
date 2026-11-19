@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import IconSpark from '~icons/material-symbols/auto-awesome-outline-rounded'
 import IconCheck from '~icons/material-symbols-light/check-rounded'
@@ -10,7 +9,10 @@ import IconTruck from '~icons/material-symbols-light/local-shipping-outline-roun
 import { BackCrumbs, FactRow, Hero, Missing, OpenLink, PartyCard, StatusPill } from '../components/Panes'
 import { Shell } from '../components/Shell'
 import { Btn, Card, CardHead, IconTile, Initial, Tag } from '../components/ui'
-import { askHref, cancelReason, conditionLabel, humanize, listingStatus, type OrderDetail, orderStatus, orderTrouble, shipmentStatus, useOrder } from '../lib/commerce'
+import { cancelReason, conditionLabel, humanize, listingStatus, type OrderDetail, orderStatus, orderTrouble, shipmentStatus, useOrder } from '../lib/commerce'
+import { askHref } from '../lib/agent'
+import { shortId } from '../lib/api'
+import { useCopy } from '../lib/dom'
 import { date, int, stamp, vnd, when } from '../lib/format'
 import { kindLabel, type TicketKind } from '../lib/support'
 
@@ -55,7 +57,7 @@ export function Order() {
 
 function OrderPage({ id, o }: { id: string; o: OrderDetail }) {
   const navigate = useNavigate()
-  const [copied, setCopied] = useState(false)
+  const [copied, copy] = useCopy()
   const trouble = orderTrouble.has(o.status)
   const dates = [`Placed ${stamp(o.created_at)}`, o.shipped_at && `shipped ${stamp(o.shipped_at)}`, o.closed_at && `closed ${stamp(o.closed_at)}`].filter(Boolean).join(' · ')
   const s = o.shipment
@@ -70,11 +72,7 @@ function OrderPage({ id, o }: { id: string; o: OrderDetail }) {
           type="button"
           title={copied ? 'Copied' : 'Copy code'}
           aria-label="Copy code"
-          onClick={() => {
-            void navigator.clipboard?.writeText(o.code)
-            setCopied(true)
-            setTimeout(() => setCopied(false), 1200)
-          }}
+          onClick={() => copy(o.code)}
           className="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant hover:bg-on-surface/5"
         >
           <span aria-hidden className="ui-icon-swap">
@@ -188,13 +186,13 @@ function OrderPage({ id, o }: { id: string; o: OrderDetail }) {
                 </div>
               </Card>
             }
-            <PartyCard role="Buyer" id={o.buyer.id} name={o.buyer.display_name} status={o.buyer.status} meta={`${o.buyer.id.slice(0, 8)} · since ${date(o.buyer.since)}`} />
+            <PartyCard role="Buyer" id={o.buyer.id} name={o.buyer.display_name} status={o.buyer.status} meta={`${shortId(o.buyer.id)} · since ${date(o.buyer.since)}`} />
             <PartyCard
               role="Seller"
               id={o.seller.id}
               name={o.seller.display_name}
               status={o.seller.status}
-              meta={[o.seller.id.slice(0, 8), `${int(o.seller.orders)} sold`, o.seller.rating && `${o.seller.rating.average.toFixed(1)} ★ (${int(o.seller.rating.count)})`].filter(Boolean).join(' · ')}
+              meta={[shortId(o.seller.id), `${int(o.seller.orders)} sold`, o.seller.rating && `${o.seller.rating.average.toFixed(1)} ★ (${int(o.seller.rating.count)})`].filter(Boolean).join(' · ')}
             />
             {o.tickets.length > 0 && (
               <Card className="p-4">

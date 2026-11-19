@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Source } from './run'
-import { accountStatus, kindOf, sourceHref, sourceLabel, sourceMeta } from './sources'
+import { accountStatus, kindOf, recordHref, sourceHref, sourceLabel, sourceMeta } from './sources'
 
 const src = (over: Partial<Source>): Source => ({ n: 1, kind: 'data', label: '', ...over })
 
@@ -14,6 +14,8 @@ describe('sources', () => {
 
   it('reads an unknown kind as data, and an account’s state from its meta', () => {
     expect(kindOf('invoice')).toBe('data')
+    expect(kindOf('toString')).toBe('data')
+    expect(kindOf('report_case')).toBe('report')
     expect(accountStatus(src({ kind: 'account', meta: 'Seller · suspended' }))).toBe('suspended')
     expect(accountStatus(src({ kind: 'ticket' }))).toBeUndefined()
   })
@@ -27,5 +29,7 @@ describe('sources', () => {
     expect(sourceHref(src({ kind: 'order', record_id: 'o' }))).toBe('/orders/o')
     expect(sourceHref(src({ kind: 'listing', record_id: 'l' }))).toBe('/listings/l')
     expect(sourceHref(src({ kind: 'data', record_id: 'd' }))).toBeUndefined()
+    expect(recordHref('ticket', undefined)).toBeUndefined()
+    expect(recordHref('report_case', 'a')).toBe('/reports/a')
   })
 })

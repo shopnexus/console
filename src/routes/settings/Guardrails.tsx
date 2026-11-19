@@ -8,11 +8,10 @@ import IconLoop from '~icons/material-symbols-light/all-inclusive-rounded'
 import IconLog from '~icons/material-symbols-light/receipt-long-outline-rounded'
 import IconShield from '~icons/material-symbols-light/shield-outline-rounded'
 import IconSpeed from '~icons/material-symbols-light/speed-outline-rounded'
-import { SettingsShell } from '../../components/SettingsShell'
-import { Card, CardHead, IconTile, Initial, Segmented } from '../../components/ui'
-import { shortId } from '../../lib/api'
-import { int, when } from '../../lib/format'
-import { type SpendRange, useGuardrails, useMembers } from '../../lib/settings'
+import { RangePicker, SettingsShell } from '../../components/SettingsShell'
+import { Card, CardHead, IconTile, Initial } from '../../components/ui'
+import { firstName, int, when } from '../../lib/format'
+import { rangeLabel, type SpendRange, useGuardrails, useMemberName } from '../../lib/settings'
 
 // The agent's guardrails (agent/src/guardrails). They are always on and set
 // in code; the run shows each block as a notice, and the counts come from the
@@ -31,30 +30,20 @@ const lookOf = (rule: string) => rules.find((r) => r.rule === rule) ?? { icon: <
 export function Guardrails() {
   const [range, setRange] = useState<SpendRange>('7d')
   const stats = useGuardrails(range)
-  const members = useMembers()
+  const who = useMemberName()
   const countOf = (rule?: string) => (rule ? stats.data?.items.find((x) => x.rule === rule)?.count : undefined)
   const total = stats.data?.items.reduce((n, x) => n + x.count, 0)
-  const days = range === '7d' ? '7 days' : range === '30d' ? '30 days' : '90 days'
-  const who = (id: string) => members.data?.items.find((m) => m.id === id)?.display_name ?? shortId(id)
+  const days = rangeLabel[range]
   return (
     <SettingsShell
       title="Guardrails"
       icon={<IconGuard />}
       chips={[
         [<IconCheck key="c" width={16} height={16} />, `${rules.length}/${rules.length} on`],
-        ...(total !== undefined ? ([[<IconShield key="s" width={16} height={16} />, `${int(total)} blocks · ${days}`]] as [ReactNode, ReactNode][]) : []),
+        total !== undefined && [<IconShield key="s" width={16} height={16} />, `${int(total)} blocks · ${days}`],
       ]}
       actions={
-        <Segmented
-          label="Range"
-          value={range}
-          onChange={setRange}
-          items={[
-            { value: '7d', label: '7 days' },
-            { value: '30d', label: '30 days' },
-            { value: '90d', label: '90 days' },
-          ]}
-        />
+        <RangePicker value={range} onChange={setRange} />
       }
     >
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
@@ -101,7 +90,7 @@ export function Guardrails() {
                     <p className="text-body-medium">{h.detail || look.title}</p>
                     <p className="mt-1 flex items-center gap-1.5 text-body-small text-on-surface-variant">
                       <Initial name={who(h.member_id)} id={h.member_id} size={16} member />
-                      {who(h.member_id).split(' ').pop()} · {when(h.at)}
+                      {firstName(who(h.member_id))} · {when(h.at)}
                     </p>
                   </div>
                 </div>

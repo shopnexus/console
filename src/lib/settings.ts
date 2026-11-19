@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, del, type Member, type Page, patch, post, put } from './api'
+import { ApiError, api, del, type Member, type Page, patch, post, put, shortId } from './api'
+import { useMembers } from './members'
+
+export { useMembers }
 
 // Settings for admins, on /v1/console/settings/* (server
 // api/paths/ai_settings.yaml, schemas/ai_settings.yaml). The server drives
@@ -246,6 +249,8 @@ export interface BudgetsPatch {
 
 export type SpendRange = '7d' | '30d' | '90d'
 
+export const rangeLabel: Record<SpendRange, string> = { '7d': '7 days', '30d': '30 days', '90d': '90 days' }
+
 /** AISpend: LiteLLM's spend by day, in all and by agent, over a range ending today. */
 export interface Spend {
   range: SpendRange
@@ -420,8 +425,8 @@ export function aliasOf(name: string): string {
 }
 
 /** What an admin reads when a settings write fails, by the server's error code. */
-export function settingsFailure(code: string | undefined): string {
-  switch (code) {
+export function settingsFailure(e: unknown): string {
+  switch (e instanceof ApiError ? e.code : undefined) {
     case 'ai_provider_exists':
       return 'A provider with that id exists.'
     case 'ai_provider_in_use':
@@ -450,9 +455,16 @@ export function settingsFailure(code: string | undefined): string {
   }
 }
 
-/** Members, newest first; the endpoint exists today. */
-export function useMembers() {
-  return useQuery({ queryKey: ['console', 'members', 'all'], queryFn: () => api<Page<Member>>('/console/members?limit=100') })
+/** A member's display name by id, or the id's first characters while members load. */
+export function useMemberName() {
+  const members = useMembers()
+  return (id: string) => members.data?.items.find((m) => m.id === id)?.display_name ?? shortId(id)
+}
+
+/** How much of its month's budget an agent spent, in percent, and whether that is near the end (80%). */
+export function budgetUse(spent: number, budget: number | undefined): { pct: number; near: boolean } {
+  const pct = budget ? (spent / budget) * 100 : 0
+  return { pct, near: pct >= 80 }
 }
 
 export function useMemberCommands() {

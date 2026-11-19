@@ -3,10 +3,11 @@ import IconOpen from '~icons/material-symbols-light/north-east-rounded'
 import { ChatView } from '../components/chat/Chat'
 import { ChatMenu } from '../components/chat/ChatMenu'
 import { Shell } from '../components/Shell'
-import { SubjectIcon } from '../components/SubjectIcon'
+import { RecordIcon } from '../components/kindLook'
 import { isTempChat, threadTitle, useConversation, useSubjectLabel, useThreads } from '../lib/agent'
 import { firstName, greeting, when } from '../lib/format'
 import { useMe } from '../lib/session'
+import { kindName, recordHref } from '../lib/sources'
 
 /**
  * The agent: / is a new chat, /agent/:id one chat. A record's shared chat
@@ -21,7 +22,7 @@ export function Agent() {
   const c = conversation.data
   const subject = c?.subject_kind && c.subject_id ? { kind: c.subject_kind, id: c.subject_id } : undefined
   const subjectLabel = useSubjectLabel(subject?.kind, subject?.id)
-  const href = subject ? (subject.kind === 'ticket' ? `/support/${subject.id}` : `/accounts/${subject.id}`) : undefined
+  const href = subject && recordHref(subject.kind, subject.id)
 
   return (
     <Shell>
@@ -38,7 +39,7 @@ export function Agent() {
                 to={href}
                 className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-hairline px-3 text-body-small text-on-surface-variant hover:bg-surface-container-low"
               >
-                <SubjectIcon kind={subject.kind} size={15} />
+                <RecordIcon kind={subject.kind} size={15} />
                 {subjectLabel}
                 <IconOpen width={14} height={14} />
               </Link>
@@ -65,9 +66,9 @@ export function Agent() {
                     >
                       <span className="flex items-center gap-1.5 text-body-small text-on-surface-variant">
                         <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/8 text-primary">
-                          <SubjectIcon kind={t.subject_kind} size={14} />
+                          <RecordIcon kind={t.subject_kind} size={14} />
                         </span>
-                        {t.subject_kind === 'ticket' ? 'Ticket' : t.subject_kind === 'account' ? 'Account' : 'Chat'} · <span className="tabular-nums">{when(t.updated_at)}</span>
+                        {t.subject_kind ? kindName(t.subject_kind) : 'Chat'} · <span className="tabular-nums">{when(t.updated_at)}</span>
                       </span>
                       <span className="line-clamp-2 text-title-small">{threadTitle(t)}</span>
                     </Link>

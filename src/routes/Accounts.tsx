@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useCallback, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import IconSpark from '~icons/material-symbols/auto-awesome-outline-rounded'
 import IconCopy from '~icons/material-symbols-light/content-copy-outline-rounded'
@@ -10,36 +10,34 @@ import IconUnlock from '~icons/material-symbols-light/lock-open-outline-rounded'
 import IconVerified from '~icons/material-symbols-light/verified-rounded'
 import IconVerifiedOutline from '~icons/material-symbols-light/verified-outline-rounded'
 import IconHistory from '~icons/material-symbols-light/history-rounded'
-import { Crumbs, DotFact, FactRow, Hero, JKHint, ListColumn, ListRow, StatusPill } from '../components/Panes'
+import { Crumbs, DotFact, FactRow, Hero, JKHint, ListColumn, ListRow, Missing, StatusPill } from '../components/Panes'
 import { Shell } from '../components/Shell'
 import { Btn, Card, CardHead, IconTile, Initial, Kbd, Meter, Notice, Segmented, Tag } from '../components/ui'
 import {
   type AccountDetail,
   type AccountTab,
   accountFailure,
+  suspendTerms,
+  termLabel,
+  untilOf,
   rememberAccount,
   useAccountCommands,
   useAccountDetail,
   useAccountList,
   useAccountSearch,
 } from '../lib/accounts'
-import { useOpenConversation } from '../lib/agent'
-import { type Account, type Action, ApiError } from '../lib/api'
-import { useDismiss } from '../lib/dom'
-import { date, day, firstName, stamp } from '../lib/format'
+import { useAskAgent } from '../lib/agent'
+import { type Account, type Action, actionDetail, shortId } from '../lib/api'
+import { useDismiss, useListKeys } from '../lib/dom'
+import { count, DAY, date, day, firstName, stamp } from '../lib/format'
 
-const DAY = 86_400_000
 const daysLeft = (until: string, now: number) => Math.max(1, Math.ceil((new Date(until).getTime() - now) / DAY))
 
 /** "7 days" for a suspension's term, from its action. */
 function term(a: Action): string {
-  const until = typeof a.details?.until === 'string' ? a.details.until : undefined
-  if (!until) return 'with no end'
-  const n = Math.max(1, Math.round((new Date(until).getTime() - new Date(a.at).getTime()) / DAY))
-  return n === 1 ? '1 day' : `${n} days`
+  const until = actionDetail(a, 'until')
+  return until ? count(Math.max(1, Math.round((new Date(until).getTime() - new Date(a.at).getTime()) / DAY)), 'day') : 'with no end'
 }
-
-const reasonOf = (a: Action) => (typeof a.details?.reason === 'string' ? a.details.reason : '')
 
 /** Accounts: the list, and the account in the URL beside it. */
 export function Accounts() {
@@ -65,22 +63,11 @@ export function Accounts() {
   )
 
   // j and k move through the list, Escape closes the account.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.target as HTMLElement).closest('input, textarea, [contenteditable]')) return
-      const at = rows.findIndex((a) => a.id === id)
-      if (e.key === 'j' || e.key === 'k') {
-        const next = rows[Math.min(rows.length - 1, Math.max(0, at + (e.key === 'j' ? 1 : -1)))]
-        if (next) open(next)
-      } else if (e.key === 'Escape' && id) {
-        navigate('/accounts')
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [rows, id, open, navigate])
+  const isOpen = useCallback((a: Account) => a.id === id, [id])
+  const close = useCallback(() => navigate('/accounts'), [navigate])
+  useListKeys(rows, isOpen, open, id ? close : undefined)
 
-  const count = suspended.data?.pages[0]?.total
+  const total = suspended.data?.pages[0]?.total
 
   return (
     <Shell>
@@ -100,8 +87,8 @@ export function Accounts() {
                   label: (
                     <>
                       Suspended
-                      {count !== undefined && count > 0 && (
-                        <span className="rounded-full bg-primary px-1.5 tabular-nums text-label-small text-on-primary">{count}</span>
+                      {total !== undefined && total > 0 && (
+                        <span className="rounded-full bg-primary px-1.5 tabular-nums text-label-small text-on-primary">{total}</span>
                       )}
                     </>
                   ),
@@ -144,7 +131,7 @@ export function Accounts() {
                 avatar={<Initial name={a.display_name} id={a.id} size={38} status={a.status} />}
                 name={a.display_name}
                 when={day(a.created_at)}
-                line={<span className="tabular-nums">{a.id.slice(0, 8)}</span>}
+                line={<span className="tabular-nums">{shortId(a.id)}</span>}
                 foot={
                   locked ? (
                     <DotFact tone="bg-error">
@@ -193,7 +180,7 @@ export function Accounts() {
 function AccountPane({ id, onMove }: { id: string; onMove: (step: 1 | -1) => void }) {
   const detail = useAccountDetail(id)
   const navigate = useNavigate()
-  const openChat = useOpenConversation()
+  const askAgent = useAskAgent()
   const commands = useAccountCommands(id)
   const [suspending, setSuspending] = useState(false)
   const closeSuspend = useCallback(() => setSuspending(false), [])
@@ -201,14 +188,7 @@ function AccountPane({ id, onMove }: { id: string; onMove: (step: 1 | -1) => voi
   const suspendBox = useDismiss<HTMLDivElement>(suspending, closeSuspend)
   const [now] = useState(() => Date.now())
 
-  if (detail.error) {
-    const gone = detail.error instanceof ApiError && detail.error.status === 404
-    return (
-      <div className="flex flex-1 items-center justify-center bg-surface-container-low/40 text-body-medium text-on-surface-variant">
-        {gone ? 'There is no such account.' : 'The account did not load.'}
-      </div>
-    )
-  }
+  if (detail.error) return <Missing error={detail.error} what="account" className="bg-surface-container-low/40" />
   if (!detail.data) return <div className="flex-1 bg-surface-container-low/40" />
   const { account: a, identities, actions } = detail.data
   const locked = a.status === 'suspended'
@@ -216,11 +196,6 @@ function AccountPane({ id, onMove }: { id: string; onMove: (step: 1 | -1) => voi
   const failure = commands.suspend.error ?? commands.unsuspend.error
   const phone = identities.find((i) => i.kind === 'phone')
   const email = identities.find((i) => i.kind === 'email')
-
-  async function askAgent() {
-    const c = await openChat.mutateAsync({ kind: 'account', id })
-    navigate(`/agent/${c.id}`)
-  }
 
   return (
     <section className="relative flex min-w-0 flex-1 animate-pane flex-col bg-surface-container-low/40">
@@ -242,7 +217,7 @@ function AccountPane({ id, onMove }: { id: string; onMove: (step: 1 | -1) => voi
                 <StatusPill suspended={locked}>{locked ? 'Suspended' : 'Active'}</StatusPill>
               </div>
               <p className="mt-0.5 flex items-center gap-1.5 text-body-small text-on-surface-variant">
-                <span className="tabular-nums">{a.id.slice(0, 8)}</span>
+                <span className="tabular-nums">{shortId(a.id)}</span>
                 <button
                   title="Copy the id"
                   onClick={() => void navigator.clipboard?.writeText(a.id)}
@@ -261,7 +236,7 @@ function AccountPane({ id, onMove }: { id: string; onMove: (step: 1 | -1) => voi
                 {suspensions.length > (locked ? 1 : 0) && (
                   <Tag tone="border border-hairline bg-surface-container-lowest text-on-surface">
                     <IconHistory width={13} height={13} />
-                    {suspensions.length - (locked ? 1 : 0) === 1 ? '1 earlier suspension' : `${suspensions.length - (locked ? 1 : 0)} earlier suspensions`}
+                    {count(suspensions.length - (locked ? 1 : 0), 'earlier suspension')}
                   </Tag>
                 )}
               </div>
@@ -279,7 +254,7 @@ function AccountPane({ id, onMove }: { id: string; onMove: (step: 1 | -1) => voi
                 </Btn>
               ) : (
                 <>
-                  <Btn icon={<IconSpark width={17} height={17} />} onClick={() => void askAgent()} disabled={openChat.isPending}>
+                  <Btn icon={<IconSpark width={17} height={17} />} onClick={() => void askAgent.ask({ kind: 'account', id })} disabled={askAgent.pending}>
                     Ask the agent
                   </Btn>
                   <div ref={suspendBox} className="relative">
@@ -371,7 +346,7 @@ function History({ d }: { d: AccountDetail }) {
       {rows.map((x) => {
         const suspend = x.action === 'account.suspend'
         const who = x.actor.display_name ?? 'CLI'
-        const reason = reasonOf(x)
+        const reason = actionDetail(x, 'reason')
         return (
           <li key={x.id} className="relative flex gap-3 pb-4 last:pb-0">
             <span
@@ -405,25 +380,17 @@ function History({ d }: { d: AccountDetail }) {
   )
 }
 
-const terms: [number | null, string][] = [
-  [1, '1 day'],
-  [7, '7 days'],
-  [30, '30 days'],
-  [null, 'No end'],
-]
-
 /** Suspend: the term with its end date, and the reason the person sees. */
 function SuspendPopover({ a, onClose, suspend }: { a: Account; onClose: () => void; suspend: ReturnType<typeof useAccountCommands>['suspend'] }) {
   const [days, setDays] = useState<number | null>(7)
   const [reason, setReason] = useState('')
   const [now] = useState(() => Date.now())
-  const label = days === null ? 'with no end' : days === 1 ? '1 day' : `${days} days`
+  const label = termLabel(days)
 
   function submit(e: FormEvent) {
     e.preventDefault()
     if (!reason.trim()) return
-    const until = days === null ? undefined : new Date(now + days * DAY).toISOString()
-    suspend.mutate({ reason: reason.trim(), until }, { onSuccess: onClose })
+    suspend.mutate({ reason: reason.trim(), until: untilOf(days, now) }, { onSuccess: onClose })
   }
 
   return (
@@ -438,7 +405,7 @@ function SuspendPopover({ a, onClose, suspend }: { a: Account; onClose: () => vo
         <p className="min-w-0 flex-1 truncate text-title-medium">Suspend {a.display_name}</p>
       </div>
       <div role="radiogroup" aria-label="Term" className="grid grid-cols-2 gap-2 px-4">
-        {terms.map(([n, text]) => (
+        {suspendTerms.map(([n, text]) => (
           <button
             key={text}
             type="button"

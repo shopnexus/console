@@ -1,17 +1,12 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router'
 import IconCheck from '~icons/material-symbols-light/check-rounded'
 import IconCopy from '~icons/material-symbols-light/content-copy-outline-rounded'
 import IconError from '~icons/material-symbols-light/error-outline-rounded'
-import IconFlag from '~icons/material-symbols-light/flag-outline-rounded'
 import IconPause from '~icons/material-symbols-light/pause-circle-outline-rounded'
-import IconPerson from '~icons/material-symbols-light/person-outline-rounded'
 import IconPlay from '~icons/material-symbols-light/play-arrow-rounded'
 import IconRetry from '~icons/material-symbols-light/refresh-rounded'
-import IconOrder from '~icons/material-symbols-light/package-2-outline'
-import IconListing from '~icons/material-symbols-light/storefront-outline-rounded'
-import IconTicket from '~icons/material-symbols-light/package-2-outline'
 import IconBolt from '~icons/material-symbols-light/bolt-outline-rounded'
 import IconDown from '~icons/material-symbols-light/arrow-downward-rounded'
 import {
@@ -35,42 +30,31 @@ import {
   useSkillCommands,
   useSkills,
   pendingTurn,
-  postTurn,
   putTurn,
   dropTurn,
-  startChat,
-  isTempChat,
-  detailKey,
-  type ConversationDetail,
+  sendTurn,
+  attachmentFromParams,
   type TurnRequest,
   skillFailure,
   variablesOf,
 } from '../../lib/agent'
 import { ApiError, shortId } from '../../lib/api'
-import { useDismiss, useNow } from '../../lib/dom'
+import { useCopy, useDismiss, useNow } from '../../lib/dom'
 import { markThreadOpened, useArrival, useSmoothReveal } from '../../lib/motion'
-import { clock, compact, duration, time, usd } from '../../lib/format'
+import { clock, compact, duration, int, time, usd } from '../../lib/format'
 import { type Panel, PanelContext, type PanelApi } from '../../lib/panel'
-import { answerBlocks, canContinue, counts, elapsed, isLive, outcomeGroup, type RunState } from '../../lib/run'
+import { answerBlocks, type Block, canContinue, counts, elapsed, isLive, outcomeGroup, type RunPhase, type RunState } from '../../lib/run'
 import { plain } from '../../lib/markdown'
 import { useMe } from '../../lib/session'
 import { usePickableAgents } from '../../lib/settings'
 import { AttachMenu } from '../AttachMenu'
+import { RecordIcon } from '../kindLook'
 import { Btn, Mascot, Spinner } from '../ui'
 import { Blocks, SourceList, SourcesButton } from './Answer'
 import { ClarifyCard } from './Clarify'
 import { BudgetLock, type Chip, Composer, type ComposerMode, PausedStrip } from './Composer'
 import { DocumentPanel, Overlay, SourcesPanel, ToolPanel } from './Panels'
 import { CompactionDivider, Compacting, RunCard, Waiting } from './Run'
-
-const attachIcon: Record<Attachment['kind'], ReactNode> = {
-  ticket: <IconTicket width={13} height={13} />,
-  account: <IconPerson width={13} height={13} />,
-  report_case: <IconFlag width={13} height={13} />,
-  order: <IconOrder width={13} height={13} />,
-  listing: <IconListing width={13} height={13} />,
-  document: <IconBolt width={13} height={13} />,
-}
 
 const attachTone: Record<Attachment['kind'], string> = {
   ticket: 'bg-secondary-container/60',
@@ -88,7 +72,7 @@ function Bubble({ turn, by }: { turn: Turn; by?: string }) {
         <div className="flex flex-wrap justify-end gap-1.5">
           {turn.attachments?.map((a) => (
             <span key={a.kind + a.id} className={`inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-label-small font-normal ${attachTone[a.kind]}`}>
-              {attachIcon[a.kind]}
+              <RecordIcon kind={a.kind} size={13} />
               {a.label ?? `${a.kind} ${shortId(a.id)}`}
             </span>
           ))}
@@ -230,10 +214,10 @@ function TurnMeta({ run }: { run: RunState }) {
     [
       ['Model', run.model],
       ['Provider', run.provider],
-      ['Input (uncached)', run.usage.input > 0 && `${run.usage.input.toLocaleString('en-US')} tokens`],
-      ['Cache read', run.usage.cacheRead > 0 && `${run.usage.cacheRead.toLocaleString('en-US')} tokens`],
-      ['Cache write', run.usage.cacheWrite > 0 && `${run.usage.cacheWrite.toLocaleString('en-US')} tokens`],
-      ['Output', run.usage.output > 0 && `${run.usage.output.toLocaleString('en-US')} tokens`],
+      ['Input (uncached)', run.usage.input > 0 && `${int(run.usage.input)} tokens`],
+      ['Cache read', run.usage.cacheRead > 0 && `${int(run.usage.cacheRead)} tokens`],
+      ['Cache write', run.usage.cacheWrite > 0 && `${int(run.usage.cacheWrite)} tokens`],
+      ['Output', run.usage.output > 0 && `${int(run.usage.output)} tokens`],
       ['Cost', cost > 0 && usd(cost)],
       ['Time', time && `${time}${firstMs !== undefined ? ` · first token ${duration(firstMs)}` : ''}`],
     ] as [string, string | false | undefined][]
@@ -264,8 +248,8 @@ function TurnMeta({ run }: { run: RunState }) {
   )
 }
 
-/** One turn: the question, its steers, and the agent's run and answer. */
-function TurnView({
+/** One turn: the question, its steers, the waiting word, the activity, the answer revealed as it arrives, and its footer. */
+const TurnView = memo(function TurnView({
   turn,
   last,
   by,
@@ -282,7 +266,7 @@ function TurnView({
 }) {
   const { run } = useRun(turn.id, turn)
   const [busy, setBusy] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [copied, copy] = useCopy()
   const act = async (f: () => Promise<unknown>) => {
     setBusy(true)
     try {
@@ -291,49 +275,19 @@ function TurnView({
       setBusy(false)
     }
   }
-
-  return <RunTurn turn={turn} run={run} last={last} by={by} onAsk={onAsk} onRetry={onRetry} onDismiss={onDismiss} busy={busy} act={act} copied={copied} setCopied={setCopied} />
-}
-
-/** A turn with its run: the waiting word, the activity, the answer revealed as it arrives, and its footer. */
-function RunTurn({
-  turn,
-  run,
-  last,
-  by,
-  onAsk,
-  onRetry,
-  onDismiss,
-  busy,
-  act,
-  copied,
-  setCopied,
-}: {
-  turn: Turn
-  run?: RunState
-  last: boolean
-  by?: string
-  onAsk?: (text: string) => void
-  onRetry?: (turn: Turn) => void
-  onDismiss?: (turn: Turn) => void
-  busy: boolean
-  act: (f: () => Promise<unknown>) => Promise<void>
-  copied: boolean
-  setCopied: (v: boolean) => void
-}) {
   // Only what arrives now animates: a turn the member just sent, or one still
   // running when this view first saw it. A finished turn read back off the
   // chat draws whole, however late its answer loads.
   const [stream] = useState(() => !!turn.client_key || turn.status === 'pending' || turn.status === 'running')
   const arrived = useArrival(turn.client_key ?? turn.id, !!turn.client_key) && stream
-  const blocks = run ? answerBlocks(run) : []
+  const blocks = useMemo(() => (run ? answerBlocks(run) : []), [run])
+  const texts = useMemo(() => blocks.filter((b): b is Extract<Block, { type: 'text' }> => b.type === 'text'), [blocks])
   const finished = run?.phase === 'finished'
-  const textBlock = blocks.find((b) => b.type === 'text') as { markdown: string } | undefined
-  const answerText = textBlock?.markdown ?? (run && run.phase !== 'finished' ? run.draft : '')
+  const answerText = texts[0]?.markdown ?? (run && run.phase !== 'finished' ? run.draft : '')
   const reveal = useSmoothReveal(answerText, stream)
   const quiet = turn.failed ? false : !run || (isLive(run) && run.steps.length === 0 && run.toolOrder.length === 0 && !run.draft && blocks.length === 0 && run.thinking.length === 0)
   const [sourcesOpen, setSourcesOpen] = useState(false)
-  const textOf = blocks.filter((b) => b.type === 'text').map((b) => plain((b as { markdown: string }).markdown)).join('\n\n')
+  const textOf = useMemo(() => texts.map((b) => plain(b.markdown)).join('\n\n'), [texts])
   return (
     <div className="space-y-4">
       <div className={arrived ? 'animate-rise' : ''}>
@@ -365,7 +319,7 @@ function RunTurn({
             <CompactionDivider key={i} summary={c.summary} before={c.before} after={c.after} />
           ))}
           {run?.compacting && <Compacting />}
-          {run && <RunCard run={run} turnId={turn.id} />}
+          {run && <RunCard run={run} />}
           {run?.phase === 'awaiting_input' && run.clarify && last && <ClarifyCard questions={run.clarify} busy={busy} onAnswer={(answers: Answers) => void act(() => answerTurn(turn.id, { answers }))} />}
           {run && (
             <Blocks
@@ -385,11 +339,7 @@ function RunTurn({
                   <ReplyButton
                     label={copied ? 'Copied' : 'Copy reply'}
                     pressed={copied}
-                    onClick={() => {
-                      void navigator.clipboard?.writeText(textOf)
-                      setCopied(true)
-                      setTimeout(() => setCopied(false), 1200)
-                    }}
+                    onClick={() => copy(textOf)}
                   >
                     <span aria-hidden className="ui-icon-swap">
                       <IconCopy data-shown={!copied} width={16} height={16} />
@@ -423,7 +373,9 @@ function RunTurn({
       </div>
     </div>
   )
-}
+})
+
+const composerMode: Partial<Record<RunPhase, ComposerMode>> = { running: 'running', pausing: 'pausing', paused: 'paused', awaiting_input: 'awaiting' }
 
 /**
  * The chat: its turns and the ask box, with the sources or a document
@@ -459,10 +411,10 @@ export function ChatView({
   const skills = useSkills()
   const skillCommands = useSkillCommands()
   const [draft, setDraft] = useState('')
-  // A record's page opens a new chat with the record attached: ?attach=order:<id>&label=Order SN-1042.
+  // A record's page opens a new chat with the record attached (askHref).
   const [attachments, setAttachments] = useState<Attachment[]>(() => {
-    const [kind, id] = (params.get('attach') ?? '').split(':')
-    return !conversationId && id && (kind === 'order' || kind === 'listing') ? [{ kind, id, label: params.get('label') ?? undefined }] : []
+    const a = conversationId ? undefined : attachmentFromParams(params)
+    return a ? [a] : []
   })
   const [skill, setSkill] = useState<Skill>()
   const [agentId, setAgentId] = useState<string | undefined>(() => params.get('agent') ?? undefined)
@@ -496,17 +448,7 @@ export function ChatView({
   const lastAgent = lastTurn?.agent_id ?? lastRun?.agent?.id
   const chosenAgent = agentId ?? lastAgent ?? (agents.data?.items.find((a) => a.default) ?? agents.data?.items[0])?.id
 
-  const mode: ComposerMode = !lastRun
-    ? 'idle'
-    : lastRun.phase === 'running'
-      ? 'running'
-      : lastRun.phase === 'pausing'
-        ? 'pausing'
-        : lastRun.phase === 'paused'
-          ? 'paused'
-          : lastRun.phase === 'awaiting_input'
-            ? 'awaiting'
-            : 'idle'
+  const mode: ComposerMode = (lastRun && composerMode[lastRun.phase]) ?? 'idle'
   const locked = lastRun?.outcome?.status === 'BUDGET'
   const steering = mode === 'running' || mode === 'pausing' || mode === 'paused'
   // An attachment, a skill or another agent waits in the ask box for the next turn.
@@ -552,42 +494,25 @@ export function ChatView({
       putTurn(client, temp, pending)
       if (onCreated) onCreated(temp)
       else navigate(`/agent/${temp}`)
-      void startChat(client, temp, pending, req, subject ? { kind: subject.kind, id: subject.id } : undefined, (id) => {
-        if (location.pathname.endsWith(temp)) navigate(`/agent/${id}`, { replace: true })
-      })
+      void postPending(temp, pending, req)
       return
     }
     requestAnimationFrame(() => toBottom(true))
-    await send2(pending, req)
+    await postPending(conversationId, pending, req)
   }
 
-  /** Posts a pending turn in this chat; a turn already open takes the text as a steer instead. */
-  async function send2(pending: Turn, req: TurnRequest) {
-    const target = isTempChat(conversationId) ? conversation.data?.real_id : conversationId
-    if (isTempChat(conversationId) && !target) {
-      // The conversation was never made: try the whole new chat again.
-      void startChat(client, conversationId!, pending, req, subject ? { kind: subject.kind, id: subject.id } : undefined, (id) => {
-        if (location.pathname.endsWith(conversationId!)) navigate(`/agent/${id}`, { replace: true })
-      })
-      return
-    }
+  /** Posts a pending turn in the chat; a turn already open takes the text as a steer instead. A new chat moves to its real id once it has one. */
+  async function postPending(chatId: string, pending: Turn, req: TurnRequest) {
     try {
-      await postTurn(client, conversationId!, target!, pending, req)
-      if (isTempChat(conversationId)) {
-        const d = client.getQueryData<ConversationDetail>(detailKey(conversationId!))
-        if (d) client.setQueryData(detailKey(target!), { ...d, id: target, real_id: undefined })
-        navigate(`/agent/${target}`, { replace: true })
-      }
+      await sendTurn(client, chatId, pending, req, subject && { kind: subject.kind, id: subject.id }, (id) => {
+        if (location.pathname.endsWith(chatId)) navigate(`/agent/${id}`, { replace: true })
+      })
     } catch (e) {
       if (failureOf(e) === 'busy' && lastTurn && lastRun && (isLive(lastRun) || lastRun.phase === 'paused')) {
-        dropTurn(client, conversationId!, pending.client_key!)
+        dropTurn(client, chatId, pending.client_key!)
         await steerTurn(lastTurn.id, req.text).catch(() => undefined)
       }
     }
-  }
-
-  function retry(t: Turn) {
-    void send2(t, { text: t.text, agent_id: t.agent_id, attachments: t.attachments, skill_id: t.skill_id })
   }
 
   async function send(text: string) {
@@ -620,10 +545,10 @@ export function ChatView({
   }
 
   const chips: Chip[] = [
-    ...(subject && !conversationId ? [{ key: 'subject', icon: subject.kind === 'ticket' ? attachIcon.ticket : attachIcon.account, label: subject.label }] : []),
+    ...(subject && !conversationId ? [{ key: 'subject', icon: <RecordIcon kind={subject.kind} size={13} />, label: subject.label }] : []),
     ...attachments.map((a) => ({
       key: a.kind + a.id,
-      icon: attachIcon[a.kind],
+      icon: <RecordIcon kind={a.kind} size={13} />,
       label: a.label ?? `${a.kind} ${shortId(a.id)}`,
       tone: attachTone[a.kind],
       onRemove: () => setAttachments((xs) => xs.filter((x) => x !== a)),
@@ -692,7 +617,7 @@ export function ChatView({
     </>
   )
 
-  const api: PanelApi = {
+  const api = useMemo<PanelApi>(() => ({
     panel,
     open: (p) => {
       if (!p && (panel?.kind === 'tool' || panel?.kind === 'sources')) return closePanel()
@@ -708,7 +633,15 @@ export function ChatView({
       setPanel(p)
     },
     sourcesOf: (turnId) => runOf(turnId)?.sources ?? [],
-  }
+  }), [panel, sourcesPanel, closePanel])
+  // The turns get callbacks that keep their identity, so a token or a key press redraws only what changed.
+  const latest = useRef({ send, postPending })
+  useLayoutEffect(() => {
+    latest.current = { send, postPending }
+  })
+  const onAsk = useCallback((text: string) => void latest.current.send(text), [])
+  const onRetry = useCallback((t: Turn) => void latest.current.postPending(conversationId!, t, { text: t.text, agent_id: t.agent_id, attachments: t.attachments, skill_id: t.skill_id }), [conversationId])
+  const onDismiss = useCallback((x: Turn) => x.client_key && dropTurn(client, conversationId!, x.client_key), [client, conversationId])
   const shared = !!conversation.data?.subject_kind
   const by = (t: Turn) => (shared ? `${t.member_id === me.id ? 'You' : shortId(t.member_id)} · ${time(t.created_at)}` : undefined)
   const notFound = conversation.error instanceof ApiError && conversation.error.status === 404
@@ -738,9 +671,9 @@ export function ChatView({
                     turn={t}
                     last={i === turns.length - 1}
                     by={by(t)}
-                    onAsk={(text) => void send(text)}
-                    onRetry={retry}
-                    onDismiss={(x) => x.client_key && dropTurn(client, conversationId!, x.client_key)}
+                    onAsk={onAsk}
+                    onRetry={onRetry}
+                    onDismiss={onDismiss}
                   />
                 ))}
               </div>

@@ -1,4 +1,4 @@
-import { type CSSProperties, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router'
 import IconArticle from '~icons/material-symbols-light/article-outline-rounded'
@@ -12,8 +12,10 @@ import { type Inline, type MdBlock, parseMarkdown } from '../../lib/markdown'
 import { usePanel } from '../../lib/panel'
 import type { Block, ChartSeries, Figure, Source } from '../../lib/run'
 import { openLabel, sourceHref, sourceLabel, sourceMeta } from '../../lib/sources'
+import { count } from '../../lib/format'
 import { useMe } from '../../lib/session'
-import { SourceAvatar } from './sourceLook'
+import { useAnchor, useDismiss } from '../../lib/dom'
+import { SourceAvatar } from '../kindLook'
 
 /** A source number set in the text: an 18px pill sitting just above the line (AI Portal's CitePill). */
 export function CitePill({ n, className = '' }: { n: number; className?: string }) {
@@ -51,23 +53,12 @@ export function Cite({ n, turnId }: { n: number; turnId: string }) {
   const { sourcesOf, open: openPanel, panel } = usePanel()
   const me = useMe()
   const { open, set, hover } = useHoverOpen()
-  const anchor = useRef<HTMLSpanElement>(null)
-  const [at, setAt] = useState<CSSProperties>()
   const s = sourcesOf(turnId).find((x) => x.n === n)
+  // A click anywhere else closes it.
+  const dismiss = useCallback(() => set(false), [set])
+  const anchor = useDismiss<HTMLSpanElement>(open, dismiss, { ignore: '[data-cite-card]', escape: false })
   // Above the mark where there is room, below it where there is not, kept inside the window.
-  useEffect(() => {
-    if (!open || !anchor.current) return
-    const r = anchor.current.getBoundingClientRect()
-    const left = Math.max(12, Math.min(r.left - 12, window.innerWidth - 352))
-    setAt(r.top > 240 ? { left, bottom: window.innerHeight - r.top + 6 } : { left, top: r.bottom + 6 })
-    // A click anywhere else closes it.
-    const off = (e: PointerEvent) => {
-      const t = e.target as Element
-      if (!anchor.current?.contains(t) && !t.closest?.('[data-cite-card]')) set(false)
-    }
-    document.addEventListener('pointerdown', off)
-    return () => document.removeEventListener('pointerdown', off)
-  }, [open, set])
+  const at = useAnchor(anchor, open, { side: 'auto', prefer: 'above', room: 240, gap: 6, width: 340, inset: 12, dx: -12 })
   if (!s) return <CitePill n={n} />
   const href = sourceHref(s, me.role === 'admin')
   const label = sourceLabel(s)
@@ -89,7 +80,6 @@ export function Cite({ n, turnId }: { n: number; turnId: string }) {
         <CitePill n={n} className={`cursor-pointer transition-colors duration-[120ms] ${showing ? 'bg-primary text-on-primary' : 'hover:bg-surface-container-highest hover:text-on-surface'}`} />
       </button>
       {open &&
-        at &&
         createPortal(
         <span
           role="dialog"
@@ -190,8 +180,10 @@ function renderInline(xs: Inline[], turnId: string, streaming = false): ReactNod
  * blur and a caret rides the end of the last block.
  */
 export function Markdown({ md, turnId, sources, big = false, streaming = false }: { md: string; turnId: string; sources: Source[]; big?: boolean; streaming?: boolean }) {
-  const known = (n: number) => sources.some((s) => s.n === n)
-  const blocks: MdBlock[] = parseMarkdown(md, known)
+  const blocks: MdBlock[] = useMemo(() => {
+    const known = new Set(sources.map((s) => s.n))
+    return parseMarkdown(md, (n) => known.has(n))
+  }, [md, sources])
   const text = big ? 'text-body-large leading-[26px]' : 'text-body-medium leading-[23px]'
   return (
     <div className={`space-y-3 ${streaming ? 'streaming-tail' : ''}`}>
@@ -471,7 +463,7 @@ export function SourceList({ sources, turnId }: { sources: Source[]; turnId: str
     <div className="mt-2 flex min-w-0 flex-col divide-y divide-hairline overflow-hidden rounded-2xl border border-hairline bg-surface-container-lowest">
       <div className="flex items-center justify-between gap-3 px-4 py-2.5">
         <span className="text-[13px] font-medium text-on-surface">
-          {sources.length} {sources.length === 1 ? 'source' : 'sources'}
+          {count(sources.length, 'source')}
         </span>
         <span className="text-[12px] text-outline">Numbers match the marks in the answer</span>
       </div>
@@ -509,7 +501,7 @@ export function SourcesButton({ sources, open, onToggle }: { sources: Source[]; 
         ))}
       </span>
       <span className="text-[12.5px] leading-4 text-on-surface-variant">
-        {sources.length} {sources.length === 1 ? 'source' : 'sources'}
+        {count(sources.length, 'source')}
       </span>
     </button>
   )

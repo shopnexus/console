@@ -1,4 +1,4 @@
-import { type CSSProperties, type ReactNode, useState } from 'react'
+import { type CSSProperties, type ReactNode, memo, useState } from 'react'
 import IconWarnFill from '~icons/material-symbols/error-rounded'
 import IconDoneFill from '~icons/material-symbols/check-circle-rounded'
 import IconBlock from '~icons/material-symbols-light/do-not-disturb-on-outline-rounded'
@@ -20,7 +20,7 @@ import IconSpeed from '~icons/material-symbols-light/speed-outline-rounded'
 import IconSwap from '~icons/material-symbols-light/swap-horiz-rounded'
 import IconTool from '~icons/material-symbols-light/build-outline-rounded'
 import { useNow } from '../../lib/dom'
-import { clock, duration } from '../../lib/format'
+import { clock, count, duration } from '../../lib/format'
 import { reducedMotion, useArrival } from '../../lib/motion'
 import { usePanel } from '../../lib/panel'
 import { elapsed, flatTools, isLive, type Note, type RunState, type Step, type ToolCall } from '../../lib/run'
@@ -240,7 +240,7 @@ function PhaseRow({ step, run, live, now }: { step: Step; run: RunState; live: b
  * calls as rows when the run has no steps. Open while there is something to
  * watch, folded once there is not, unless the member opened or closed it.
  */
-export function RunCard({ run }: { run: RunState; turnId: string }) {
+export const RunCard = memo(function RunCard({ run }: { run: RunState }) {
   const live = isLive(run)
   const asking = run.phase === 'awaiting_input'
   const now = useNow(live || !!run.rateUntil)
@@ -289,7 +289,7 @@ export function RunCard({ run }: { run: RunState; turnId: string }) {
         </span>
         {calls.length > 0 && (
           <span className="shrink-0 tabular-nums text-outline">
-            · {calls.length} {calls.length === 1 ? 'step' : 'steps'}
+            · {count(calls.length, 'step')}
             {failed ? ` · ${failed} failed` : ''}
             {run.steps.length > 1 ? ` · ${run.steps.length} phases` : ''}
           </span>
@@ -314,7 +314,7 @@ export function RunCard({ run }: { run: RunState; turnId: string }) {
                     <IconMore width={16} height={16} />
                   </span>
                   <span className="act-think">
-                    {hidden} earlier {hidden === 1 ? 'step' : 'steps'}
+                    {count(hidden, 'earlier step')}
                   </span>
                 </button>
               )}
@@ -332,7 +332,7 @@ export function RunCard({ run }: { run: RunState; turnId: string }) {
       </div>
     </div>
   )
-}
+})
 
 /** Where the run summarised older turns: a divider that opens to the summary. */
 export function CompactionDivider({ summary, before, after }: { summary: string; before: number; after: number }) {

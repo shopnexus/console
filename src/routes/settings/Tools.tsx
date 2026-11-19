@@ -1,37 +1,32 @@
 import IconApps from '~icons/material-symbols-light/apps-rounded'
 import IconTools from '~icons/material-symbols-light/build-outline-rounded'
-import IconHistory from '~icons/material-symbols-light/history-rounded'
-import IconListing from '~icons/material-symbols-light/storefront-outline-rounded'
 import IconLock from '~icons/material-symbols-light/lock-outline'
-import IconData from '~icons/material-symbols-light/monitoring'
-import IconOrder from '~icons/material-symbols-light/package-2-outline'
-import IconPerson from '~icons/material-symbols-light/person-outline-rounded'
 import IconBolt from '~icons/material-symbols-light/bolt-outline-rounded'
 import IconCheck from '~icons/material-symbols-light/check-rounded'
 import IconError from '~icons/material-symbols-light/error-outline-rounded'
 import IconPublic from '~icons/material-symbols-light/public-rounded'
-import IconReport from '~icons/material-symbols-light/flag-outline-rounded'
 import IconShield from '~icons/material-symbols-light/shield-person-outline-rounded'
-import IconSupport from '~icons/material-symbols-light/support-agent-outline'
 import IconSee from '~icons/material-symbols-light/visibility-outline'
-import { type ReactNode, useState } from 'react'
+import { useState } from 'react'
+import { KindIcon } from '../../components/kindLook'
 import { Select } from '../../components/Select'
-import { SettingsShell } from '../../components/SettingsShell'
-import { Card, IconTile, Initial, Segmented, Spark, Tag } from '../../components/ui'
-import { roleName, shortId } from '../../lib/api'
+import { RangePicker, SettingsShell } from '../../components/SettingsShell'
+import { Card, IconTile, Initial, Spark, Tag } from '../../components/ui'
+import { roleName } from '../../lib/api'
 import { dashboards } from '../../lib/dashboards'
-import { duration, int, when } from '../../lib/format'
-import { type SpendRange, useAgents, useDashboards, useMembers, useSettingsCommands, useToolsUsage } from '../../lib/settings'
+import { duration, firstName, int, when } from '../../lib/format'
+import { rangeLabel, type SpendRange, useAgents, useDashboards, useMemberName, useSettingsCommands, useToolsUsage } from '../../lib/settings'
 import { type ToolGroup, toolInfo, tools } from '../../lib/tools'
 
-const groupLook: Record<ToolGroup, [ReactNode, string]> = {
-  ticket: [<IconSupport key="t" width={20} height={20} />, 'bg-primary/8 text-primary'],
-  account: [<IconPerson key="a" width={20} height={20} />, 'bg-secondary-container text-on-secondary-container'],
-  order: [<IconOrder key="o" width={20} height={20} />, 'bg-surface-container text-on-surface-variant'],
-  listing: [<IconListing key="l" width={20} height={20} />, 'bg-inverse-primary/40 text-primary-container'],
-  report: [<IconReport key="r" width={20} height={20} />, 'bg-surface-container-high text-on-surface'],
-  log: [<IconHistory key="h" width={20} height={20} />, 'bg-surface-container text-on-surface-variant'],
-  data: [<IconData key="d" width={20} height={20} />, 'bg-surface-container text-on-surface-variant'],
+/** A tool's tile tint by what it reads; ticket and account swap the sources panel's tints. */
+const groupTone: Record<ToolGroup, string> = {
+  ticket: 'bg-primary/8 text-primary',
+  account: 'bg-secondary-container text-on-secondary-container',
+  order: 'bg-surface-container text-on-surface-variant',
+  listing: 'bg-inverse-primary/40 text-primary-container',
+  report: 'bg-surface-container-high text-on-surface',
+  log: 'bg-surface-container text-on-surface-variant',
+  data: 'bg-surface-container text-on-surface-variant',
 }
 
 /**
@@ -45,36 +40,26 @@ export function Tools() {
   const agents = useAgents()
   const usage = useToolsUsage(range)
   const floors = useDashboards()
-  const members = useMembers()
+  const who = useMemberName()
   const commands = useSettingsCommands()
   const alist = agents.data?.items ?? []
   const usageOf = (name: string) => usage.data?.items.find((u) => u.name === name)
   // The catalogue's tools first, then any tool the server reports that the console has no words for.
   const names = [...tools.map((t) => t.name), ...(usage.data?.items.map((u) => u.name).filter((n) => !tools.some((t) => t.name === n)) ?? [])]
   const calls = usage.data?.items.reduce((n, u) => n + u.calls, 0)
-  const days = range === '7d' ? '7 days' : range === '30d' ? '30 days' : '90 days'
+  const days = rangeLabel[range]
   const floorList = floors.data?.items ?? dashboards.map((d) => ({ app: d.app, name: d.name, floor: d.floor }))
-  const who = (id: string) => members.data?.items.find((m) => m.id === id)?.display_name ?? shortId(id)
   return (
     <SettingsShell
       title="Tools"
       icon={<IconTools />}
       chips={[
         [<IconSee key="s" width={16} height={16} />, `${tools.length} read-only tools`],
-        ...(calls !== undefined ? ([[<IconBolt key="c" width={16} height={16} />, `${int(calls)} calls · ${days}`]] as [ReactNode, ReactNode][]) : []),
+        calls !== undefined && [<IconBolt key="c" width={16} height={16} />, `${int(calls)} calls · ${days}`],
         [<IconApps key="a" width={16} height={16} />, `${floorList.length} dashboards`],
       ]}
       actions={
-        <Segmented
-          label="Range"
-          value={range}
-          onChange={setRange}
-          items={[
-            { value: '7d', label: '7 days' },
-            { value: '30d', label: '30 days' },
-            { value: '90d', label: '90 days' },
-          ]}
-        />
+        <RangePicker value={range} onChange={setRange} />
       }
     >
       <div className="mb-3 flex items-center gap-2 px-1">
@@ -88,13 +73,12 @@ export function Tools() {
         <div className="rise-list">
           {names.map((name) => {
             const t = toolInfo(name)
-            const [icon, tint] = groupLook[t.group]
             const u = usageOf(name)
             const users = alist.filter((a) => a.tools.includes(name))
             return (
               <div key={name} className="flex items-center gap-4 border-t border-hairline px-5 py-3 first:border-t-0 hover:bg-on-surface/3">
-                <IconTile size={40} tone={tint}>
-                  {icon}
+                <IconTile size={40} tone={groupTone[t.group]}>
+                  <KindIcon kind={t.group} size={20} />
                 </IconTile>
                 <div className="w-[220px] min-w-0 leading-tight">
                   <p className="truncate text-title-small">{u?.display_name ?? t.label}</p>
@@ -159,7 +143,7 @@ export function Tools() {
             {usage.data?.recent.map((r) => (
               <div key={r.call_id} className="flex items-center gap-4 border-t border-hairline px-4 py-2.5 text-body-small first:border-t-0">
                 <Initial name={who(r.member_id)} id={r.member_id} size={24} member />
-                <span className="w-[90px] truncate">{who(r.member_id).split(' ').pop()}</span>
+                <span className="w-[90px] truncate">{firstName(who(r.member_id))}</span>
                 <span className="inline-flex h-6 items-center gap-1 rounded-full bg-surface-container px-2.5 text-label-small font-normal">
                   {r.status === 'failed' ? <IconError width={13} height={13} className="text-error" /> : <IconCheck width={13} height={13} className="text-primary" />}
                   {r.tool}

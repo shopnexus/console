@@ -4,6 +4,7 @@ import IconBack from '~icons/material-symbols-light/arrow-back-rounded'
 import IconChevron from '~icons/material-symbols-light/chevron-right-rounded'
 import IconOpen from '~icons/material-symbols-light/north-east-rounded'
 import { ApiError } from '../lib/api'
+import type { PersonStatus } from '../lib/commerce'
 import { pickedRow } from '../lib/look'
 import { Card, Initial, Kbd } from './ui'
 
@@ -153,7 +154,7 @@ export function OpenLink({ to, label = 'Open' }: { to: string; label?: string })
 }
 
 /** A buyer, seller or other account on a record: its initial with the state dot, name, a meta line, and Open. */
-export function PartyCard({ role, id, name, status, meta }: { role: string; id: string; name: string; status?: 'active' | 'suspended' | 'deleted'; meta?: ReactNode }) {
+export function PartyCard({ role, id, name, status, meta }: { role: string; id: string; name: string; status?: PersonStatus; meta?: ReactNode }) {
   return (
     <Card className="p-4">
       <p className="text-label-small font-normal text-on-surface-variant">{role}</p>
@@ -170,7 +171,11 @@ export function PartyCard({ role, id, name, status, meta }: { role: string; id: 
 }
 
 /** A record's page that did not load: gone, or not reachable. */
-export function Missing({ error, what }: { error: unknown; what: string }) {
+export function Missing({ error, what, gone: goneText, className = '' }: { error: unknown; what: string; gone?: string; className?: string }) {
   const gone = error instanceof ApiError && error.status === 404
-  return <div className="flex flex-1 items-center justify-center text-body-medium text-on-surface-variant">{gone ? `There is no such ${what}.` : `The ${what} did not load.`}</div>
+  return (
+    <div className={`flex flex-1 items-center justify-center text-body-medium text-on-surface-variant ${className}`}>
+      {gone ? (goneText ?? `There is no such ${what}.`) : `The ${what} did not load.`}
+    </div>
+  )
 }

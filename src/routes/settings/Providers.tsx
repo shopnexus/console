@@ -25,10 +25,10 @@ import IconTimer from '~icons/material-symbols-light/timer-outline'
 import { ModelTag, ProviderTile } from '../../components/AiBits'
 import { Select } from '../../components/Select'
 import { SettingsShell } from '../../components/SettingsShell'
+import { useNumberDraft } from '../../lib/draft'
 import { Btn, Card, IconBtn, Meter, Notice, Segmented, Tag, Toggle } from '../../components/ui'
 import { contextSize, price } from '../../lib/aiLook'
-import { ApiError } from '../../lib/api'
-import { duration, int, time, when } from '../../lib/format'
+import { count, duration, int, time, when } from '../../lib/format'
 import {
   kindName,
   type Provider,
@@ -75,9 +75,9 @@ export function Providers() {
       title="Providers"
       icon={<IconCloud />}
       chips={[
-        [<IconCloud key="c" width={16} height={16} />, `${list.length === 1 ? '1 provider' : `${list.length} providers`} · ${list.filter((p) => p.enabled).length} on`],
-        ...(success !== undefined ? ([[<IconCheckCircle key="k" width={16} height={16} />, `${success.toFixed(1)}% success · 24h`]] as [ReactNode, ReactNode][]) : []),
-        ...(rotation.data ? ([[<IconSwap key="s" width={16} height={16} />, `Rotating ${(strategyName[rotation.data.routing_strategy] ?? rotation.data.routing_strategy).toLowerCase()}`]] as [ReactNode, ReactNode][]) : []),
+        [<IconCloud key="c" width={16} height={16} />, `${count(list.length, 'provider')} · ${list.filter((p) => p.enabled).length} on`],
+        success !== undefined && [<IconCheckCircle key="k" width={16} height={16} />, `${success.toFixed(1)}% success · 24h`],
+        rotation.data && [<IconSwap key="s" width={16} height={16} />, `Rotating ${(strategyName[rotation.data.routing_strategy] ?? rotation.data.routing_strategy).toLowerCase()}`],
       ]}
       actions={
         <Btn kind="primary" icon={<IconAdd width={17} height={17} />} onClick={() => navigate('/settings/providers/new')}>
@@ -85,7 +85,7 @@ export function Providers() {
         </Btn>
       }
     >
-      {providers.error && <Notice>{settingsFailure(providers.error instanceof ApiError ? providers.error.code : undefined)}</Notice>}
+      {providers.error && <Notice>{settingsFailure(providers.error)}</Notice>}
       {rotation.data && <RotationCard r={rotation.data} providers={list} />}
       <div className="mb-3 mt-5 flex items-center gap-2 px-1">
         <p className="text-title-small">Providers</p>
@@ -169,20 +169,14 @@ function ProviderHealthCell({ h, now }: { h?: ProviderHealth; now: number }) {
 
 /** A number on a row, saved when the field loses focus. */
 function NumberField({ label, value, onSave, min = 0 }: { label: string; value: number; onSave: (v: number) => void; min?: number }) {
-  const [v, setV] = useState(String(value))
+  const draft = useNumberDraft(value, onSave, { digits: 5, min })
   return (
     <label className="w-[84px] leading-tight">
       <span className="block text-label-small font-normal text-on-surface-variant">{label}</span>
       <span className="mt-1 flex h-8 items-center rounded-lg border border-hairline bg-surface-container-lowest px-2.5 text-body-medium focus-within:border-primary/50">
         <input
-          value={v}
+          {...draft}
           inputMode="numeric"
-          onChange={(e) => setV(e.target.value.replace(/[^\d.]/g, '').slice(0, 5))}
-          onBlur={() => {
-            const n = Math.max(min, Number(v) || 0)
-            if (n !== value) onSave(n)
-            setV(String(n))
-          }}
           className="w-full min-w-0 bg-transparent tabular-nums outline-none"
         />
       </span>
@@ -244,7 +238,7 @@ function RotationCard({ r, providers }: { r: Rotation; providers: Provider[] }) 
 }
 
 function RotationNumber({ icon, label, unit, value, onSave }: { icon: ReactNode; label: string; unit: string; value: number; onSave: (v: number) => void }) {
-  const [v, setV] = useState(String(value))
+  const draft = useNumberDraft(value, onSave, { digits: 5, min: 0 })
   return (
     <label className="block rounded-2xl bg-surface-container-low p-3.5 focus-within:ring-2 focus-within:ring-primary/30">
       <span className="flex items-center gap-1.5 text-label-small font-normal text-on-surface-variant">
@@ -253,11 +247,9 @@ function RotationNumber({ icon, label, unit, value, onSave }: { icon: ReactNode;
       </span>
       <span className="mt-1 flex items-baseline gap-1">
         <input
-          value={v}
+          {...draft}
           inputMode="numeric"
-          onChange={(e) => setV(e.target.value.replace(/[^\d.]/g, '').slice(0, 5))}
-          onBlur={() => Number(v) !== value && onSave(Number(v) || 0)}
-          style={{ width: `${Math.max(1, v.length) + 0.5}ch` }}
+          style={{ width: `${Math.max(1, draft.value.length) + 0.5}ch` }}
           className="min-w-0 bg-transparent text-title-large tabular-nums outline-none"
         />
         <span className="text-body-small text-on-surface-variant">{unit}</span>
@@ -350,7 +342,7 @@ function ProviderForm({ provider }: { provider?: Provider }) {
       chips={
         provider
           ? [
-              [<IconModel key="a" width={16} height={16} />, provider.models.length === 1 ? '1 model' : `${provider.models.length} models`],
+              [<IconModel key="a" width={16} height={16} />, count(provider.models.length, 'model')],
               [<IconSwap key="b" width={16} height={16} />, `Weight ${provider.weight} · order ${provider.order}`],
             ]
           : undefined
@@ -368,7 +360,7 @@ function ProviderForm({ provider }: { provider?: Provider }) {
     >
       {save.error && (
         <div className="mb-4">
-          <Notice>{settingsFailure(save.error instanceof ApiError ? save.error.code : undefined)}</Notice>
+          <Notice>{settingsFailure(save.error)}</Notice>
         </div>
       )}
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[380px_1fr]">
@@ -441,7 +433,7 @@ function ProviderForm({ provider }: { provider?: Provider }) {
                       ? `Connected · ${test.data.model ?? 'model'} · ${test.data.latency_ms} ms`
                       : (test.data.error ?? 'Did not connect')
                     : test.error
-                      ? settingsFailure(test.error instanceof ApiError ? test.error.code : undefined)
+                      ? settingsFailure(test.error)
                       : 'Calls one model once'}
               </span>
               <button type="button" onClick={() => test.mutate({ id: provider.id })} disabled={test.isPending || provider.models.length === 0} className="font-medium disabled:opacity-50">
@@ -498,7 +490,7 @@ function ProviderModelsCard({ provider }: { provider: Provider }) {
       </div>
       {failure && (
         <div className="mb-3">
-          <Notice>{settingsFailure(failure instanceof ApiError ? failure.code : undefined)}</Notice>
+          <Notice>{settingsFailure(failure)}</Notice>
         </div>
       )}
       <Card className="overflow-hidden p-0">

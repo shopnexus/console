@@ -16,19 +16,19 @@ import { ModelPicker } from '../../components/ModelPicker'
 import { SettingsShell } from '../../components/SettingsShell'
 import { Btn, Card, CardHead, Meter, Notice, Spark, Tag, Toggle } from '../../components/ui'
 import { fillAt, textAt } from '../../lib/aiLook'
-import { ApiError, shortId } from '../../lib/api'
 import { day, int, usd } from '../../lib/format'
 import {
   type AgentLimits,
   type AiAgent,
   aliasOf,
+  budgetUse,
   settingsFailure,
   useAgent,
   useAgents,
   useAgentUsage,
   useAgentVersions,
   useBudgets,
-  useMembers,
+  useMemberName,
   useModels,
   useProviders,
   useSettingsCommands,
@@ -53,7 +53,7 @@ export function Agents() {
       art
       chips={[
         [<IconSpark key="a" width={16} height={16} />, `${items.filter((a) => a.enabled).length} agents on`],
-        ...(spend !== undefined ? ([[<IconPay key="b" width={16} height={16} />, `${usd(spend)} this period`]] as [ReactNode, ReactNode][]) : []),
+        spend !== undefined && [<IconPay key="b" width={16} height={16} />, `${usd(spend)} this period`],
       ]}
       actions={
         <Btn kind="primary" icon={<IconAdd width={17} height={17} />} onClick={() => navigate('/settings/agents/new')}>
@@ -107,7 +107,7 @@ export function Agents() {
                     <span className="font-medium tabular-nums">{usd(spent)}</span>
                     <span className="tabular-nums text-on-surface-variant">{a.monthly_budget_usd !== undefined ? `of $${a.monthly_budget_usd} a month` : 'No budget'}</span>
                   </div>
-                  {a.monthly_budget_usd ? <Meter pct={(spent / a.monthly_budget_usd) * 100} tone={spent / a.monthly_budget_usd >= 0.8 ? 'bg-on-surface' : fillAt(i)} className="mt-1.5 h-1.5" /> : null}
+                  {a.monthly_budget_usd ? <Meter pct={budgetUse(spent, a.monthly_budget_usd).pct} tone={budgetUse(spent, a.monthly_budget_usd).near ? 'bg-on-surface' : fillAt(i)} className="mt-1.5 h-1.5" /> : null}
                 </div>
               )}
             </Card>
@@ -173,7 +173,7 @@ function AgentForm({ agent }: { agent?: AiAgent }) {
   const providers = useProviders()
   const budgets = useBudgets()
   const usage = useAgentUsage('7d')
-  const members = useMembers()
+  const who = useMemberName()
   const commands = useSettingsCommands()
   const [draft, setDraft] = useState<Draft>(() =>
     agent
@@ -202,7 +202,6 @@ function AgentForm({ agent }: { agent?: AiAgent }) {
   // An app agent is called by server's code: only its model, limits and budget change.
   const app = agent?.kind === 'app'
   const spent = agent ? budgets.data?.agents.find((b) => b.agent_id === agent.id)?.spent_usd : undefined
-  const who = (id?: string) => (id ? (members.data?.items.find((m) => m.id === id)?.display_name ?? shortId(id)) : '')
 
   useEffect(() => {
     if (commands.createAgent.data) navigate(`/settings/agents/${commands.createAgent.data.id}`, { replace: true })
@@ -230,13 +229,12 @@ function AgentForm({ agent }: { agent?: AiAgent }) {
     commands.updateAgent.mutate({ id: agent.id, ...body }, { onSuccess: () => setEditing(false) })
   }
 
-  const chips: [ReactNode, ReactNode][] = []
-  if (agent) {
-    chips.push([<IconModel key="m" width={16} height={16} />, agent.model || 'No model'])
-    const u = usage.data?.items.find((x) => x.agent_id === agent.id)
-    if (u) chips.push([<IconForum key="f" width={16} height={16} />, `${int(u.requests)} requests · 7 days`])
-    if (spent !== undefined) chips.push([<IconPay key="p" width={16} height={16} />, `${usd(spent)}${agent.monthly_budget_usd !== undefined ? ` / $${agent.monthly_budget_usd}` : ''}`])
-  }
+  const u = agent && usage.data?.items.find((x) => x.agent_id === agent.id)
+  const chips = agent && [
+    [<IconModel key="m" width={16} height={16} />, agent.model || 'No model'],
+    u && [<IconForum key="f" width={16} height={16} />, `${int(u.requests)} requests · 7 days`],
+    spent !== undefined && [<IconPay key="p" width={16} height={16} />, `${usd(spent)}${agent.monthly_budget_usd !== undefined ? ` / $${agent.monthly_budget_usd}` : ''}`],
+  ] satisfies ([ReactNode, ReactNode] | false | undefined)[]
   const input = 'h-11 w-full rounded-xl border border-hairline bg-surface-container-lowest px-3.5 text-body-medium outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 disabled:text-on-surface-variant'
   const lines = draft.instructions.split('\n')
   const limit = (k: keyof AgentLimits) => (v: number | undefined) => set({ limits: { ...draft.limits, [k]: v } })
@@ -264,7 +262,7 @@ function AgentForm({ agent }: { agent?: AiAgent }) {
     >
       {save.error && (
         <div className="mb-4">
-          <Notice>{settingsFailure(save.error instanceof ApiError ? save.error.code : undefined)}</Notice>
+          <Notice>{settingsFailure(save.error)}</Notice>
         </div>
       )}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
@@ -375,7 +373,7 @@ function AgentForm({ agent }: { agent?: AiAgent }) {
                           >
                             <span className={`h-2 w-2 rounded-full ${i === 0 ? 'bg-primary' : 'bg-outline-variant'}`} />
                             <span className="font-medium">Version {v.version}</span>
-                            <span className="truncate text-on-surface-variant">{who(v.created_by)}</span>
+                            <span className="truncate text-on-surface-variant">{v.created_by ? who(v.created_by) : ''}</span>
                             <span className="ml-auto tabular-nums text-on-surface-variant">{day(v.created_at)}</span>
                           </button>
                         ))}

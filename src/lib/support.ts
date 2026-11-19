@@ -1,5 +1,7 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, api, type Page, post } from './api'
+import { usePaged } from './paged'
+import type { PersonStatus } from './commerce'
 
 // The support API's shapes: api/schemas/support.yaml and console.yaml on the server.
 
@@ -52,7 +54,7 @@ export interface ConsoleMessage {
 
 export interface ConsoleTicketDetail {
   ticket: ConsoleTicket
-  person_status: 'active' | 'suspended' | 'deleted'
+  person_status: PersonStatus
   joined_at: string
   order?: {
     id: string
@@ -87,19 +89,8 @@ export const kindChip: Record<TicketKind, string> = {
 export const shopNexusId = '0193e000-0000-7000-8000-000000000001'
 
 /** The queue, 50 tickets a page; "More" reads the next. */
-export function useQueue(status: TicketStatus, kind: TicketKind | null) {
-  const query = useInfiniteQuery({
-    queryKey: ['support', 'queue', status, kind],
-    initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) => {
-      const q = new URLSearchParams({ status, limit: '50', ...(kind ? { kind } : {}), ...(pageParam ? { cursor: pageParam } : {}) })
-      return api<Page<ConsoleTicket>>(`/console/support/tickets?${q}`)
-    },
-    getNextPageParam: (last) => last.next_cursor,
-    refetchOnWindowFocus: true,
-  })
-  return { ...query, items: query.data?.pages.flatMap((p) => p.items) }
-}
+export const useQueue = (status: TicketStatus, kind: TicketKind | null) =>
+  usePaged<ConsoleTicket>(['support', 'queue', status, kind], '/console/support/tickets', { status, kind }, { refetchOnWindowFocus: true })
 
 /** A page of a ticket's chat older than cursor, newest first. */
 export function olderMessages(id: string, cursor: string) {

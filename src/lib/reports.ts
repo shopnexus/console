@@ -1,6 +1,6 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo } from 'react'
-import { type Account, ApiError, api, type Page, post } from './api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { type Account, ApiError, api, noRetryOn404, post } from './api'
+import { usePaged } from './paged'
 
 export type ReportReason = 'scam' | 'fake' | 'banned' | 'other'
 export type CaseStatus = 'open' | 'resolved'
@@ -63,20 +63,8 @@ export function reasonsOf(r: Reasons): [ReportReason, number][] {
 }
 
 /** Reports' queue: open cases newest report first, or resolved ones newest resolution first. */
-export function useCases(status: CaseStatus) {
-  const query = useInfiniteQuery({
-    queryKey: ['console', 'reports', 'list', status],
-    initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) => {
-      const q = new URLSearchParams({ status, limit: '50', ...(pageParam ? { cursor: pageParam } : {}) })
-      return api<Page<ReportCase>>(`/console/reports?${q}`)
-    },
-    getNextPageParam: (last) => last.next_cursor,
-    refetchOnWindowFocus: true,
-  })
-  const items = useMemo(() => query.data?.pages.flatMap((p) => p.items), [query.data])
-  return { ...query, items, total: query.data?.pages[0]?.total }
-}
+export const useCases = (status: CaseStatus) =>
+  usePaged<ReportCase>(['console', 'reports', 'list', status], '/console/reports', { status }, { refetchOnWindowFocus: true })
 
 /** An account's open case, or its latest resolved one. */
 export function useCase(accountId: string | undefined) {
@@ -84,7 +72,7 @@ export function useCase(accountId: string | undefined) {
     queryKey: ['console', 'reports', 'detail', accountId],
     queryFn: () => api<ReportCaseDetail>(`/console/reports/${accountId}`),
     enabled: !!accountId,
-    retry: (n, e) => !(e instanceof ApiError && e.status === 404) && n < 1,
+    retry: noRetryOn404,
   })
 }
 

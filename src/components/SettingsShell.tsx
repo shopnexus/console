@@ -9,9 +9,12 @@ import IconHistory from '~icons/material-symbols-light/history-rounded'
 import IconMembers from '~icons/material-symbols-light/group-outline-rounded'
 import IconModels from '~icons/material-symbols-light/neurology-outline-rounded'
 import IconOverview from '~icons/material-symbols-light/space-dashboard-outline-rounded'
+import IconSearch from '~icons/material-symbols-light/search-rounded'
 import IconTools from '~icons/material-symbols-light/build-outline-rounded'
 import { useMe } from '../lib/session'
+import { rangeLabel, type SpendRange } from '../lib/settings'
 import { MemberMenu } from './Shell'
+import { Segmented } from './ui'
 
 const groups: [string, [string, string, ReactNode][]][] = [
   ['', [['/settings', 'Overview', <IconOverview key="o" width={19} height={19} />]]],
@@ -50,13 +53,15 @@ export function SettingsShell({
 }: {
   title: ReactNode
   icon: ReactNode
-  chips?: [ReactNode, ReactNode][]
+  /** Facts as [icon, text]; false or undefined entries are left out. */
+  chips?: ([ReactNode, ReactNode] | false | undefined)[]
   actions?: ReactNode
   art?: boolean
   children: ReactNode
 }) {
   const me = useMe()
   if (me.role !== 'admin') return <Navigate to="/" replace />
+  const facts = chips?.filter((c) => !!c) ?? []
   return (
     <div className="flex h-dvh bg-surface-container-lowest text-on-surface">
       <nav className="flex w-[272px] shrink-0 flex-col border-r border-hairline bg-surface px-3 pb-3 pt-3">
@@ -108,9 +113,9 @@ export function SettingsShell({
             </span>
             <div className="min-w-0 flex-1">
               <h1 className="text-headline-large">{title}</h1>
-              {chips && chips.length > 0 && (
+              {facts.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {chips.map(([ic, text], i) => (
+                  {facts.map(([ic, text], i) => (
                     <span
                       key={i}
                       className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border border-hairline bg-surface-container-lowest/80 px-3 text-body-small text-on-surface-variant backdrop-blur [&>svg]:text-primary"
@@ -129,5 +134,28 @@ export function SettingsShell({
         <div className="min-h-0 flex-1 animate-rise overflow-y-auto bg-surface-container-low/40 px-10 py-6">{children}</div>
       </main>
     </div>
+  )
+}
+
+const ranges = (Object.keys(rangeLabel) as SpendRange[]).map((value) => ({ value, label: rangeLabel[value] }))
+
+/** The 7, 30 or 90 days a settings page counts over. */
+export function RangePicker({ value, onChange }: { value: SpendRange; onChange: (v: SpendRange) => void }) {
+  return <Segmented label="Range" value={value} onChange={onChange} items={ranges} />
+}
+
+/** The round search box at the end of a list's filter row. */
+export function SearchPill({ value, onChange, placeholder, label, className }: { value: string; onChange: (v: string) => void; placeholder: string; label: string; className: string }) {
+  return (
+    <label className={`flex h-10 items-center gap-2 rounded-full border border-hairline bg-surface-container-lowest px-4 text-on-surface-variant focus-within:border-primary/40 ${className}`}>
+      <IconSearch width={18} height={18} />
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        aria-label={label}
+        className="h-full min-w-0 flex-1 bg-transparent text-body-medium text-on-surface outline-none placeholder:text-on-surface-variant"
+      />
+    </label>
   )
 }

@@ -14,6 +14,7 @@ import IconTool from '~icons/material-symbols-light/build-outline-rounded'
 import IconPrint from '~icons/material-symbols-light/print-outline-rounded'
 import { type DocSection, type DocumentVersion, useDocument, useToolCall } from '../../lib/agent'
 import { duration, time, when } from '../../lib/format'
+import { useCopy, useDismiss } from '../../lib/dom'
 import { usePanel } from '../../lib/panel'
 import { reducedMotion } from '../../lib/motion'
 import type { Source, SourceKind, ToolCall } from '../../lib/run'
@@ -22,7 +23,7 @@ import { useMe } from '../../lib/session'
 import { toolInfo } from '../../lib/tools'
 import { IconBtn, Initial, Segmented, Tag } from '../ui'
 import { Chart, Markdown, Table } from './Answer'
-import { KindIcon, SourceBadge } from './sourceLook'
+import { KindIcon, SourceBadge } from '../kindLook'
 
 /** The one panel shell beside a chat: a header, then a body that scrolls. bare fills the sheet a tool call floats in instead. */
 export function SidePanel({ width = 'w-[480px]', head, children, bare = false }: { width?: string; head: ReactNode; children: ReactNode; bare?: boolean }) {
@@ -139,29 +140,9 @@ export function Overlay({
   onClose: () => void
   children: ReactNode
 }) {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => ref.current?.focus(), [])
-  useEffect(() => {
-    if (!active) return
-    const down = (e: PointerEvent) => {
-      const t = e.target as Element
-      if (ref.current?.contains(t) || t.closest?.('[data-panel-trigger]')) return
-      onClose()
-    }
-    const key = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      // Esc closes this rather than pausing the run behind it.
-      e.stopPropagation()
-      e.preventDefault()
-      onClose()
-    }
-    document.addEventListener('pointerdown', down, true)
-    window.addEventListener('keydown', key, true)
-    return () => {
-      document.removeEventListener('pointerdown', down, true)
-      window.removeEventListener('keydown', key, true)
-    }
-  }, [active, onClose])
+  // Esc closes this rather than pausing the run behind it.
+  const ref = useDismiss<HTMLDivElement>(active, onClose, { ignore: '[data-panel-trigger]', capture: true, escape: 'stop' })
+  useEffect(() => ref.current?.focus(), [ref])
   return (
     <div
       ref={ref}
@@ -314,7 +295,7 @@ export function ToolPanel({ id, bare = false }: { id: string; bare?: boolean }) 
 function SourceItem({ s, open, onToggle, call, admin }: { s: Source; open: boolean; onToggle: () => void; call?: ToolCall; admin: boolean }) {
   const { open: openPanel } = usePanel()
   const navigate = useNavigate()
-  const [copied, setCopied] = useState(false)
+  const [copied, copyText] = useCopy()
   const kind = kindOf(s.kind)
   const named = hasName(s)
   const label = sourceLabel(s)
@@ -383,11 +364,7 @@ function SourceItem({ s, open, onToggle, call, admin }: { s: Source; open: boole
                 type="button"
                 title={copied ? 'Copied' : 'Copy id'}
                 aria-label="Copy id"
-                onClick={() => {
-                  void copy(s.record_id!)
-                  setCopied(true)
-                  setTimeout(() => setCopied(false), 1200)
-                }}
+                onClick={() => copyText(s.record_id!)}
                 className="flex h-8 w-8 items-center justify-center rounded-full text-on-surface-variant hover:bg-on-surface/8"
               >
                 <span aria-hidden className="ui-icon-swap">
@@ -440,7 +417,7 @@ export function SourcesPanel({ sources, active, tools }: { sources: Source[]; ac
         </button>
         {kinds.map((k) => (
           <button key={k} type="button" onClick={() => setKind(k)} className={chip(kind === k)}>
-            {kindPlural[k]} · {sources.filter((s) => kindOf(s.kind) === k).length}
+            {kindPlural(k)} · {sources.filter((s) => kindOf(s.kind) === k).length}
           </button>
         ))}
       </div>
@@ -450,7 +427,7 @@ export function SourcesPanel({ sources, active, tools }: { sources: Source[]; ac
           <section key={k}>
             <p className="flex items-center gap-2 px-2 pb-1.5 pt-3 text-[12px] font-medium text-on-surface-variant">
               <KindIcon kind={k} size={14} />
-              {kindPlural[k]}
+              {kindPlural(k)}
               <span className="tabular-nums opacity-70">{rows.length}</span>
             </p>
             <div className="space-y-1">
@@ -502,7 +479,7 @@ export function DocumentPanel({ id, version, sources, turnId }: { id: string; ve
   const versions = [...(doc.data?.versions ?? [])].sort((a, b) => a.version - b.version)
   const d = versions.find((x) => x.version === (v ?? doc.data?.latest_version)) ?? versions[versions.length - 1]
   const at = d ? versions.indexOf(d) : -1
-  const [copied, setCopied] = useState(false)
+  const [copied, copyText] = useCopy()
   return (
     <SidePanel
       width="w-[640px]"
@@ -528,11 +505,7 @@ export function DocumentPanel({ id, version, sources, turnId }: { id: string; ve
           {d && (
             <IconBtn
               title={copied ? 'Copied' : 'Copy as Markdown'}
-              onClick={() => {
-                void copy(documentMarkdown(d))
-                setCopied(true)
-                setTimeout(() => setCopied(false), 1500)
-              }}
+              onClick={() => copyText(documentMarkdown(d))}
             >
               {copied ? <IconCheck width={16} height={16} className="text-primary" /> : <IconCopy width={16} height={16} />}
             </IconBtn>

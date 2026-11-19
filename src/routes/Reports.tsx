@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { listingStatus } from '../lib/commerce'
 import IconSpark from '~icons/material-symbols/auto-awesome-outline-rounded'
@@ -6,13 +6,15 @@ import IconCheckCircle from '~icons/material-symbols-light/check-circle-outline-
 import IconGavel from '~icons/material-symbols-light/gavel-rounded'
 import IconPhoto from '~icons/material-symbols-light/image-outline-rounded'
 import IconUndo from '~icons/material-symbols-light/undo-rounded'
-import { Crumbs, DotFact, Hero, JKHint, ListColumn, ListRow, StatusPill } from '../components/Panes'
+import { Crumbs, DotFact, Hero, JKHint, ListColumn, ListRow, Missing, StatusPill } from '../components/Panes'
 import { Select } from '../components/Select'
 import { Shell } from '../components/Shell'
 import { Btn, Card, CardHead, Check, Initial, Kbd, Notice, Segmented, Tag } from '../components/ui'
-import { useOpenConversation } from '../lib/agent'
-import { ApiError } from '../lib/api'
-import { day, firstName, vnd, when } from '../lib/format'
+import { useAskAgent } from '../lib/agent'
+import { suspendTerms, termLabel, untilOf } from '../lib/accounts'
+import { shortId } from '../lib/api'
+import { useListKeys } from '../lib/dom'
+import { count, DAY, day, firstName, vnd, when } from '../lib/format'
 import {
   type CaseStatus,
   type Decision,
@@ -29,7 +31,6 @@ import {
   useCases,
 } from '../lib/reports'
 
-const DAY = 86_400_000
 const HOUR = 3_600_000
 
 /** How long a case has waited: "40 min", "9 h", "3 d". */
@@ -59,20 +60,9 @@ export function Reports() {
   const go = useCallback((c: ReportCase) => navigate(`/reports/${c.account.id}`), [navigate])
 
   // j and k move through the queue, Escape closes the case.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable]')) return
-      const at = rows.findIndex((c) => c.account.id === id)
-      if (e.key === 'j' || e.key === 'k') {
-        const next = rows[Math.min(rows.length - 1, Math.max(0, at + (e.key === 'j' ? 1 : -1)))]
-        if (next) go(next)
-      } else if (e.key === 'Escape' && id) {
-        navigate('/reports')
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [rows, id, go, navigate])
+  const isOpen = useCallback((c: ReportCase) => c.account.id === id, [id])
+  const close = useCallback(() => navigate('/reports'), [navigate])
+  useListKeys(rows, isOpen, go, id ? close : undefined)
 
   return (
     <Shell>
@@ -184,28 +174,16 @@ function QueueRow({ c, on, now, onClick }: { c: ReportCase; on: boolean; now: nu
 function CasePane({ id, now, onMove }: { id: string; now: number; onMove: (step: 1 | -1) => void }) {
   const detail = useCase(id)
   const navigate = useNavigate()
-  const openChat = useOpenConversation()
+  const askAgent = useAskAgent()
 
-  if (detail.error) {
-    const gone = detail.error instanceof ApiError && detail.error.status === 404
-    return (
-      <div className="flex flex-1 items-center justify-center bg-surface-container-low/40 text-body-medium text-on-surface-variant">
-        {gone ? 'This account has no reports.' : 'The case did not load.'}
-      </div>
-    )
-  }
+  if (detail.error) return <Missing error={detail.error} what="case" gone="This account has no reports." className="bg-surface-container-low/40" />
   if (!detail.data) return <div className="flex-1 bg-surface-container-low/40" />
   const c = detail.data
-
-  async function askAgent() {
-    const conv = await openChat.mutateAsync({ kind: 'account', id })
-    navigate(`/agent/${conv.id}`)
-  }
 
   return (
     <section className="relative flex min-w-0 flex-1 animate-pane flex-col bg-surface-container-low/40">
       <Crumbs parent="Reports" onParent={() => navigate('/reports')} name={c.account.display_name}>
-        <Btn icon={<IconSpark width={17} height={17} />} onClick={() => void askAgent()} disabled={openChat.isPending}>
+        <Btn icon={<IconSpark width={17} height={17} />} onClick={() => void askAgent.ask({ kind: 'account', id })} disabled={askAgent.pending}>
           Ask the agent
         </Btn>
         <button title="Previous (k)" onClick={() => onMove(-1)}>
@@ -268,7 +246,7 @@ function CaseHero({ c }: { c: ReportCaseDetail }) {
             <StatusPill suspended={locked}>{locked ? (a.suspended_until ? `Suspended until ${day(a.suspended_until)}` : 'Suspended') : 'Active'}</StatusPill>
           </div>
           <p className="mt-0.5 tabular-nums text-body-small text-on-surface-variant">
-            {a.id.slice(0, 8)} · since {day(a.created_at)} · {c.listings.length === 1 ? '1 listing reported' : `${c.listings.length} listings reported`}
+            {shortId(a.id)} · since {day(a.created_at)} · {count(c.listings.length, 'listing')} reported
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {reasonsOf(c.reasons).map(([k, n]) => (
@@ -303,19 +281,12 @@ function ListingCard({ l, reports }: { l: ReportedListing; reports?: number }) {
         <span className="mt-0.5 block tabular-nums text-body-small font-medium text-on-surface">{vnd(l.price)}</span>
         <span className="mt-0.5 flex items-center gap-1.5 text-label-small font-normal text-on-surface-variant">
           <span className={l.status === 'hidden' ? 'font-medium text-on-surface' : ''}>{listingStatus[l.status] ?? l.status}</span>
-          {reports !== undefined && reports > 0 && <span>· {reports === 1 ? '1 report' : `${reports} reports`}</span>}
+          {reports !== undefined && reports > 0 && <span>· {count(reports, 'report')}</span>}
         </span>
       </span>
     </Link>
   )
 }
-
-const terms: [number | null, string][] = [
-  [1, '1 day'],
-  [7, '7 days'],
-  [30, '30 days'],
-  [null, 'No end'],
-]
 
 /** The member's decision on an open case, pinned to the bottom: what to do, the term, the reason the person sees. */
 function DecisionBar({ c }: { c: ReportCaseDetail }) {
@@ -327,7 +298,7 @@ function DecisionBar({ c }: { c: ReportCaseDetail }) {
   const [days, setDays] = useState<number | null>(7)
   const [reason, setReason] = useState('')
   const [now] = useState(() => Date.now())
-  const termText = days === null ? 'with no end' : days === 1 ? '1 day' : `${days} days`
+  const termText = termLabel(days)
   const failure = commands.decide.error ?? commands.dismiss.error
   const busy = commands.decide.isPending || commands.dismiss.isPending
 
@@ -337,7 +308,7 @@ function DecisionBar({ c }: { c: ReportCaseDetail }) {
 
   function apply() {
     const d: Decision = { hide }
-    if (suspend) d.suspend = { reason: reason.trim(), until: days === null ? undefined : new Date(now + days * DAY).toISOString() }
+    if (suspend) d.suspend = { reason: reason.trim(), until: untilOf(days, now) }
     commands.decide.mutate(d)
   }
 
@@ -368,7 +339,7 @@ function DecisionBar({ c }: { c: ReportCaseDetail }) {
                   value={days === null ? 'none' : String(days)}
                   onChange={(v) => setDays(v === 'none' ? null : Number(v))}
                   tone="border-hairline bg-surface-container-lowest text-on-surface"
-                  options={terms.map(([n, t]) => ({ value: n === null ? 'none' : String(n), label: t }))}
+                  options={suspendTerms.map(([n, t]) => ({ value: n === null ? 'none' : String(n), label: t }))}
                 />
               </span>
             )}

@@ -1,9 +1,12 @@
 import { fillAt } from '../../lib/aiLook'
+import { shortId } from '../../lib/api'
 import { day, usd } from '../../lib/format'
 import type { Spend } from '../../lib/settings'
 
 /** Spend as a bar a day, split by agent in each agent's colour (its place in order), with its legend. */
-export function SpendBars({ s, order, names, h = 170 }: { s: Spend; order: string[]; names: Record<string, string>; h?: number }) {
+export function SpendBars({ s, agents, h = 170 }: { s: Spend; agents: { id: string; name: string }[]; h?: number }) {
+  const order = agents.map((a) => a.id)
+  const nameOf = (id: string) => agents.find((a) => a.id === id)?.name ?? shortId(id)
   const top = Math.max(1, ...s.days.map((d) => d.total_usd))
   const ids = [...new Set(s.days.flatMap((d) => d.agents.map((a) => a.agent_id)))].sort((a, b) => order.indexOf(a) - order.indexOf(b))
   const color = (id: string) => fillAt(Math.max(0, order.indexOf(id)))
@@ -13,7 +16,7 @@ export function SpendBars({ s, order, names, h = 170 }: { s: Spend; order: strin
         {ids.map((id) => (
           <span key={id} className="flex items-center gap-1.5">
             <span className={`h-2.5 w-2.5 rounded-[3px] ${color(id)}`} />
-            {names[id] ?? id.slice(0, 8)}
+            {nameOf(id)}
           </span>
         ))}
       </div>

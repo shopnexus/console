@@ -1,5 +1,6 @@
-import { type CSSProperties, type KeyboardEvent, type ReactNode, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { type KeyboardEvent, type ReactNode, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useAnchor, useDismiss } from '../lib/dom'
 import IconCheck from '~icons/material-symbols-light/check-rounded'
 import IconExpand from '~icons/material-symbols-light/expand-more-rounded'
 import IconSearch from '~icons/material-symbols-light/search-rounded'
@@ -57,8 +58,6 @@ export function Select<T extends string>({
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
   const [q, setQ] = useState('')
-  const [style, setStyle] = useState<CSSProperties>({})
-  const trigger = useRef<HTMLButtonElement>(null)
   const menu = useRef<HTMLDivElement>(null)
   const typed = useRef({ text: '', at: 0 })
   const id = useId()
@@ -66,43 +65,28 @@ export function Select<T extends string>({
   const needle = q.trim().toLowerCase()
   const shown = searchable && needle ? options.filter((o) => textOf(o).toLowerCase().includes(needle)) : options
 
-  const close = useCallback(() => {
-    setOpen(false)
-    setQ('')
-    trigger.current?.focus()
-  }, [])
-
   function show() {
     if (disabled) return
     setActive(Math.max(0, options.findIndex((o) => o.value === value)))
     setOpen(true)
   }
 
-  useLayoutEffect(() => {
-    if (!open || !trigger.current) return
-    const r = trigger.current.getBoundingClientRect()
-    const width = menuWidth ?? Math.max(r.width, 200)
-    const below = window.innerHeight - r.bottom
-    const left = Math.min(r.left, window.innerWidth - width - 8)
-    setStyle(below < 280 && r.top > below ? { left, bottom: window.innerHeight - r.top + 6, width } : { left, top: r.bottom + 6, width })
-  }, [open, menuWidth])
+  const dismiss = useCallback(() => {
+    setOpen(false)
+    setQ('')
+  }, [])
+  const trigger = useDismiss<HTMLButtonElement>(open, dismiss, { also: [menu], escape: false })
+  const style = useAnchor(trigger, open, { side: 'auto', gap: 6, width: menuWidth, minWidth: 200 })
+  const close = useCallback(() => {
+    dismiss()
+    trigger.current?.focus()
+  }, [dismiss, trigger])
 
   useEffect(() => {
     if (!open) return
-    const down = (e: PointerEvent) => {
-      const t = e.target as Node
-      if (!menu.current?.contains(t) && !trigger.current?.contains(t)) {
-        setOpen(false)
-        setQ('')
-      }
-    }
     const away = () => setOpen(false)
-    document.addEventListener('pointerdown', down)
     window.addEventListener('resize', away)
-    return () => {
-      document.removeEventListener('pointerdown', down)
-      window.removeEventListener('resize', away)
-    }
+    return () => window.removeEventListener('resize', away)
   }, [open])
 
   useEffect(() => {

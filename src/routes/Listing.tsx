@@ -10,9 +10,11 @@ import IconShow from '~icons/material-symbols-light/visibility-outline'
 import { BackCrumbs, FactRow, Hero, Missing, PartyCard, StatusPill } from '../components/Panes'
 import { Shell } from '../components/Shell'
 import { Btn, Card, CardHead, IconTile, Initial, Notice, Tag } from '../components/ui'
-import { askHref, conditionLabel, humanize, type ListingDetail, listingFailure, listingStatus, useListing, useListingCommands } from '../lib/commerce'
+import { conditionLabel, humanize, type ListingDetail, listingFailure, listingStatus, useListing, useListingCommands } from '../lib/commerce'
+import { askHref } from '../lib/agent'
+import { shortId } from '../lib/api'
 import { useDismiss } from '../lib/dom'
-import { day, firstName, int, vnd, when } from '../lib/format'
+import { count, day, firstName, int, vnd, when } from '../lib/format'
 import { reasonLabel, type ReportReason } from '../lib/reports'
 
 /** A listing, reached by a link: its photos, price and state, the seller's own words, details, the seller and the reports on it. */
@@ -48,7 +50,7 @@ function ListingPage({ id, l }: { id: string; l: ListingDetail }) {
     `Created ${day(l.created_at)}`,
     l.published_at && `published ${day(l.published_at)}`,
     l.sold_at && `sold ${day(l.sold_at)}`,
-    hidden && l.hidden ? `hidden ${when(l.hidden.at)}${l.hidden.by_member_name ? ` by ${firstName(l.hidden.by_member_name)}` : ''}` : reports.length > 0 && (reports.length === 1 ? '1 report' : `${reports.length} reports`),
+    hidden && l.hidden ? `hidden ${when(l.hidden.at)}${l.hidden.by_member_name ? ` by ${firstName(l.hidden.by_member_name)}` : ''}` : reports.length > 0 && count(reports.length, 'report'),
   ]
     .filter(Boolean)
     .join(' · ')
@@ -123,7 +125,7 @@ function ListingPage({ id, l }: { id: string; l: ListingDetail }) {
                   {reports.length > 0 && (
                     <Tag tone="border border-hairline bg-surface-container-lowest text-on-surface-variant">
                       <IconFlag width={13} height={13} />
-                      {reports.length === 1 ? '1 report' : `${reports.length} reports`}
+                      {count(reports.length, 'report')}
                       {top && ` · ${(reasonLabel[top as ReportReason] ?? humanize(top)).toLowerCase()}`}
                     </Tag>
                   )}
@@ -163,7 +165,7 @@ function ListingPage({ id, l }: { id: string; l: ListingDetail }) {
                 id={l.seller.id}
                 name={l.seller.display_name}
                 status={l.seller.status}
-                meta={`${l.seller.id.slice(0, 8)} · ${int(l.seller.listings)} on sale · ${int(l.seller.sold)} sold`}
+                meta={`${shortId(l.seller.id)} · ${int(l.seller.listings)} on sale · ${int(l.seller.sold)} sold`}
               />
             }
             {reports.length > 0 && (

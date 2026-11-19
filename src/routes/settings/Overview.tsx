@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router'
 import IconSpark from '~icons/material-symbols/auto-awesome-outline-rounded'
 import IconChevron from '~icons/material-symbols-light/chevron-right-rounded'
@@ -7,12 +7,11 @@ import IconKey from '~icons/material-symbols-light/key-outline-rounded'
 import IconMembers from '~icons/material-symbols-light/group-outline-rounded'
 import IconOverview from '~icons/material-symbols-light/space-dashboard-outline-rounded'
 import IconPay from '~icons/material-symbols-light/payments-outline-rounded'
-import { SettingsShell } from '../../components/SettingsShell'
-import { Card, CardHead, IconTile, Initial, Meter, Notice, Segmented, Tag } from '../../components/ui'
-import { ApiError } from '../../lib/api'
+import { RangePicker, SettingsShell } from '../../components/SettingsShell'
+import { Card, CardHead, IconTile, Initial, Meter, Notice, Tag } from '../../components/ui'
 import { int, time, usd } from '../../lib/format'
 import { useMembersToSee } from '../../lib/members'
-import { settingsFailure, type SpendRange, useAgents, useAgentUsage, useBudgets, useMembers, useSpend } from '../../lib/settings'
+import { budgetUse, rangeLabel, settingsFailure, type SpendRange, useAgents, useAgentUsage, useBudgets, useMembers, useSpend } from '../../lib/settings'
 import { SpendBars } from './SpendBars'
 
 /** Settings › Overview: spend over a range, the agents and their budgets, the providers, and members who need an admin. */
@@ -26,31 +25,30 @@ export function Overview() {
   const toSee = useMembersToSee(true)
   const s = spend.data
   const alist = agents.data?.items ?? []
-  const order = alist.map((a) => a.id)
   const memberCount = members.data?.items.filter((m) => m.status === 'active').length
   const consoleIds = alist.filter((a) => a.kind === 'console').map((a) => a.id)
   const questions = usage.data?.items.filter((u) => consoleIds.includes(u.agent_id)).reduce((n, u) => n + u.requests, 0)
   const byMember = s?.members ?? []
   const topMember = Math.max(1, ...byMember.map((m) => m.usd))
-  const near = budgets.data?.agents.filter((b) => b.monthly_budget_usd && b.spent_usd / b.monthly_budget_usd >= 0.8) ?? []
+  const near = budgets.data?.agents.filter((b) => budgetUse(b.spent_usd, b.monthly_budget_usd).near) ?? []
 
   return (
     <SettingsShell
       title="Overview"
       icon={<IconOverview />}
       chips={[
-        ...(memberCount !== undefined ? ([[<IconMembers key="m" width={16} height={16} />, `${memberCount} members`]] as [ReactNode, ReactNode][]) : []),
+        memberCount !== undefined && [<IconMembers key="m" width={16} height={16} />, `${memberCount} members`],
         [<IconSpark key="a" width={16} height={16} />, `${alist.length} agents`],
       ]}
     >
-      {spend.error && <Notice>{settingsFailure(spend.error instanceof ApiError ? spend.error.code : undefined)}</Notice>}
+      {spend.error && <Notice>{settingsFailure(spend.error)}</Notice>}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card className="p-4">
           <div className="flex items-center gap-2.5">
             <IconTile>
               <IconPay width={18} height={18} />
             </IconTile>
-            <span className="text-body-small text-on-surface-variant">Spend · {range === '7d' ? '7' : range === '30d' ? '30' : '90'} days</span>
+            <span className="text-body-small text-on-surface-variant">Spend · {rangeLabel[range]}</span>
           </div>
           <p className="mt-3 text-headline-large tabular-nums">{s ? usd(s.total_usd) : '–'}</p>
           <p className="mt-2 text-body-small text-on-surface-variant">{s ? `${usd(s.total_usd / Math.max(1, s.days.length))} a day` : ''}</p>
@@ -105,19 +103,10 @@ export function Overview() {
           <CardHead
             title="Daily spend"
             right={
-              <Segmented
-                label="Range"
-                value={range}
-                onChange={setRange}
-                items={[
-                  { value: '7d', label: '7 days' },
-                  { value: '30d', label: '30 days' },
-                  { value: '90d', label: '90 days' },
-                ]}
-              />
+              <RangePicker value={range} onChange={setRange} />
             }
           />
-          {s && <SpendBars s={s} order={order} names={Object.fromEntries(alist.map((a) => [a.id, a.name]))} />}
+          {s && <SpendBars s={s} agents={alist} />}
         </Card>
         <div className="space-y-4">
           <Card className="p-5 pb-3">
@@ -155,7 +144,9 @@ export function Overview() {
               <CardHead title="Budgets" right={<Link to="/settings/budgets" className="text-label-medium text-primary">Budgets</Link>} />
               {budgets.data.agents
                 .filter((b) => b.monthly_budget_usd)
-                .map((b) => (
+                .map((b) => {
+                  const use = budgetUse(b.spent_usd, b.monthly_budget_usd)
+                  return (
                   <div key={b.agent_id} className="py-1.5">
                     <div className="flex justify-between text-body-small">
                       <span>{b.name}</span>
@@ -163,9 +154,10 @@ export function Overview() {
                         {usd(b.spent_usd)} / ${b.monthly_budget_usd}
                       </span>
                     </div>
-                    <Meter pct={(b.spent_usd / b.monthly_budget_usd!) * 100} tone={b.spent_usd / b.monthly_budget_usd! >= 0.8 ? 'bg-on-surface' : 'bg-primary/70'} className="mt-1 h-1.5" />
+                    <Meter pct={use.pct} tone={use.near ? 'bg-on-surface' : 'bg-primary/70'} className="mt-1 h-1.5" />
                   </div>
-                ))}
+                  )
+                })}
             </Card>
           )}
         </div>

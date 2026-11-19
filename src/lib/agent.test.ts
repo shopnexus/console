@@ -1,7 +1,24 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from './api'
 import { QueryClient } from '@tanstack/react-query'
-import { type ConversationDetail, dayGroup, detailKey, failureOf, pendingTurn, postTurn, runOf, seedTurn, startTurn, type Turn, variablesOf, withLocalTurns } from './agent'
+import {
+  askHref,
+  attachmentFromParams,
+  type ConversationDetail,
+  dayGroup,
+  detailKey,
+  failureOf,
+  pendingTurn,
+  postTurn,
+  putTurn,
+  runOf,
+  seedTurn,
+  sendTurn,
+  startTurn,
+  type Turn,
+  variablesOf,
+  withLocalTurns,
+} from './agent'
 
 function reply(status: number, body: unknown) {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
@@ -151,5 +168,66 @@ describe('a finished turn opened again', () => {
     expect(run.finishedAt).toBe(at(9))
     expect(run.usage).toMatchObject({ input: 900, output: 100, costUsd: 0.02 })
     expect(run.blocks.map((b) => b.type)).toEqual(['text', 'follow_ups'])
+  })
+})
+
+describe('asking the agent about a record', () => {
+  it('links to a new chat with the record attached, which the chat reads back', () => {
+    const href = askHref('order', 'o1', 'Order SN-1042')
+    expect(href).toBe('/?attach=order%3Ao1&label=Order+SN-1042')
+    expect(attachmentFromParams(new URL(href, 'http://x').searchParams)).toEqual({ kind: 'order', id: 'o1', label: 'Order SN-1042' })
+  })
+  it('attaches nothing for a kind a link cannot carry', () => {
+    expect(attachmentFromParams(new URLSearchParams('attach=account:a1'))).toBeUndefined()
+    expect(attachmentFromParams(new URLSearchParams())).toBeUndefined()
+  })
+})
+
+describe('a new chat', () => {
+  // POSTs answer from the queue in order; the event stream and the read again never answer.
+  function server(...posts: Response[]) {
+    const fetch = vi.fn(async (_url: string, init?: RequestInit) => (init?.method === 'POST' ? posts.shift()! : new Promise<Response>(() => undefined)))
+    vi.stubGlobal('fetch', fetch)
+    return fetch
+  }
+  const posted = (fetch: ReturnType<typeof server>) => fetch.mock.calls.filter(([, init]) => init?.method === 'POST').map(([url]) => String(url).replace('http://api.test/v1', ''))
+
+  it('makes the conversation, posts the turn and moves to the real id', async () => {
+    const fetch = server(reply(201, { id: 'c9', updated_at: '' }), reply(202, { conversation_id: 'c9', turn_id: 't1' }))
+    const client = new QueryClient()
+    const pending = pendingTurn('m', { text: 'Hi' })
+    putTurn(client, 'new-1', pending)
+    const ready = vi.fn()
+    await sendTurn(client, 'new-1', pending, { text: 'Hi' }, undefined, ready)
+    expect(posted(fetch)).toEqual(['/console/agent/conversations', '/console/agent/conversations/c9/turns'])
+    expect(ready).toHaveBeenCalledWith('c9')
+    expect(client.getQueryData<ConversationDetail>(detailKey('c9'))!.turns.map((t) => t.id)).toEqual(['t1'])
+    expect(client.getQueryData(detailKey('new-1'))).toBeUndefined()
+  })
+
+  it('keeps a refused turn under the temporary id, and Retry posts to the conversation it made', async () => {
+    const fetch = server(reply(201, { id: 'c9', updated_at: '' }), refusal(429, 'rate_limited'), reply(202, { conversation_id: 'c9', turn_id: 't1' }))
+    const client = new QueryClient()
+    const pending = pendingTurn('m', { text: 'Hi' })
+    putTurn(client, 'new-1', pending)
+    const ready = vi.fn()
+    await sendTurn(client, 'new-1', pending, { text: 'Hi' }, undefined, ready)
+    expect(ready).not.toHaveBeenCalled()
+    const temp = client.getQueryData<ConversationDetail>(detailKey('new-1'))!
+    expect(temp.real_id).toBe('c9')
+    expect(temp.turns[0].failed).toBeTruthy()
+
+    await sendTurn(client, 'new-1', pending, { text: 'Hi' }, undefined, ready)
+    expect(posted(fetch)).toEqual(['/console/agent/conversations', '/console/agent/conversations/c9/turns', '/console/agent/conversations/c9/turns'])
+    expect(ready).toHaveBeenCalledWith('c9')
+    expect(client.getQueryData<ConversationDetail>(detailKey('c9'))!.real_id).toBeUndefined()
+  })
+
+  it('throws a refusal in a chat that exists, for the caller to steer instead', async () => {
+    server(refusal(409, 'agent_busy'))
+    const client = new QueryClient()
+    const pending = pendingTurn('m', { text: 'Hi' })
+    const e = await sendTurn(client, 'c1', pending, { text: 'Hi' }, undefined, () => undefined).catch((x: unknown) => x)
+    expect(e).toBeInstanceOf(ApiError)
   })
 })

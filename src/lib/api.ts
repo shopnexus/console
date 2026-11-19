@@ -1,9 +1,14 @@
+import { type SseMessage, SseParser } from './sse'
+
 // The console is served from console.<domain> and the API from api.<domain>,
 // so one build finds its API from the page's own host. VITE_API_URL overrides
 // that for local development.
 const API_URL: string =
   import.meta.env.VITE_API_URL ??
   `${location.protocol}//api.${location.host.replace(/^console\./, '')}/v1`
+
+// The server refuses a call without it, so no other site's form can use the cookie.
+const requestedWith = { 'x-requested-with': 'shopnexus-console' }
 
 /** An answer outside 2xx, with the server's error code ("invalid_credentials"). */
 export class ApiError extends Error {
@@ -39,7 +44,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     credentials: 'include',
     headers: {
       accept: 'application/json',
-      'x-requested-with': 'shopnexus-console',
+      ...requestedWith,
       ...(init?.body ? { 'content-type': 'application/json' } : {}),
       ...init?.headers,
     },
@@ -69,9 +74,25 @@ export function del(path: string): Promise<void> {
   return api<void>(path, { method: 'DELETE' })
 }
 
-/** The full URL of an API path, for a stream the fetch above cannot read. */
-export function apiUrl(path: string): string {
-  return `${API_URL}${path}`
+/**
+ * Reads a server-sent event stream from the API, resuming after the event
+ * with id `after`. EventSource cannot send X-Requested-With, so this reads
+ * the fetch body.
+ */
+export async function* apiStream(path: string, { after = 0, signal }: { after?: number; signal?: AbortSignal } = {}): AsyncGenerator<SseMessage> {
+  const res = await fetch(`${API_URL}${path}${after ? `?after=${after}` : ''}`, {
+    credentials: 'include',
+    signal,
+    headers: { accept: 'text/event-stream', ...requestedWith, ...(after ? { 'last-event-id': String(after) } : {}) },
+  })
+  if (!res.ok || !res.body) throw new ApiError(res.status, res.status === 404 ? 'not_found' : 'stream_failed', res.statusText)
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
+  const parser = new SseParser()
+  for (;;) {
+    const { value, done } = await reader.read()
+    if (done) return
+    yield* parser.push(value)
+  }
 }
 
 export type Role = 'moderator' | 'admin'
@@ -140,3 +161,9 @@ export const roleName: Record<Role, string> = { moderator: 'Moderator', admin: '
 
 /** The first 8 characters of an opaque id, for a row ("7b1c22e0"). */
 export const shortId = (id: string) => id.slice(0, 8)
+
+/** A query retries once, and not at all on a 404. */
+export const noRetryOn404 = (n: number, e: unknown) => !(e instanceof ApiError && e.status === 404) && n < 1
+
+/** A string field of an action's details ("reason", "until"), or "". */
+export const actionDetail = (a: Action, key: string) => (typeof a.details?.[key] === 'string' ? (a.details[key] as string) : '')

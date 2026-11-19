@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router'
 import IconApps from '~icons/material-symbols-light/apps-rounded'
 import IconChevron from '~icons/material-symbols-light/chevron-right-rounded'
@@ -173,11 +173,16 @@ function Sidebar({ rail, toggle }: { rail: boolean; toggle: () => void }) {
 /** The member's chats, grouped by day, under the work areas. */
 function Chats() {
   const threads = useThreads()
-  const groups = new Map<DayGroup, Conversation[]>()
-  for (const c of threads.items) {
-    const g = dayGroup(c.updated_at)
-    groups.set(g, [...(groups.get(g) ?? []), c])
-  }
+  const groups = useMemo(() => {
+    const m = new Map<DayGroup, Conversation[]>()
+    for (const c of threads.items) {
+      const g = dayGroup(c.updated_at)
+      const rows = m.get(g)
+      if (rows) rows.push(c)
+      else m.set(g, [c])
+    }
+    return m
+  }, [threads.items])
   return (
     <div className="mt-3 min-h-0 flex-1 overflow-y-auto [mask-image:linear-gradient(to_bottom,black_88%,transparent)]" aria-label="Chats">
       <div className="rise-list pb-6">

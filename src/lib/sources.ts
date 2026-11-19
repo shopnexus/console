@@ -1,35 +1,50 @@
 import type { Source, SourceKind } from './run'
+import { shortId } from './api'
 import { toolInfo } from './tools'
 
 /** The kinds in the order the sources panel groups them. */
 export const sourceKinds: SourceKind[] = ['account', 'report', 'ticket', 'order', 'listing', 'member', 'log', 'data']
 
-const names: Record<SourceKind, string> = {
-  report: 'Report case',
-  account: 'Account',
-  ticket: 'Ticket',
-  order: 'Order',
-  listing: 'Listing',
-  member: 'Member',
-  data: 'Data',
-  log: 'Audit log',
+/** What the console knows of each record kind: its name, and where its record opens. */
+interface KindInfo {
+  name: string
+  plural: string
+  /** The record's page, from its id. */
+  page?: (id: string) => string
+  /** A page only admins have, the same for every record of the kind. */
+  admin?: string
 }
 
+const kinds: Record<SourceKind, KindInfo> = {
+  account: { name: 'Account', plural: 'Accounts', page: (id) => `/accounts/${id}` },
+  // A report case is an account's, and opens under the account's id.
+  report: { name: 'Report case', plural: 'Report cases', page: (id) => `/reports/${id}` },
+  ticket: { name: 'Ticket', plural: 'Tickets', page: (id) => `/support/${id}` },
+  order: { name: 'Order', plural: 'Orders', page: (id) => `/orders/${id}` },
+  listing: { name: 'Listing', plural: 'Listings', page: (id) => `/listings/${id}` },
+  member: { name: 'Member', plural: 'Members', admin: '/settings/members' },
+  log: { name: 'Audit log', plural: 'Audit log', admin: '/settings/audit' },
+  data: { name: 'Data', plural: 'Data' },
+}
+
+/** Other spellings of a kind: an attachment's report_case is a report. */
+const aliases = new Map<string, SourceKind>([['report_case', 'report']])
+
 /** A kind the console knows, or data for one it does not. */
-export const kindOf = (kind: string | undefined): SourceKind => (kind && kind in names ? (kind as SourceKind) : 'data')
+export const kindOf = (kind: string | undefined): SourceKind =>
+  !kind ? 'data' : Object.hasOwn(kinds, kind) ? (kind as SourceKind) : (aliases.get(kind) ?? 'data')
 
-export const kindName = (kind: SourceKind) => names[kindOf(kind)]
+/** "Account", "Report case". */
+export const kindName = (kind: string) => kinds[kindOf(kind)].name
 
-/** The sources panel's groups and filters. */
-export const kindPlural: Record<SourceKind, string> = {
-  report: 'Report cases',
-  account: 'Accounts',
-  ticket: 'Tickets',
-  order: 'Orders',
-  listing: 'Listings',
-  member: 'Members',
-  data: 'Data',
-  log: 'Audit log',
+/** The sources panel's groups and filters: "Accounts", "Report cases". */
+export const kindPlural = (kind: string) => kinds[kindOf(kind)].plural
+
+/** Where a record opens in the console, if it has a page there. */
+export function recordHref(kind: string, id: string | undefined, admin = false): string | undefined {
+  const k = kinds[kindOf(kind)]
+  if (k.admin) return admin ? k.admin : undefined
+  return id && k.page ? k.page(id) : undefined
 }
 
 /** The label an agent makes when a record has no name: a kind word and the id's start. */
@@ -48,7 +63,7 @@ export function sourceLabel(s: Source): string {
 /** The line under a source's name: the agent's meta, else its kind and the id's start. */
 export function sourceMeta(s: Source): string {
   if (s.meta) return s.meta
-  return [kindName(s.kind), s.record_id?.slice(0, 8)].filter(Boolean).join(' · ')
+  return [kindName(s.kind), s.record_id && shortId(s.record_id)].filter(Boolean).join(' · ')
 }
 
 /** An account's state, read from its meta or facts, for the dot on its initial. */
@@ -59,19 +74,7 @@ export function accountStatus(s: Source): 'active' | 'suspended' | undefined {
 }
 
 /** Where a source's record opens in the console, if it has a page there. */
-export function sourceHref(s: Source, admin = false): string | undefined {
-  const kind = kindOf(s.kind)
-  if (kind === 'member') return admin ? '/settings/members' : undefined
-  if (kind === 'log') return admin ? '/settings/audit' : undefined
-  if (!s.record_id) return undefined
-  if (kind === 'account') return `/accounts/${s.record_id}`
-  // A report case is an account's, and opens under the account's id.
-  if (kind === 'report') return `/reports/${s.record_id}`
-  if (kind === 'ticket') return `/support/${s.record_id}`
-  if (kind === 'order') return `/orders/${s.record_id}`
-  if (kind === 'listing') return `/listings/${s.record_id}`
-  return undefined
-}
+export const sourceHref = (s: Source, admin = false) => recordHref(s.kind, s.record_id, admin)
 
 /** "Open account", "Open report case", "Open audit log". */
 export const openLabel = (s: Source) => `Open ${kindName(s.kind).toLowerCase()}`

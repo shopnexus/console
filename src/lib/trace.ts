@@ -1,3 +1,4 @@
+import { count } from './format'
 import type { ToolCall } from './run'
 
 /*
@@ -39,7 +40,7 @@ export function metaOf(calls: ToolCall[]): string[] {
   const lead = calls[0]
   const records = lead.sourceIds.length
   return [
-    calls.length > 1 ? `${calls.length} times` : records ? `${records} ${records === 1 ? 'record' : 'records'}` : lead.status === 'success' ? readable(lead.resultSummary) : undefined,
+    calls.length > 1 ? `${calls.length} times` : records ? count(records, 'record') : lead.status === 'success' ? readable(lead.resultSummary) : undefined,
     lead.status === 'failed' ? "Didn't work" : undefined,
     lead.status === 'skipped' ? 'Not run' : undefined,
     lead.status === 'running' && lead.retries.length ? `Attempt ${lead.retries.length + 1}` : undefined,
@@ -49,10 +50,20 @@ export function metaOf(calls: ToolCall[]): string[] {
 /** Calls to one tool about one thing, as one row; a running call stays its own row. */
 export function groupCalls(calls: ToolCall[]): ToolCall[][] {
   const groups: ToolCall[][] = []
+  const done = new Map<string, ToolCall[]>()
   for (const c of calls) {
-    const found = c.status === 'success' && groups.find((g) => g[0].status === 'success' && g[0].tool === c.tool && detailOf(g[0].input) === detailOf(c.input))
+    if (c.status !== 'success') {
+      groups.push([c])
+      continue
+    }
+    const key = `${c.tool}\0${detailOf(c.input)}`
+    const found = done.get(key)
     if (found) found.push(c)
-    else groups.push([c])
+    else {
+      const g = [c]
+      done.set(key, g)
+      groups.push(g)
+    }
   }
   return groups
 }

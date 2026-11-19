@@ -4,11 +4,10 @@ import IconApps from '~icons/material-symbols-light/apps-rounded'
 import IconChat from '~icons/material-symbols-light/chat-outline-rounded'
 import IconHub from '~icons/material-symbols-light/hub-outline-rounded'
 import IconModel from '~icons/material-symbols-light/neurology-outline-rounded'
-import IconSearch from '~icons/material-symbols-light/search-rounded'
 import IconSell from '~icons/material-symbols-light/sell-outline-rounded'
 import IconSync from '~icons/material-symbols-light/sync-rounded'
 import { ModelTag, ProviderTile, TagIcon } from '../../components/AiBits'
-import { SettingsShell } from '../../components/SettingsShell'
+import { SearchPill, SettingsShell } from '../../components/SettingsShell'
 import { Card, Check, Notice, Segmented } from '../../components/ui'
 import { contextSize, fillAt, price } from '../../lib/aiLook'
 import { useDismiss } from '../../lib/dom'
@@ -76,16 +75,7 @@ export function Models() {
           )
         })}
         <span className="flex-1" />
-        <label className="flex h-10 w-[240px] items-center gap-2 rounded-full border border-hairline bg-surface-container-lowest px-4 text-on-surface-variant focus-within:border-primary/40">
-          <IconSearch width={18} height={18} />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search models"
-            aria-label="Search models"
-            className="h-full min-w-0 flex-1 bg-transparent text-body-medium text-on-surface outline-none placeholder:text-on-surface-variant"
-          />
-        </label>
+        <SearchPill value={q} onChange={setQ} placeholder="Search models" label="Search models" className="w-[240px]" />
       </div>
       <Card className="overflow-hidden p-0">
         <div className="flex items-center gap-5 border-b border-hairline bg-surface-container-low/60 px-5 py-3 text-body-small text-on-surface-variant">

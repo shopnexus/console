@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ApiError, api, post } from './api'
+import { ApiError, api, noRetryOn404, post } from './api'
 
 // The order and listing pages (GET /v1/console/orders/{id} and
 // /v1/console/listings/{id}). Every part the server may leave out is
@@ -58,14 +58,12 @@ export interface ListingDetail {
   price_guide?: { median: number; sample_size: number; pct_vs_guide: number }
 }
 
-const notFound = (n: number, e: unknown) => !(e instanceof ApiError && e.status === 404) && n < 1
-
 export function useOrder(id: string | undefined) {
-  return useQuery({ queryKey: ['console', 'orders', id], queryFn: () => api<OrderDetail>(`/console/orders/${id}`), enabled: !!id, retry: notFound })
+  return useQuery({ queryKey: ['console', 'orders', id], queryFn: () => api<OrderDetail>(`/console/orders/${id}`), enabled: !!id, retry: noRetryOn404 })
 }
 
 export function useListing(id: string | undefined) {
-  return useQuery({ queryKey: ['console', 'listings', id], queryFn: () => api<ListingDetail>(`/console/listings/${id}`), enabled: !!id, retry: notFound })
+  return useQuery({ queryKey: ['console', 'listings', id], queryFn: () => api<ListingDetail>(`/console/listings/${id}`), enabled: !!id, retry: noRetryOn404 })
 }
 
 /** Hides a listing or unhides it; the listing and the report cases read again after. */
@@ -128,8 +126,3 @@ export const conditionLabel: Record<string, string> = { new: 'New', like_new: 'L
 
 /** A status word the console has no label for, readable: "out_for_delivery" → "Out for delivery". */
 export const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
-
-/** Ask the agent about a record: a new chat with the record attached (the chat reads ?attach=kind:id and ?label). */
-export function askHref(kind: 'order' | 'listing', id: string, label: string) {
-  return `/?${new URLSearchParams({ attach: `${kind}:${id}`, label })}`
-}

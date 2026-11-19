@@ -1,9 +1,10 @@
 import { type QueryClient, useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react'
+import { useNavigate } from 'react-router'
 import { useAccount } from './accounts'
-import { ApiError, api, apiUrl, del, patch, post, shortId } from './api'
-import { type Block, type ClarifyQuestion, emptyRun, finalStatuses, type LocalAction, type Outcome, reduceRun, runFromView, type RunEvent, type RunState, type Source } from './run'
-import { SseParser } from './sse'
+import { ApiError, api, apiStream, del, noRetryOn404, patch, post, shortId } from './api'
+import { emptyRun, type LocalAction, reduceRun, runFromView, type RunEvent, type RunState, type TurnView } from './run'
+import { kindName } from './sources'
 import { useTicket } from './support'
 
 // The console agent's API (spec 2026-11-18, "Architecture" and "Answer"):
@@ -34,29 +35,15 @@ export interface Attachment {
 export type TurnViewStatus = 'running' | 'paused' | 'awaiting_input' | 'succeeded' | 'failed' | 'cancelled' | 'timed_out' | 'budget'
 
 /** AgentTurn: the agent's view of a turn, in the conversation and from GET …/turns/{id}. */
-export interface Turn {
+export interface Turn extends TurnView {
   id: string
   conversation_id?: string
   /** The member who asked. */
   member_id: string
   text: string
-  answer?: string
   status: TurnViewStatus | 'pending'
-  blocks: Block[]
-  sources: Source[]
-  outcome?: Outcome
-  error_code?: string
-  continuable: boolean
-  agent?: { id: string; name: string }
-  usage?: { input_tokens: number; output_tokens: number; cost_usd: number; first_token_ms?: number; provider?: string; cache_read_tokens?: number; cache_write_tokens?: number }
-  steers: { steer_id: string; text: string }[]
-  questions?: ClarifyQuestion[]
   /** The seq of the turn's newest event; the stream opens after it. */
   last_seq: number
-  created_at: string
-  /** When the run ended, and how long it worked with pauses left out. */
-  finished_at?: string
-  duration_ms?: number
   /** The console's own fields for a turn it sent: what it was asked with, and a key kept when the server's id replaces the pending one. */
   client_key?: string
   /** Why a question the console sent did not reach the agent; the bubble offers Retry. */
@@ -130,14 +117,18 @@ export const detailKey = (id: string) => ['agent', 'conversation', id] as const
 
 /** The member's chats: their own, and the shared chats of tickets and accounts, newest activity first. */
 export function useThreads() {
-  const lists = useQueries({
+  // combine runs again only when a list changes, so the sort is not redone on every render.
+  return useQueries({
     queries: (['', 'ticket', 'account'] as const).map((kind) => ({
       queryKey: [...listKey, kind],
       queryFn: () => api<{ items: Conversation[] }>(`/console/agent/conversations${kind ? `?subject_kind=${kind}` : ''}`),
     })),
+    combine: (lists) => ({
+      items: lists.flatMap((l) => l.data?.items ?? []).sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
+      isPending: lists.some((l) => l.isPending),
+      error: lists.find((l) => l.error)?.error,
+    }),
   })
-  const items = lists.flatMap((l) => l.data?.items ?? []).sort((a, b) => b.updated_at.localeCompare(a.updated_at))
-  return { items, isPending: lists.some((l) => l.isPending), error: lists.find((l) => l.error)?.error }
 }
 
 /** One conversation with its turns. */
@@ -166,7 +157,7 @@ export function useConversation(id: string | undefined) {
     // A temporary chat lives in the cache only until the agent has the conversation.
     enabled: !!id && !isTempChat(id),
     queryFn: async () => withLocalTurns(await api<ConversationDetail>(`/console/agent/conversations/${id}`), client.getQueryData<ConversationDetail>(detailKey(id!))),
-    retry: (n, e) => !(e instanceof ApiError && e.status === 404) && n < 1,
+    retry: noRetryOn404,
   })
 }
 
@@ -176,6 +167,35 @@ export function useOpenConversation() {
     mutationFn: openConversation,
     onSuccess: () => client.invalidateQueries({ queryKey: listKey }),
   })
+}
+
+/** Asks the agent about an account or a ticket: opens (or makes) its shared chat and goes there. */
+export function useAskAgent() {
+  const open = useOpenConversation()
+  const navigate = useNavigate()
+  const ask = async (subject: { kind: SubjectKind; id: string }) => navigate(`/agent/${(await open.mutateAsync(subject)).id}`)
+  return { ask, pending: open.isPending }
+}
+
+/** A subject's shared conversation, opened (or made) once per view. */
+export function useSubjectConversation(kind: SubjectKind, id: string) {
+  return useQuery({ queryKey: ['agent', 'subject', kind, id], queryFn: () => openConversation({ kind, id }), staleTime: Infinity })
+}
+
+// A record's page opens a new chat with the record attached: ?attach=order:<id>&label=Order SN-1042.
+const askKinds = ['order', 'listing'] as const
+type AskKind = (typeof askKinds)[number]
+
+/** Ask the agent about an order or a listing: a new chat with the record attached. */
+export function askHref(kind: AskKind, id: string, label: string) {
+  return `/?${new URLSearchParams({ attach: `${kind}:${id}`, label })}`
+}
+
+/** The record an askHref link attaches, if the page's query names one. */
+export function attachmentFromParams(params: URLSearchParams): Attachment | undefined {
+  const [kind, id] = (params.get('attach') ?? '').split(':')
+  if (!id || !askKinds.includes(kind as AskKind)) return undefined
+  return { kind: kind as AskKind, id, label: params.get('label') ?? undefined }
 }
 
 export interface TurnRequest {
@@ -261,37 +281,48 @@ export function dropTurn(client: QueryClient, cacheId: string, clientKey: string
 export const isTempChat = (id: string | undefined) => !!id?.startsWith('new-')
 
 /**
- * A new chat, optimistically: the caller has already shown the chat under a
- * temporary id. This opens the conversation and posts the turn in the
- * background, then moves the cache to the real id and calls onReady with it.
+ * Posts a pending turn in the chat cached under chatId. A temporary chat (the
+ * caller already shows it) posts to the conversation it made earlier, or
+ * makes one first; once the turn is in, its cache moves to the real id and
+ * onReady gets that id. A refusal in a chat that exists is thrown, and the
+ * turn stays in the cache marked failed; a new chat that fails keeps the
+ * failed turn, whose Retry comes back here.
  */
-export async function startChat(
+export async function sendTurn(
   client: QueryClient,
-  temp: string,
+  chatId: string,
   pending: Turn,
   req: TurnRequest,
   subject: { kind: SubjectKind; id: string } | undefined,
   onReady: (id: string) => void,
 ) {
-  let conversationId: string
+  if (!isTempChat(chatId)) {
+    await postTurn(client, chatId, chatId, pending, req)
+    return
+  }
+  let conversationId = client.getQueryData<ConversationDetail>(detailKey(chatId))?.real_id
+  const made = !conversationId
+  if (!conversationId) {
+    try {
+      conversationId = (await openConversation(subject)).id
+    } catch (e) {
+      putTurn(client, chatId, { ...pending, failed: failureText[failureOf(e)] || failureText.other })
+      return
+    }
+  }
   try {
-    conversationId = (await openConversation(subject)).id
+    await postTurn(client, chatId, conversationId, pending, req)
   } catch (e) {
-    putTurn(client, temp, { ...pending, failed: failureText[failureOf(e)] || failureText.other })
+    if (!made) throw e
+    // Retry posts to the conversation that now exists.
+    client.setQueryData<ConversationDetail>(detailKey(chatId), (d) => (d ? { ...d, real_id: conversationId } : d))
     return
   }
-  try {
-    await postTurn(client, temp, conversationId, pending, req)
-  } catch {
-    // The temporary chat keeps the failed turn, whose Retry posts to the conversation that now exists.
-    client.setQueryData<ConversationDetail>(detailKey(temp), (d) => (d ? { ...d, real_id: conversationId } : d))
-    return
-  }
-  const d = client.getQueryData<ConversationDetail>(detailKey(temp))
-  if (d) client.setQueryData<ConversationDetail>(detailKey(conversationId), { ...d, id: conversationId })
+  // The cache moves to the real id before the chat goes there; postTurn has already read the chat list again.
+  const d = client.getQueryData<ConversationDetail>(detailKey(chatId))
+  if (d) client.setQueryData<ConversationDetail>(detailKey(conversationId), { ...d, id: conversationId, real_id: undefined })
   onReady(conversationId)
-  client.removeQueries({ queryKey: detailKey(temp) })
-  void client.invalidateQueries({ queryKey: listKey })
+  client.removeQueries({ queryKey: detailKey(chatId) })
 }
 
 /** Renames a conversation; the list shows the new title at once. */
@@ -371,23 +402,11 @@ async function readEvents(id: string, after: number, onEvent: (ev: RunEvent) => 
     for await (const ev of mockEvents(id, after, signal)) onEvent(ev)
     return
   }
-  const res = await fetch(apiUrl(`/console/agent/turns/${id}/events${after ? `?after=${after}` : ''}`), {
-    credentials: 'include',
-    signal,
-    headers: { accept: 'text/event-stream', 'x-requested-with': 'shopnexus-console', ...(after ? { 'last-event-id': String(after) } : {}) },
-  })
-  if (!res.ok || !res.body) throw new ApiError(res.status, res.status === 404 ? 'not_found' : 'stream_failed', res.statusText)
-  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
-  const parser = new SseParser()
-  for (;;) {
-    const { value, done } = await reader.read()
-    if (done) return
-    for (const msg of parser.push(value)) {
-      try {
-        onEvent(JSON.parse(msg.data) as RunEvent)
-      } catch {
-        // A line that is not an event is skipped.
-      }
+  for await (const msg of apiStream(`/console/agent/turns/${id}/events`, { after, signal })) {
+    try {
+      onEvent(JSON.parse(msg.data) as RunEvent)
+    } catch {
+      // A line that is not an event is skipped.
     }
   }
 }
@@ -482,16 +501,17 @@ async function replayTurn(turn: Turn, seeded: RunState) {
 
 /** A turn's run: from the store, else drawn from the turn view for a turn that is not running. */
 export function useRun(id: string | undefined, turn?: Turn): { run?: RunState } {
-  const stored = useSyncExternalStore(
-    (f) => {
+  const subscribe = useCallback(
+    (f: () => void) => {
       if (!id) return () => undefined
       const set = listeners.get(id) ?? new Set()
       set.add(f)
       listeners.set(id, set)
-      return () => set.delete(f)
+      return () => void set.delete(f)
     },
-    () => (id ? runs.get(id) : undefined),
+    [id],
   )
+  const stored = useSyncExternalStore(subscribe, () => (id ? runs.get(id) : undefined))
   // Until the effect seeds the store, a turn that is not running draws from its view, so it never shows the waiting word.
   const view = useMemo(() => (turn && !stored && turn.status !== 'running' && turn.status !== 'pending' && !turn.failed ? runFromView(turn) : undefined), [turn, stored])
   useEffect(() => {
@@ -501,8 +521,6 @@ export function useRun(id: string | undefined, turn?: Turn): { run?: RunState } 
   }, [id, turn])
   return { run: stored ?? view }
 }
-
-export const isFinal = (status: string) => finalStatuses.has(status)
 
 // -------------------------------------------------------------- controls --
 
@@ -670,14 +688,13 @@ export function useSubjectLabel(kind: SubjectKind | undefined, id: string | unde
   const account = useAccount(kind === 'account' ? id : undefined)
   if (!kind || !id) return ''
   const name = kind === 'ticket' ? ticket.data?.ticket.person.display_name : account.data?.display_name
-  return `${kind === 'ticket' ? 'Ticket' : 'Account'} · ${name || shortId(id)}`
+  return `${kindName(kind)} · ${name || shortId(id)}`
 }
 
 /** A conversation's name in the list and its header. */
 export function threadTitle(c: Conversation): string {
   if (c.title) return c.title
-  if (c.subject_kind === 'ticket') return `Ticket ${shortId(c.subject_id ?? '')}`
-  if (c.subject_kind === 'account') return `Account ${shortId(c.subject_id ?? '')}`
+  if (c.subject_kind) return `${kindName(c.subject_kind)} ${shortId(c.subject_id ?? '')}`
   return 'New chat'
 }
 

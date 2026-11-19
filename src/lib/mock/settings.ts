@@ -169,7 +169,6 @@ export function budgets(): Budgets {
 }
 
 /** The month's spend so far over every agent. */
-export const monthSpent = () => Object.values(spent).reduce((a, b) => a + b, 0)
 
 const daily = [
   [2.4, 0.3, 0.2, 0.1], [3.4, 0.4, 0.2, 0.1], [4.9, 0.5, 0.3, 0.1], [4.1, 0.4, 0.2, 0.1], [5.4, 0.5, 0.3, 0.1], [1.6, 0.3, 0.1, 0.1],
@@ -177,9 +176,11 @@ const daily = [
   [2.4, 0.4, 0.1, 0.1], [1.9, 0.3, 0.1, 0.1], [8.6, 0.7, 0.3, 0.1], [9.4, 0.7, 0.3, 0.1], [7.6, 0.6, 0.3, 0.1], [3.4, 0.4, 0.2, 0.1],
 ]
 
+const span = (range: SpendRange) => (range === '7d' ? 7 : range === '30d' ? 30 : 90)
+
 /** LiteLLM's spend by day over a range ending today. */
 export function spend(range: SpendRange): Spend {
-  const n = range === '7d' ? 7 : range === '30d' ? 30 : 90
+  const n = span(range)
   const end = new Date()
   const order = [ids.console, ids.scam, ids.listing, ids.search]
   const days = Array.from({ length: n }, (_, i) => {
@@ -203,7 +204,6 @@ export function pickable(): PickableAgent[] {
   return agents.filter((a) => a.kind === 'console' && a.enabled).map(({ id, name, icon, purpose }) => ({ id, name, icon, purpose, default: id === ids.console }))
 }
 
-const span = (range: SpendRange) => (range === '7d' ? 7 : range === '30d' ? 30 : 90)
 const dates = (n: number) =>
   Array.from({ length: n }, (_, i) => {
     const d = new Date()

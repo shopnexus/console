@@ -1,8 +1,24 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useSyncExternalStore } from 'react'
-import { type Account, type Action, ApiError, api, type Page, post } from './api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSyncExternalStore } from 'react'
+import { type Account, type Action, ApiError, api, noRetryOn404, type Page, post } from './api'
+import { usePaged } from './paged'
+import { DAY, count } from './format'
 
 export type AccountTab = 'all' | 'suspended'
+
+/** The terms a member may suspend for, in days; null has no end. */
+export const suspendTerms: [number | null, string][] = [
+  [1, '1 day'],
+  [7, '7 days'],
+  [30, '30 days'],
+  [null, 'No end'],
+]
+
+/** "7 days", or "with no end". */
+export const termLabel = (days: number | null) => (days === null ? 'with no end' : count(days, 'day'))
+
+/** The end of a term that starts now, as the server takes it. */
+export const untilOf = (days: number | null, now: number) => (days === null ? undefined : new Date(now + days * DAY).toISOString())
 
 export interface Identity {
   kind: 'phone' | 'email'
@@ -17,19 +33,8 @@ export interface AccountDetail {
 }
 
 /** Accounts' list: every account newest first, or the suspended ones, the term that ends first first. */
-export function useAccountList(tab: AccountTab) {
-  const query = useInfiniteQuery({
-    queryKey: ['console', 'accounts', 'list', tab],
-    initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) => {
-      const q = new URLSearchParams({ limit: '50', ...(tab === 'suspended' ? { status: 'suspended' } : {}), ...(pageParam ? { cursor: pageParam } : {}) })
-      return api<Page<Account>>(`/console/accounts?${q}`)
-    },
-    getNextPageParam: (last) => last.next_cursor,
-  })
-  const items = useMemo(() => query.data?.pages.flatMap((p) => p.items), [query.data])
-  return { ...query, items }
-}
+export const useAccountList = (tab: AccountTab) =>
+  usePaged<Account>(['console', 'accounts', 'list', tab], '/console/accounts', { status: tab === 'suspended' ? 'suspended' : undefined })
 
 /** An account with its identities and the console's actions on it. */
 export function useAccountDetail(id: string | undefined) {
@@ -37,7 +42,7 @@ export function useAccountDetail(id: string | undefined) {
     queryKey: ['console', 'accounts', 'detail', id],
     queryFn: () => api<AccountDetail>(`/console/accounts/${id}`),
     enabled: !!id,
-    retry: (n, e) => !(e instanceof ApiError && e.status === 404) && n < 1,
+    retry: noRetryOn404,
   })
 }
 

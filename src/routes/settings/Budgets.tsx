@@ -6,12 +6,12 @@ import IconPerson from '~icons/material-symbols-light/person-outline-rounded'
 import IconShield from '~icons/material-symbols-light/shield-person-outline-rounded'
 import IconTune from '~icons/material-symbols-light/tune-rounded'
 import { Select } from '../../components/Select'
-import { SettingsShell } from '../../components/SettingsShell'
-import { Card, CardHead, Donut, Meter, Notice, Segmented, Tag } from '../../components/ui'
+import { RangePicker, SettingsShell } from '../../components/SettingsShell'
+import { useNumberDraft } from '../../lib/draft'
+import { Card, CardHead, Donut, Meter, Notice, Tag } from '../../components/ui'
 import { fillAt } from '../../lib/aiLook'
-import { ApiError } from '../../lib/api'
 import { day, firstName, usd } from '../../lib/format'
-import { type OnCap, settingsFailure, type SpendRange, useAgents, useBudgets, useMembers, useSettingsCommands, useSpend } from '../../lib/settings'
+import { budgetUse, type OnCap, settingsFailure, type SpendRange, useAgents, useBudgets, useMemberName, useSettingsCommands, useSpend } from '../../lib/settings'
 import { SpendBars } from './SpendBars'
 
 /**
@@ -24,7 +24,7 @@ export function Budgets() {
   const budgets = useBudgets()
   const spend = useSpend(range)
   const agents = useAgents()
-  const members = useMembers()
+  const nameOf = useMemberName()
   const commands = useSettingsCommands()
   const b = budgets.data
   const s = spend.data
@@ -32,24 +32,21 @@ export function Budgets() {
   const failure = commands.updateBudgets.error
   const month = b?.agents.reduce((sum, x) => sum + x.spent_usd, 0) ?? 0
   const cap = b?.monthly_cap_usd
-  const nameOf = (id: string) => members.data?.items.find((m) => m.id === id)?.display_name ?? id.slice(0, 8)
   return (
     <SettingsShell
       title="Budgets"
       icon={<IconBudget />}
       chips={
-        b
-          ? ([
-              [<IconPay key="a" width={16} height={16} />, cap ? `${usd(month)} / $${cap}` : `${usd(month)} this month`],
-              ...(b.alert_pct !== undefined ? [[<IconBell key="b" width={16} height={16} />, `Alert at ${b.alert_pct}%`]] : []),
-            ] as [ReactNode, ReactNode][])
-          : undefined
+        b && [
+          [<IconPay key="a" width={16} height={16} />, cap ? `${usd(month)} / $${cap}` : `${usd(month)} this month`],
+          b.alert_pct !== undefined && [<IconBell key="b" width={16} height={16} />, `Alert at ${b.alert_pct}%`],
+        ]
       }
     >
-      {(budgets.error || spend.error) && <Notice>{settingsFailure(((budgets.error ?? spend.error) as ApiError | null)?.code)}</Notice>}
+      {(budgets.error || spend.error) && <Notice>{settingsFailure(budgets.error ?? spend.error)}</Notice>}
       {failure && (
         <div className="mb-4">
-          <Notice>{settingsFailure(failure instanceof ApiError ? failure.code : undefined)}</Notice>
+          <Notice>{settingsFailure(failure)}</Notice>
         </div>
       )}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_400px]">
@@ -74,13 +71,13 @@ export function Budgets() {
                     </div>
                   )}
                   <div className="mt-5 grid grid-cols-3 gap-3 border-t border-hairline pt-4">
-                    <Field label="Monthly budget">
+                    <Labeled label="Monthly budget">
                       <MoneyField key={`cap-${cap}`} value={cap} label="Monthly budget" onSave={(v) => commands.updateBudgets.mutate({ monthly_cap_usd: v ?? null })} />
-                    </Field>
-                    <Field label="Alert at">
+                    </Labeled>
+                    <Labeled label="Alert at">
                       <NumberField key={`alert-${b.alert_pct}`} value={b.alert_pct} unit="%" label="Alert at" onSave={(v) => v !== undefined && commands.updateBudgets.mutate({ alert_pct: Math.min(100, v) })} />
-                    </Field>
-                    <Field label="When it runs out">
+                    </Labeled>
+                    <Labeled label="When it runs out">
                       <Select
                         label="When it runs out"
                         value={b.on_cap}
@@ -90,7 +87,7 @@ export function Budgets() {
                           { value: 'alert_only', label: 'Alert only' },
                         ]}
                       />
-                    </Field>
+                    </Labeled>
                   </div>
                 </div>
               </div>
@@ -101,26 +98,17 @@ export function Budgets() {
               title="Spend"
               sub={s ? `${usd(s.total_usd)} · ${day(s.start)} to ${day(s.end)}` : undefined}
               right={
-                <Segmented
-                  label="Range"
-                  value={range}
-                  onChange={setRange}
-                  items={[
-                    { value: '7d', label: '7 days' },
-                    { value: '30d', label: '30 days' },
-                    { value: '90d', label: '90 days' },
-                  ]}
-                />
+                <RangePicker value={range} onChange={setRange} />
               }
             />
-            {s && <SpendBars s={s} order={order} names={Object.fromEntries((agents.data?.items ?? []).map((a) => [a.id, a.name]))} />}
+            {s && <SpendBars s={s} agents={agents.data?.items ?? []} />}
           </Card>
           {b && (
             <Card className="p-5 pb-3">
               <CardHead title="By agent" sub="A month's budget each; spent is LiteLLM's count for the current period" />
               {b.agents.map((x) => {
                 const i = Math.max(0, order.indexOf(x.agent_id))
-                const pct = x.monthly_budget_usd ? (x.spent_usd / x.monthly_budget_usd) * 100 : 0
+                const { pct, near } = budgetUse(x.spent_usd, x.monthly_budget_usd)
                 return (
                   <div key={x.agent_id} className="flex items-center gap-4 border-t border-hairline py-3 first:border-t-0">
                     <span className={`h-2.5 w-2.5 shrink-0 rounded-[3px] ${fillAt(i)}`} />
@@ -132,7 +120,7 @@ export function Budgets() {
                         <span className="tabular-nums">{usd(x.spent_usd)}</span>
                         {x.monthly_budget_usd !== undefined && <span className="tabular-nums text-on-surface-variant">{Math.round(pct)}%</span>}
                       </div>
-                      {x.monthly_budget_usd !== undefined && <Meter pct={pct} tone={pct >= 80 ? 'bg-on-surface' : fillAt(i)} className="mt-1.5 h-2" />}
+                      {x.monthly_budget_usd !== undefined && <Meter pct={pct} tone={near ? 'bg-on-surface' : fillAt(i)} className="mt-1.5 h-2" />}
                     </div>
                     <MoneyField
                       key={`${x.agent_id}-${x.monthly_budget_usd}`}
@@ -204,7 +192,7 @@ export function Budgets() {
   )
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Labeled({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <span className="mb-1.5 block text-body-small text-on-surface-variant">{label}</span>
@@ -215,20 +203,15 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 /** A dollar amount saved when the field loses focus; empty takes the budget away. */
 function MoneyField({ value, label, onSave, big = false, suffix }: { value?: number; label: string; onSave: (v: number | undefined) => void; big?: boolean; suffix?: string }) {
-  const [v, setV] = useState(value === undefined ? '' : String(value))
+  const draft = useNumberDraft(value, onSave, { digits: 8 })
   return (
     <label className={`flex items-baseline rounded-xl ${big ? 'mt-1 text-headline-medium' : 'h-10 w-[130px] shrink-0 border border-hairline bg-surface-container-lowest px-3 text-body-medium focus-within:border-primary/50'}`}>
       <span className={big ? '' : 'text-on-surface-variant'}>$</span>
       <input
-        value={v}
+        {...draft}
         aria-label={label}
         placeholder="None"
         inputMode="decimal"
-        onChange={(e) => setV(e.target.value.replace(/[^\d.]/g, '').slice(0, 8))}
-        onBlur={() => {
-          const n = v === '' ? undefined : Number(v)
-          if (n !== value) onSave(n)
-        }}
         className="h-full w-full min-w-0 bg-transparent tabular-nums outline-none placeholder:text-on-surface-variant"
       />
       {suffix && <span className="text-body-small text-on-surface-variant">{suffix}</span>}
@@ -237,18 +220,13 @@ function MoneyField({ value, label, onSave, big = false, suffix }: { value?: num
 }
 
 function NumberField({ value, label, unit, onSave }: { value?: number; label: string; unit: string; onSave: (v: number | undefined) => void }) {
-  const [v, setV] = useState(value === undefined ? '' : String(value))
+  const draft = useNumberDraft(value, onSave, { digits: 3, decimals: false })
   return (
     <label className="flex h-10 items-baseline rounded-xl border border-hairline bg-surface-container-lowest px-3 text-body-medium focus-within:border-primary/50">
       <input
-        value={v}
+        {...draft}
         aria-label={label}
         inputMode="numeric"
-        onChange={(e) => setV(e.target.value.replace(/\D/g, '').slice(0, 3))}
-        onBlur={() => {
-          const n = v === '' ? undefined : Number(v)
-          if (n !== value) onSave(n)
-        }}
         className="h-full w-full min-w-0 bg-transparent tabular-nums outline-none"
       />
       <span className="text-on-surface-variant">{unit}</span>

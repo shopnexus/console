@@ -1,4 +1,3 @@
-import { useInfiniteQuery } from '@tanstack/react-query'
 import { type ReactNode, useMemo, useState } from 'react'
 import IconCategory from '~icons/material-symbols-light/category-outline-rounded'
 import IconCheck from '~icons/material-symbols-light/check-rounded'
@@ -18,9 +17,11 @@ import IconUnlock from '~icons/material-symbols-light/lock-open-outline-rounded'
 import { Select } from '../../components/Select'
 import { SettingsShell } from '../../components/SettingsShell'
 import { Btn, Card, CardHead, Initial, Notice } from '../../components/ui'
-import { type Action, api, type Page, shortId } from '../../lib/api'
+import { type Action, actionDetail, shortId } from '../../lib/api'
 import { firstName, time, when } from '../../lib/format'
+import { useActions } from '../../lib/actions'
 import { useMembers } from '../../lib/settings'
+import { kindName } from '../../lib/sources'
 
 type Look = [string, ReactNode, string]
 
@@ -49,22 +50,13 @@ function lookOf(kind: string): Look {
 const groupOf = (kind: string) =>
   kind.startsWith('account.') ? 'Suspensions' : kind.startsWith('listing.') ? 'Hidden listings' : kind.startsWith('report.') ? 'Report cases' : kind.startsWith('member.') ? 'Members' : 'Settings'
 
-const reasonOf = (a: Action) => (typeof a.details?.reason === 'string' ? a.details.reason : '')
 
 /** Settings › Audit log: every action in the console, newest first, grouped by day; a member filter and a CSV of what is loaded. */
 export function Audit() {
   const members = useMembers()
   const [member, setMember] = useState('')
-  const log = useInfiniteQuery({
-    queryKey: ['console', 'actions', 'log', member],
-    initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) => {
-      const q = new URLSearchParams({ limit: '50', ...(member ? { member_id: member } : {}), ...(pageParam ? { cursor: pageParam } : {}) })
-      return api<Page<Action>>(`/console/actions?${q}`)
-    },
-    getNextPageParam: (last) => last.next_cursor,
-  })
-  const items = useMemo(() => log.data?.pages.flatMap((p) => p.items) ?? [], [log.data])
+  const log = useActions(member)
+  const items = useMemo(() => log.items ?? [], [log.items])
   const days = useMemo(() => {
     const out: [string, Action[]][] = []
     for (const a of items) {
@@ -85,7 +77,7 @@ export function Audit() {
     const cell = (v: string) => `"${v.replace(/"/g, '""')}"`
     const rows = [
       ['at', 'member', 'action', 'target_kind', 'target_id', 'reason'],
-      ...items.map((a) => [a.at, a.actor.display_name ?? 'CLI', a.action, a.target.kind, a.target.id, reasonOf(a)]),
+      ...items.map((a) => [a.at, a.actor.display_name ?? 'CLI', a.action, a.target.kind, a.target.id, actionDetail(a, 'reason')]),
     ]
     const blob = new Blob([rows.map((r) => r.map(cell).join(',')).join('\n')], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
@@ -126,7 +118,7 @@ export function Audit() {
                   {rows.map((a) => {
                     const [verb, icon, tone] = lookOf(a.action)
                     const who = a.actor.display_name ?? 'CLI'
-                    const reason = reasonOf(a)
+                    const reason = actionDetail(a, 'reason')
                     return (
                       <div key={a.id} className="relative flex gap-4 pb-4 last:pb-0">
                         <span className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-4 ring-surface-container-lowest ${tone}`}>{icon}</span>
@@ -137,7 +129,7 @@ export function Audit() {
                               <span className="font-semibold">{firstName(who)}</span>
                               {verb}
                               <span className="inline-flex h-7 items-center rounded-full border border-hairline bg-surface-container-lowest px-2.5 text-label-small text-primary">
-                                {a.target.kind === 'account' ? 'Account' : a.target.kind === 'listing' ? 'Listing' : 'Member'}{' '}
+                                {kindName(a.target.kind)}{' '}
                                 <span className="ml-1 tabular-nums">{shortId(a.target.id)}</span>
                               </span>
                             </p>

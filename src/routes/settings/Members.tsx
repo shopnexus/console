@@ -4,10 +4,9 @@ import IconMembers from '~icons/material-symbols-light/group-outline-rounded'
 import IconMail from '~icons/material-symbols-light/mail-outline-rounded'
 import IconPersonAdd from '~icons/material-symbols-light/person-add-outline-rounded'
 import IconPerson from '~icons/material-symbols-light/person-outline-rounded'
-import IconSearch from '~icons/material-symbols-light/search-rounded'
 import IconShield from '~icons/material-symbols-light/shield-person-outline-rounded'
 import IconCopy from '~icons/material-symbols-light/content-copy-outline-rounded'
-import { SettingsShell } from '../../components/SettingsShell'
+import { SearchPill, SettingsShell } from '../../components/SettingsShell'
 import { Btn, Card, Dot, IconBtn, Initial, Meter, Notice, Segmented, Tag } from '../../components/ui'
 import { ApiError, type Member, roleName } from '../../lib/api'
 import { useDismiss } from '../../lib/dom'
@@ -64,16 +63,7 @@ export function Members() {
           ]}
         />
         <span className="flex-1" />
-        <label className="flex h-10 w-[280px] items-center gap-2 rounded-full border border-hairline bg-surface-container-lowest px-4 text-on-surface-variant focus-within:border-primary/40">
-          <IconSearch width={18} height={18} />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Name or email"
-            aria-label="Find a member"
-            className="h-full min-w-0 flex-1 bg-transparent text-body-medium text-on-surface outline-none placeholder:text-on-surface-variant"
-          />
-        </label>
+        <SearchPill value={q} onChange={setQ} placeholder="Name or email" label="Find a member" className="w-[280px]" />
       </div>
       {members.error && <Notice>{members.error instanceof ApiError && members.error.status === 403 ? 'Admins only.' : 'Members did not load.'}</Notice>}
       <Card className="overflow-hidden p-0">

@@ -3,7 +3,7 @@ import IconSearch from '~icons/material-symbols-light/search-rounded'
 import IconTicket from '~icons/material-symbols-light/package-2-outline'
 import IconFlag from '~icons/material-symbols-light/flag-outline-rounded'
 import type { Attachment, AttachmentKind } from '../lib/agent'
-import { when } from '../lib/format'
+import { count, when } from '../lib/format'
 import { useCases } from '../lib/reports'
 import { kindChip, useQueue } from '../lib/support'
 import { AccountSearch } from './AccountSearch'
@@ -96,7 +96,7 @@ function ReportPick({ onPick }: { onPick: (a: Attachment) => void }) {
           <span className="min-w-0 flex-1">
             <span className="block truncate text-body-medium">{c.account.display_name}</span>
             <span className="block text-label-small font-normal tabular-nums text-on-surface-variant">
-              {c.reports === 1 ? '1 report' : `${c.reports} reports`} · {when(c.last_at)}
+              {count(c.reports, 'report')} · {when(c.last_at)}
             </span>
           </span>
         </button>

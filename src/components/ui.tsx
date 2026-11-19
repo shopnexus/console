@@ -4,7 +4,7 @@ import IconCheck from '~icons/material-symbols/check-rounded'
 import IconComputer from '~icons/material-symbols-light/computer-outline-rounded'
 import IconDark from '~icons/material-symbols-light/dark-mode-outline-rounded'
 import IconLight from '~icons/material-symbols-light/light-mode-outline-rounded'
-import { type ShapeName, shapes } from '../lib/shapes'
+import type { PersonStatus } from '../lib/commerce'
 import { segment, tintOf } from '../lib/look'
 import { type ThemeChoice, useTheme } from '../lib/theme'
 
@@ -268,15 +268,6 @@ export function Spinner({ size = 12 }: { size?: number }) {
   )
 }
 
-/** An M3 Expressive shape, for decoration. */
-export function Shape({ name, size, className = '' }: { name: ShapeName; size: number; className?: string }) {
-  return (
-    <svg viewBox="0 0 64 64" width={size} height={size} className={className} aria-hidden>
-      <path d={shapes[name]} fill="currentColor" />
-    </svg>
-  )
-}
-
 const themes: [ThemeChoice, string, ReactNode][] = [
   ['system', 'System', <IconComputer key="s" width={16} height={16} />],
   ['light', 'Light', <IconLight key="l" width={16} height={16} />],
@@ -379,7 +370,7 @@ export function Initial({
   name: string
   id: string
   size?: number
-  status?: 'active' | 'suspended' | 'deleted'
+  status?: PersonStatus
   member?: boolean
 }) {
   const dot = Math.max(8, Math.round(size * 0.26))

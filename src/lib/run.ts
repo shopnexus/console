@@ -480,9 +480,6 @@ export interface TurnView {
   duration_ms?: number
 }
 
-/** The turn statuses that are final: the run will not write again. */
-export const finalStatuses: ReadonlySet<string> = new Set(['succeeded', 'failed', 'cancelled', 'timed_out', 'budget'])
-
 const viewStatus: Record<string, TurnStatus> = {
   succeeded: 'SUCCEEDED',
   failed: 'FAILED',
