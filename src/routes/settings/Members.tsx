@@ -10,8 +10,8 @@ import { SearchPill, SettingsShell } from '../../components/SettingsShell'
 import { Btn, Card, Initial, Meter, Notice, Segmented } from '../../components/ui'
 import { ApiError, type Member, roleName } from '../../lib/api'
 import { useDismiss } from '../../lib/dom'
-import { usd, when } from '../../lib/format'
-import { needsAttention } from '../../lib/members'
+import { usd } from '../../lib/format'
+import { lastSignIn, needsAttention } from '../../lib/members'
 import { useMe } from '../../lib/session'
 import { useBudgets, useMemberCommands, useMembers, useSpend } from '../../lib/settings'
 import { CopyOnce, MemberPanel, RoleTag, SignInTag } from './MemberPanel'
@@ -30,13 +30,12 @@ export function Members() {
   const [inviting, setInviting] = useState(false)
   const closeInvite = useCallback(() => setInviting(false), [])
   const inviteBox = useDismiss<HTMLDivElement>(inviting, closeInvite)
-  const [now] = useState(() => Date.now())
   const all = members.data?.items ?? []
-  const attention = all.filter((m) => needsAttention(m, now))
+  const attention = all.filter((m) => needsAttention(m))
   const needle = q.trim().toLowerCase()
-  const rows = (filter === 'attention' ? attention : all).filter(
+  const rows = all.filter(
     (m) =>
-      (filter === 'attention' || filter === 'all' || m.role === filter) &&
+      (filter === 'attention' ? needsAttention(m) : filter === 'all' || m.role === filter) &&
       (!needle || m.display_name.toLowerCase().includes(needle) || m.email.toLowerCase().includes(needle)),
   )
   const admins = all.filter((m) => m.role === 'admin').length
@@ -122,9 +121,9 @@ export function Members() {
                 <RoleTag role={m.role} />
               </span>
               <span className="w-[190px]">
-                <SignInTag m={m} now={now} />
+                <SignInTag m={m} />
               </span>
-              <span className={`w-[110px] text-body-small ${m.last_sign_in_at ? '' : 'text-on-surface-variant'}`}>{m.last_sign_in_at ? when(m.last_sign_in_at, now) : 'Never'}</span>
+              <span className={`w-[110px] text-body-small ${m.last_sign_in_at ? '' : 'text-on-surface-variant'}`}>{lastSignIn(m)}</span>
               <SpendCell usd={spend.data?.members?.find((x) => x.member_id === m.id)?.usd} daily={daily(m)} />
               <IconChevron width={18} height={18} className="text-on-surface-variant" />
             </button>
@@ -133,14 +132,7 @@ export function Members() {
         </div>
       </Card>
       {open && (
-        <MemberPanel
-          key={open.id}
-          m={open}
-          now={now}
-          spent={spend.data?.members?.find((x) => x.member_id === open.id)}
-          daily={daily(open)}
-          onClose={() => pick()}
-        />
+        <MemberPanel key={open.id} m={open} onClose={() => pick()} />
       )}
     </SettingsShell>
   )

@@ -175,7 +175,7 @@ function TicketPreview(p: PreviewProps) {
     const body = text.trim()
     if (!body || commands.reply.isPending) return
     setFailed(undefined)
-    commands.reply.mutate(body, { onSuccess: () => setText(''), onError: (err) => setFailed(failureText(err)) })
+    commands.reply.mutate({ body }, { onSuccess: () => setText(''), onError: (err) => setFailed(failureText(err)) })
   }
   return (
     <>

@@ -27,7 +27,7 @@ import { Select } from '../../components/Select'
 import { SettingsShell } from '../../components/SettingsShell'
 import { useNumberDraft } from '../../lib/draft'
 import IconDelete from '~icons/material-symbols-light/delete-outline-rounded'
-import { Btn, Card, IconBtn, Meter, Notice, Segmented, Tag, Toggle } from '../../components/ui'
+import { Btn, Card, Confirm, IconBtn, Meter, Notice, Segmented, Tag, Toggle } from '../../components/ui'
 import { contextSize, price } from '../../lib/aiLook'
 import { count, duration, int, time, when } from '../../lib/format'
 import {
@@ -464,17 +464,17 @@ function RemoveProvider({ provider }: { provider: Provider }) {
       </div>
     )
   return (
-    <div className="mt-4 animate-rise rounded-2xl bg-surface-container-low px-4 py-3.5">
-      <p className="text-title-small">Remove {provider.name}?</p>
-      <p className="mt-1 text-body-small text-on-surface-variant">Its {count(provider.models.length, 'model')} leave the rotation and its key is deleted from LiteLLM.</p>
-      {deleteProvider.error && <p className="mt-2 text-body-small text-error">{settingsFailure(deleteProvider.error)}</p>}
-      <div className="mt-3 flex justify-end gap-2">
-        <Btn onClick={() => setAsking(false)}>Cancel</Btn>
-        <Btn kind="danger-fill" disabled={deleteProvider.isPending} onClick={() => deleteProvider.mutate(provider.id, { onSuccess: () => navigate('/settings/providers', { replace: true }) })}>
-          Remove
-        </Btn>
-      </div>
-    </div>
+    <Confirm
+      className="mt-4 rounded-2xl bg-surface-container-low px-4 py-3.5"
+      title={`Remove ${provider.name}?`}
+      error={deleteProvider.error && settingsFailure(deleteProvider.error)}
+      confirm="Remove"
+      busy={deleteProvider.isPending}
+      onCancel={() => setAsking(false)}
+      onConfirm={() => deleteProvider.mutate(provider.id, { onSuccess: () => navigate('/settings/providers', { replace: true }) })}
+    >
+      Its {count(provider.models.length, 'model')} leave the rotation and its key is deleted from LiteLLM.
+    </Confirm>
   )
 }
 

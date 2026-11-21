@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { type Action, shortId } from '../lib/api'
+import { kindName } from '../lib/sources'
 import IconCheck from '~icons/material-symbols-light/check-rounded'
 import IconEdit from '~icons/material-symbols-light/edit-outline-rounded'
 import IconFlag from '~icons/material-symbols-light/flag-outline-rounded'
@@ -38,3 +40,6 @@ export function lookOf(kind: string): Look {
 
 export const groupOf = (kind: string) =>
   kind.startsWith('account.') ? 'Suspensions' : kind.startsWith('listing.') ? 'Hidden listings' : kind.startsWith('report.') ? 'Report cases' : kind.startsWith('member.') ? 'Members' : 'Settings'
+
+/** What an action was done to: a member by name, anything else as "Account 7b1c22e0". */
+export const targetLabel = (a: Action) => a.target.name || `${kindName(a.target.kind)} ${shortId(a.target.id)}`

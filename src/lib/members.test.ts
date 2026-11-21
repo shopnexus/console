@@ -23,7 +23,8 @@ describe('signInOf', () => {
     expect(signInOf({ ...base, locked_until: '2026-11-22T09:00:00Z' }, now)).toBe('ok')
     expect(signInOf({ ...base, last_sign_in_at: undefined, must_change_password: true, totp_enrolled: false }, now)).toBe('never')
     expect(signInOf({ ...base, must_change_password: true }, now)).toBe('reset')
-    expect(signInText({ ...base, totp_enrolled: false }, now)).toBe('Two-step not set up')
+    const noTotp = { ...base, totp_enrolled: false }
+    expect(signInText(noTotp, signInOf(noTotp, now))).toBe('Two-step not set up')
   })
 
   it('leaves the fine and the disabled out of needs attention', () => {

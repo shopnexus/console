@@ -14,15 +14,15 @@ import IconShield from '~icons/material-symbols-light/shield-person-outline-roun
 import IconClock from '~icons/material-symbols-light/schedule-outline-rounded'
 import IconTerminal from '~icons/material-symbols-light/terminal-rounded'
 import IconVerified from '~icons/material-symbols-light/verified-user-outline-rounded'
-import { lookOf } from '../../components/actionLook'
-import { Btn, IconBtn, Initial, Meter, Segmented, Tag } from '../../components/ui'
+import { lookOf, targetLabel } from '../../components/actionLook'
+import { MoneyField } from '../../components/MoneyField'
+import { Btn, Confirm, IconBtn, Initial, Meter, Tag } from '../../components/ui'
 import { useActions } from '../../lib/actions'
-import { ApiError, type Member, actionDetail, roleName, shortId } from '../../lib/api'
+import { type Member, actionDetail, roleName } from '../../lib/api'
 import { useCopy, useDismiss } from '../../lib/dom'
 import { date, firstName, int, time, usd, when } from '../../lib/format'
-import { signInOf, signInText } from '../../lib/members'
-import { kindName } from '../../lib/sources'
-import { settingsFailure, useBudgets, useMemberCommands, useMemberName, useSettingsCommands } from '../../lib/settings'
+import { lastSignIn, type SignIn, signInOf, signInText } from '../../lib/members'
+import { settingsFailure, useBudgets, useMemberCommands, useSettingsCommands, useSpend } from '../../lib/settings'
 
 const failed = 'That did not go through.'
 
@@ -35,52 +35,38 @@ export function RoleTag({ role }: { role: Member['role'] }) {
   )
 }
 
-const signInIcons: Record<ReturnType<typeof signInOf>, ReactNode> = {
-  disabled: <IconBlock width={14} height={14} />,
-  locked: <IconLock width={14} height={14} />,
-  never: <IconClock width={14} height={14} />,
-  reset: <IconClock width={14} height={14} />,
-  ok: null,
+const signInLooks: Record<SignIn, { icon: ReactNode; tone: string }> = {
+  disabled: { icon: <IconBlock width={14} height={14} />, tone: 'bg-surface-container-high text-on-surface-variant' },
+  locked: { icon: <IconLock width={14} height={14} />, tone: 'bg-primary/8 text-primary' },
+  never: { icon: <IconClock width={14} height={14} />, tone: 'bg-surface-container text-on-surface-variant' },
+  reset: { icon: <IconClock width={14} height={14} />, tone: 'bg-surface-container text-on-surface-variant' },
+  ok: { icon: null, tone: '' },
 }
 
 /** The sign-in state: plain text when fine, a tag when it waits on something. */
-export function SignInTag({ m, now }: { m: Member; now: number }) {
-  const s = signInOf(m, now)
+export function SignInTag({ m }: { m: Member }) {
+  const s = signInOf(m)
   if (s === 'ok')
     return (
       <span className="flex items-center gap-1.5 text-body-small text-on-surface-variant">
         <IconVerified width={16} height={16} className="text-primary" />
-        {signInText(m, now)}
+        {signInText(m, s)}
       </span>
     )
-  const tone = s === 'locked' ? 'bg-primary/8 text-primary' : s === 'disabled' ? 'bg-surface-container-high text-on-surface-variant' : 'bg-surface-container text-on-surface-variant'
   return (
-    <Tag tone={tone}>
-      {signInIcons[s]}
-      {signInText(m, now)}
+    <Tag tone={signInLooks[s].tone}>
+      {signInLooks[s].icon}
+      {signInText(m, s)}
     </Tag>
   )
 }
-
 
 /**
  * One member, over the page: rename, sign-in, the daily agent budget, the
  * member's recent actions, and disable. Admins are managed from the server's
  * CLI, so their panel has no access actions.
  */
-export function MemberPanel({
-  m,
-  now,
-  spent,
-  daily,
-  onClose,
-}: {
-  m: Member
-  now: number
-  spent?: { usd: number; requests: number }
-  daily?: number
-  onClose: () => void
-}) {
+export function MemberPanel({ m, onClose }: { m: Member; onClose: () => void }) {
   const ref = useDismiss<HTMLElement>(true, onClose)
   useEffect(() => ref.current?.focus(), [ref])
   const managed = m.role === 'moderator'
@@ -95,9 +81,9 @@ export function MemberPanel({
         className="fixed inset-y-0 right-0 z-40 flex w-[440px] max-w-full animate-panel flex-col bg-surface-container-lowest shadow-float outline-none"
       >
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <Head m={m} now={now} managed={managed} onClose={onClose} />
-          {managed ? <SignIn m={m} now={now} /> : <ManagedByCli m={m} now={now} />}
-          <Budget m={m} spent={spent} daily={daily} />
+          <Head m={m} managed={managed} onClose={onClose} />
+          <SignIn m={m} managed={managed} />
+          <Budget m={m} />
           <RecentActions m={m} />
         </div>
         {managed && <Access m={m} />}
@@ -150,7 +136,7 @@ export function CopyOnce({ secret }: { secret: string }) {
   )
 }
 
-function Head({ m, now, managed, onClose }: { m: Member; now: number; managed: boolean; onClose: () => void }) {
+function Head({ m, managed, onClose }: { m: Member; managed: boolean; onClose: () => void }) {
   const { rename } = useMemberCommands()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(m.display_name)
@@ -198,7 +184,7 @@ function Head({ m, now, managed, onClose }: { m: Member; now: number; managed: b
         </p>
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
           <RoleTag role={m.role} />
-          <SignInTag m={m} now={now} />
+          <SignInTag m={m} />
         </div>
       </div>
       <IconBtn title="Close" onClick={onClose} className="-mr-2 -mt-1 h-9 w-9">
@@ -208,11 +194,12 @@ function Head({ m, now, managed, onClose }: { m: Member; now: number; managed: b
   )
 }
 
-function SignIn({ m, now }: { m: Member; now: number }) {
+/** Sign-in: the moderator's resets and unlock, or for an admin the CLI that manages them. */
+function SignIn({ m, managed }: { m: Member; managed: boolean }) {
   const commands = useMemberCommands()
   const temp = commands.resetPassword.data?.temporary_password
   const error = commands.unlock.error ?? commands.resetPassword.error ?? commands.resetTotp.error
-  const disabled = m.status === 'disabled'
+  const acts = managed && m.status === 'active'
   return (
     <Section title="Sign-in">
       {temp && (
@@ -220,7 +207,7 @@ function SignIn({ m, now }: { m: Member; now: number }) {
           <CopyOnce secret={temp} />
         </div>
       )}
-      {signInOf(m, now) === 'locked' && (
+      {managed && signInOf(m) === 'locked' && (
         <Line
           icon={<IconLock width={19} height={19} />}
           label="Locked after wrong tries"
@@ -232,108 +219,78 @@ function SignIn({ m, now }: { m: Member; now: number }) {
           }
         />
       )}
-      <Line
-        icon={<IconPassword width={19} height={19} />}
-        label="Password"
-        value={m.must_change_password ? 'Temporary' : 'Their own'}
-        action={
-          !temp &&
-          !disabled && (
-            <Small onClick={() => commands.resetPassword.mutate(m.id)} disabled={commands.resetPassword.isPending}>
-              Reset
-            </Small>
-          )
-        }
-      />
+      {managed && (
+        <Line
+          icon={<IconPassword width={19} height={19} />}
+          label="Password"
+          value={m.must_change_password ? 'Temporary' : 'Their own'}
+          action={
+            acts &&
+            !temp && (
+              <Small onClick={() => commands.resetPassword.mutate(m.id)} disabled={commands.resetPassword.isPending}>
+                Reset
+              </Small>
+            )
+          }
+        />
+      )}
       <Line
         icon={<IconVerified width={19} height={19} />}
         label="Two-step sign-in"
         value={m.totp_enrolled ? 'On' : 'Not set up'}
         action={
-          m.totp_enrolled &&
-          !disabled && (
+          acts &&
+          m.totp_enrolled && (
             <Small onClick={() => commands.resetTotp.mutate(m.id)} disabled={commands.resetTotp.isPending}>
               Reset
             </Small>
           )
         }
       />
-      <Line icon={<IconLogin width={19} height={19} />} label="Last sign-in" value={m.last_sign_in_at ? when(m.last_sign_in_at, now) : 'Never'} />
+      <Line icon={<IconLogin width={19} height={19} />} label="Last sign-in" value={lastSignIn(m)} />
       {error && <p className="mt-1 text-body-small text-error">{failed}</p>}
+      {!managed && (
+        <div className="mt-2 rounded-2xl bg-surface-container-low px-4 py-3.5">
+          <p className="flex items-center gap-2 text-label-medium">
+            <IconTerminal width={18} height={18} className="text-primary" />
+            Managed from the server
+          </p>
+          <p className="mt-1 text-body-small text-on-surface-variant">An admin resets another admin’s password, two-step or access with the console CLI on the server.</p>
+          <p className="mt-2.5 truncate rounded-xl bg-surface-container-lowest px-3 py-2 font-mono text-body-small">console reset-password --email {m.email}</p>
+        </div>
+      )}
     </Section>
   )
 }
 
-function ManagedByCli({ m, now }: { m: Member; now: number }) {
-  return (
-    <Section title="Sign-in">
-      <Line icon={<IconVerified width={19} height={19} />} label="Two-step sign-in" value={m.totp_enrolled ? 'On' : 'Not set up'} />
-      <Line icon={<IconLogin width={19} height={19} />} label="Last sign-in" value={m.last_sign_in_at ? when(m.last_sign_in_at, now) : 'Never'} />
-      <div className="mt-2 rounded-2xl bg-surface-container-low px-4 py-3.5">
-        <p className="flex items-center gap-2 text-label-medium">
-          <IconTerminal width={18} height={18} className="text-primary" />
-          Managed from the server
-        </p>
-        <p className="mt-1 text-body-small text-on-surface-variant">An admin resets another admin’s password, two-step or access with the console CLI on the server.</p>
-        <p className="mt-2.5 truncate rounded-xl bg-surface-container-lowest px-3 py-2 font-mono text-body-small">console reset-password --email {m.email}</p>
-      </div>
-    </Section>
-  )
-}
-
-/** The member's daily budget through the console agents: their role's, or one of their own. */
-function Budget({ m, spent, daily }: { m: Member; spent?: { usd: number; requests: number }; daily?: number }) {
+/** The member's daily budget through the console agents: their own, or their role's when left empty. */
+function Budget({ m }: { m: Member }) {
   const budgets = useBudgets()
+  const spend = useSpend('30d')
   const { updateBudgets } = useSettingsCommands()
-  const overrides = budgets.data?.overrides ?? []
-  const own = overrides.find((o) => o.member_id === m.id)
-  const roleDaily = budgets.data?.member_daily_usd?.[m.role]
-  const [custom, setCustom] = useState(!!own)
-  const [amount, setAmount] = useState(String(own?.daily_usd ?? roleDaily ?? ''))
-  const save = (next: { member_id: string; daily_usd: number }[]) => updateBudgets.mutate({ overrides: next })
-  const others = overrides.filter((o) => o.member_id !== m.id)
-  const value = Number(amount)
-  function pick(c: boolean) {
-    setCustom(c)
-    if (!c && own) save(others)
-  }
   if (!budgets.data) return null
+  const overrides = budgets.data.overrides ?? []
+  const own = overrides.find((o) => o.member_id === m.id)?.daily_usd
+  const roleDaily = budgets.data.member_daily_usd?.[m.role]
+  const daily = own ?? roleDaily
+  const spent = spend.data?.members?.find((x) => x.member_id === m.id)
+  // Overrides are replaced as a list; empty drops the member's own.
+  const save = (v?: number) =>
+    updateBudgets.mutate({ overrides: [...overrides.filter((o) => o.member_id !== m.id), ...(v === undefined ? [] : [{ member_id: m.id, daily_usd: v }])] })
   return (
     <Section title="Agent budget">
-      <Segmented
-        full
-        label="Daily budget"
-        value={custom ? 'custom' : 'role'}
-        onChange={(v) => pick(v === 'custom')}
-        items={[
-          { value: 'role', label: roleDaily === undefined ? 'Role default · none' : `Role default · $${roleDaily}` },
-          { value: 'custom', label: 'Custom' },
-        ]}
-      />
-      {custom && (
-        <form
-          className="mt-3 flex items-center gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (amount.trim() && value >= 0) save([...others, { member_id: m.id, daily_usd: value }])
-          }}
-        >
-          <label className="flex h-10 flex-1 items-center rounded-xl border border-hairline bg-surface-container-lowest px-3.5 text-body-medium focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/10">
-            <span className="text-on-surface-variant">$</span>
-            <input
-              aria-label="Daily budget in dollars"
-              inputMode="decimal"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))}
-              className="ml-1 h-full min-w-0 flex-1 bg-transparent tabular-nums outline-none"
-            />
-            <span className="text-on-surface-variant">a day</span>
-          </label>
-          <Btn type="submit" kind="primary" className="h-9 px-3" disabled={!amount.trim() || own?.daily_usd === value || updateBudgets.isPending}>
-            Save
-          </Btn>
-        </form>
-      )}
+      <div className="flex items-center gap-3">
+        <span className="flex-1 text-body-medium">Daily limit</span>
+        <MoneyField
+          key={own}
+          value={own}
+          label={`${m.display_name}'s daily budget`}
+          suffix="/day"
+          placeholder={roleDaily === undefined ? 'None' : `${roleDaily} role`}
+          className="w-[150px]"
+          onSave={save}
+        />
+      </div>
       {updateBudgets.error && <p className="mt-2 text-body-small text-error">{settingsFailure(updateBudgets.error)}</p>}
       {spent && (
         <>
@@ -352,7 +309,6 @@ function Budget({ m, spent, daily }: { m: Member; spent?: { usd: number; request
 
 function RecentActions({ m }: { m: Member }) {
   const log = useActions(m.id)
-  const name = useMemberName()
   const items = log.items?.slice(0, 5) ?? []
   return (
     <Section
@@ -375,7 +331,7 @@ function RecentActions({ m }: { m: Member }) {
               <div className="min-w-0 flex-1 pt-1 leading-tight">
                 <p className="text-body-medium">
                   {verb[0].toUpperCase() + verb.slice(1)}{' '}
-                  <span className="text-primary">{a.target.kind === 'member' ? name(a.target.id) : `${kindName(a.target.kind)} ${shortId(a.target.id)}`}</span>
+                  <span className="text-primary">{targetLabel(a)}</span>
                 </p>
                 {reason && <p className="mt-0.5 truncate text-body-small text-on-surface-variant">{reason}</p>}
               </div>
@@ -412,16 +368,16 @@ function Access({ m }: { m: Member }) {
       </div>
     )
   return (
-    <div className="animate-rise border-t border-hairline bg-surface-container-low/60 px-6 py-5">
-      <p className="text-title-small">Disable {first}?</p>
-      <p className="mt-1 text-body-small text-on-surface-variant">{first} is signed out everywhere now and can't sign in. Enable brings the same password back.</p>
-      {error && <p className="mt-2 text-body-small text-error">{error instanceof ApiError ? settingsFailure(error) : failed}</p>}
-      <div className="mt-4 flex justify-end gap-2">
-        <Btn onClick={() => setAsking(false)}>Cancel</Btn>
-        <Btn kind="danger-fill" disabled={commands.disable.isPending} onClick={() => commands.disable.mutate(m.id, { onSuccess: () => setAsking(false) })}>
-          Disable
-        </Btn>
-      </div>
-    </div>
+    <Confirm
+      className="border-t border-hairline bg-surface-container-low/60 px-6 py-5"
+      title={`Disable ${first}?`}
+      error={error && failed}
+      confirm="Disable"
+      busy={commands.disable.isPending}
+      onCancel={() => setAsking(false)}
+      onConfirm={() => commands.disable.mutate(m.id, { onSuccess: () => setAsking(false) })}
+    >
+      {first} is signed out everywhere now and can't sign in. Enable brings the same password back.
+    </Confirm>
   )
 }

@@ -7,7 +7,7 @@ import { useDismiss } from '../lib/dom'
 import { useForgetMe, useMe } from '../lib/session'
 import { passwordRules } from '../lib/password'
 import { NewPassword, PasswordField } from './NewPassword'
-import { Btn, IconBtn, Notice } from './ui'
+import { Btn, IconBtn, IconTile, Notice } from './ui'
 
 /** Change password: the change ends this session, so the member signs in again with the new one. */
 export function ChangePassword({ onClose }: { onClose: () => void }) {
@@ -22,10 +22,11 @@ export function ChangePassword({ onClose }: { onClose: () => void }) {
   const ref = useDismiss<HTMLFormElement>(true, onClose)
   useEffect(() => ref.current?.querySelector('input')?.focus(), [ref])
   const rules = passwordRules(next, again, me.email, current, 'Not the current password')
+  const ready = !!current && rules.every(([, ok]) => ok)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    if (busy || !current || !rules.every(([, ok]) => ok)) return
+    if (busy || !ready) return
     setBusy(true)
     setError(undefined)
     try {
@@ -50,9 +51,9 @@ export function ChangePassword({ onClose }: { onClose: () => void }) {
         className="fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-32px)] w-[440px] max-w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 animate-pop overflow-y-auto rounded-5xl border border-hairline bg-surface-container-lowest p-7 shadow-float"
       >
         <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/8 text-primary">
+          <IconTile size={44}>
             <IconKey width={22} height={22} />
-          </span>
+          </IconTile>
           <div className="min-w-0 flex-1">
             <h2 className="text-title-large">Change password</h2>
             <p className="text-body-small text-on-surface-variant">You sign in again after saving</p>
@@ -74,7 +75,7 @@ export function ChangePassword({ onClose }: { onClose: () => void }) {
           <Btn big onClick={onClose}>
             Cancel
           </Btn>
-          <Btn big type="submit" kind="primary" disabled={busy || !current || !rules.every(([, ok]) => ok)}>
+          <Btn big type="submit" kind="primary" disabled={busy || !ready}>
             Save and sign in again
           </Btn>
         </div>

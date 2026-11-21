@@ -166,6 +166,41 @@ export function IconTile({ children, tone = 'bg-primary/8 text-primary', size = 
   )
 }
 
+/** A destructive step asked first: what happens, Cancel and the confirm button. */
+export function Confirm({
+  title,
+  children,
+  error,
+  confirm,
+  busy,
+  onConfirm,
+  onCancel,
+  className = '',
+}: {
+  title: ReactNode
+  children: ReactNode
+  error?: ReactNode
+  confirm: string
+  busy?: boolean
+  onConfirm: () => void
+  onCancel: () => void
+  className?: string
+}) {
+  return (
+    <div className={`animate-rise ${className}`}>
+      <p className="text-title-small">{title}</p>
+      <p className="mt-1 text-body-small text-on-surface-variant">{children}</p>
+      {error && <p className="mt-2 text-body-small text-error">{error}</p>}
+      <div className="mt-4 flex justify-end gap-2">
+        <Btn onClick={onCancel}>Cancel</Btn>
+        <Btn kind="danger-fill" disabled={busy} onClick={onConfirm}>
+          {confirm}
+        </Btn>
+      </div>
+    </div>
+  )
+}
+
 /** A pill segmented control; the picked segment is the white thumb. */
 export function Segmented<T extends string>({
   items,

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { api, type Member, type Page } from './api'
-import { time } from './format'
+import { time, when } from './format'
 
 const membersQuery = { queryKey: ['console', 'members', 'all'], queryFn: () => api<Page<Member>>('/console/members?limit=100') }
 
@@ -24,8 +24,8 @@ export function signInOf(m: Member, now = Date.now()): SignIn {
 }
 
 /** What a sign-in state reads as; ok reads as two-step on. */
-export function signInText(m: Member, now = Date.now()): string {
-  switch (signInOf(m, now)) {
+export function signInText(m: Member, s: SignIn = signInOf(m)): string {
+  switch (s) {
     case 'disabled':
       return 'Disabled'
     case 'locked':
@@ -38,6 +38,9 @@ export function signInText(m: Member, now = Date.now()): string {
       return 'Two-step on'
   }
 }
+
+/** When the member last signed in, or "Never". */
+export const lastSignIn = (m: Member) => (m.last_sign_in_at ? when(m.last_sign_in_at) : 'Never')
 
 /** An active member whose sign-in waits on something: locked, never signed in, or reset. */
 export const needsAttention = (m: Member, now = Date.now()) => !['ok', 'disabled'].includes(signInOf(m, now))

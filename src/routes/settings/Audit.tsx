@@ -6,14 +6,14 @@ import IconEvent from '~icons/material-symbols-light/event-note-outline-rounded'
 import IconHistory from '~icons/material-symbols-light/history-rounded'
 import IconClose from '~icons/material-symbols-light/close-rounded'
 import IconMembers from '~icons/material-symbols-light/group-outline-rounded'
-import { groupOf, lookOf } from '../../components/actionLook'
+import { groupOf, lookOf, targetLabel } from '../../components/actionLook'
 import { Select } from '../../components/Select'
 import { SettingsShell } from '../../components/SettingsShell'
 import { Btn, Card, CardHead, IconBtn, Initial, Notice } from '../../components/ui'
 import { type Action, actionDetail, shortId } from '../../lib/api'
 import { firstName, time, when } from '../../lib/format'
 import { useActions } from '../../lib/actions'
-import { useMemberName, useMembers } from '../../lib/settings'
+import { useMembers } from '../../lib/settings'
 import { kindName } from '../../lib/sources'
 
 /** Settings › Audit log: every action in the console, newest first, grouped by day; a member filter and a CSV of what is loaded. */
@@ -24,7 +24,6 @@ export function Audit() {
   const member = params.get('member') ?? ''
   const target = params.get('target') ?? ''
   const setMember = (id: string) => setParams({ ...(id && { member: id }), ...(target && { target }) }, { replace: true })
-  const memberName = useMemberName()
   const log = useActions(member, target)
   const items = useMemo(() => log.items ?? [], [log.items])
   const targetKind = items.find((a) => a.target.id === target)?.target.kind
@@ -108,13 +107,7 @@ export function Audit() {
                               <span className="font-semibold">{firstName(who)}</span>
                               {verb}
                               <span className="inline-flex h-7 items-center rounded-full border border-hairline bg-surface-container-lowest px-2.5 text-label-small text-primary">
-                                {a.target.kind === 'member' ? (
-                                  memberName(a.target.id)
-                                ) : (
-                                  <>
-                                    {kindName(a.target.kind)} <span className="ml-1 tabular-nums">{shortId(a.target.id)}</span>
-                                  </>
-                                )}
+                                <span className="tabular-nums">{targetLabel(a)}</span>
                               </span>
                             </p>
                             {/* The reason is the one the person saw, as written. */}

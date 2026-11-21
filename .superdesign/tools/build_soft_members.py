@@ -120,14 +120,13 @@ def small(text, aid, kind="plain"):
 def budget(ch):
     _, _, _, admin, _, _, usd, daily, custom = BY[ch]
     default = 10 if admin else 5
-    seg = "".join(f'<a id="b-{k}" href="#b-{k}" class="flex h-8 flex-1 items-center justify-center rounded-full {"bg-white soft font-medium" if on else "text-on-surface-variant"}">{t}</a>'
-                  for k, t, on in [("role", f"Role default · ${default}", not custom), ("custom", "Custom", custom)])
-    amount = (f'<div class="mt-3 flex items-center gap-2"><span class="flex h-10 flex-1 items-center rounded-[12px] border border-primary/50 bg-white px-3.5 text-[14px] ring-4 ring-primary/10">'
-              f'<span class="text-on-surface-variant">$</span><span class="tnum ml-1 flex-1">{daily}</span><span class="text-on-surface-variant">a day</span></span>{small("Save", "b-save", "primary")}</div>') if custom else ""
+    shown = f'<span class="tnum flex-1">{daily}</span>' if custom else f'<span class="flex-1 text-on-surface-variant">{default} role</span>'
+    field = (f'<span class="flex h-10 w-[150px] items-center rounded-[12px] border hair bg-white px-3 text-[14px]">'
+             f'<span class="text-on-surface-variant">$</span>{shown}<span class="text-[12.5px] text-on-surface-variant">/day</span></span>')
     used = "" if usd is None else (f'<div class="mt-4 flex justify-between text-[13px]"><span><span class="tnum font-medium">${usd:.2f}</span> '
                                    f'<span class="text-on-surface-variant">in 30 days</span></span><span class="tnum text-on-surface-variant">of ${daily * 30}</span></div>'
                                    f'<div class="mt-1.5">{meter(min(100, round(usd / (daily * 30) * 100)), "bg-primary/70", 6)}</div>')
-    return section("Agent budget", f'<div class="flex rounded-full bg-surface-container p-1 text-[13px]">{seg}</div>{amount}{used}')
+    return section("Agent budget", f'<div class="flex items-center gap-3"><span class="flex-1 text-[14px]">Daily limit</span>{field}</div>{used}')
 
 
 ACTS = {

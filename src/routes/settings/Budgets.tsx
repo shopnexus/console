@@ -5,6 +5,7 @@ import IconPay from '~icons/material-symbols-light/payments-outline-rounded'
 import IconPerson from '~icons/material-symbols-light/person-outline-rounded'
 import IconShield from '~icons/material-symbols-light/shield-person-outline-rounded'
 import IconTune from '~icons/material-symbols-light/tune-rounded'
+import { MoneyField } from '../../components/MoneyField'
 import { Select } from '../../components/Select'
 import { RangePicker, SettingsShell } from '../../components/SettingsShell'
 import { useNumberDraft } from '../../lib/draft'
@@ -198,24 +199,6 @@ function Labeled({ label, children }: { label: string; children: ReactNode }) {
       <span className="mb-1.5 block text-body-small text-on-surface-variant">{label}</span>
       {children}
     </div>
-  )
-}
-
-/** A dollar amount saved when the field loses focus; empty takes the budget away. */
-function MoneyField({ value, label, onSave, big = false, suffix }: { value?: number; label: string; onSave: (v: number | undefined) => void; big?: boolean; suffix?: string }) {
-  const draft = useNumberDraft(value, onSave, { digits: 8 })
-  return (
-    <label className={`flex items-baseline rounded-xl ${big ? 'mt-1 text-headline-medium' : 'h-10 w-[130px] shrink-0 border border-hairline bg-surface-container-lowest px-3 text-body-medium focus-within:border-primary/50'}`}>
-      <span className={big ? '' : 'text-on-surface-variant'}>$</span>
-      <input
-        {...draft}
-        aria-label={label}
-        placeholder="None"
-        inputMode="decimal"
-        className="h-full w-full min-w-0 bg-transparent tabular-nums outline-none placeholder:text-on-surface-variant"
-      />
-      {suffix && <span className="text-body-small text-on-surface-variant">{suffix}</span>}
-    </label>
   )
 }
 

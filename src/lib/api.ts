@@ -151,7 +151,8 @@ export interface Action {
   at: string
   actor: { kind: 'member' | 'cli'; member_id?: string; display_name?: string }
   action: ActionKind
-  target: { kind: 'account' | 'member' | 'listing'; id: string }
+  /** name is a member target's display name. */
+  target: { kind: 'account' | 'member' | 'listing'; id: string; name?: string }
   details?: Record<string, unknown>
 }
 

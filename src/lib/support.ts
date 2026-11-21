@@ -150,10 +150,10 @@ export function useTicketCommands(id: string) {
   const done = () => client.invalidateQueries({ queryKey: ['support'] })
   return {
     reply: useMutation({
-      mutationFn: (r: string | { body: string; reply_to?: string }) =>
+      mutationFn: (r: { body: string; reply_to?: string }) =>
         api<ConsoleMessage>(`/console/support/tickets/${id}/replies`, {
           method: 'POST',
-          body: JSON.stringify(typeof r === 'string' ? { body: r } : r),
+          body: JSON.stringify(r),
           headers: { 'idempotency-key': crypto.randomUUID() },
         }),
       onSettled: done,
