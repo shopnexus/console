@@ -28,8 +28,8 @@ export class ApiError extends Error {
  * that no other site's form can use the cookie.
  */
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  // VITE_MOCK_AI=1 serves the AI paths the server does not have yet from
-  // fixtures (lib/mock). The build drops this branch when it is unset.
+  // VITE_MOCK_AI=1 serves the AI and settings paths from fixtures (lib/mock).
+  // The build drops this branch when it is unset.
   if (import.meta.env.VITE_MOCK_AI === '1') {
     const { mockApi, unmocked, MockError } = await import('./mock')
     try {

@@ -6,7 +6,7 @@ import IconCheckCircle from '~icons/material-symbols-light/check-circle-outline-
 import IconGavel from '~icons/material-symbols-light/gavel-rounded'
 import IconPhoto from '~icons/material-symbols-light/image-outline-rounded'
 import IconUndo from '~icons/material-symbols-light/undo-rounded'
-import { Crumbs, DotFact, Hero, JKHint, ListColumn, ListRow, Missing, StatusPill } from '../components/Panes'
+import { Crumbs, DotFact, Hero, JKHint, ListColumn, ListError, ListRow, Missing, StatusPill } from '../components/Panes'
 import { Select } from '../components/Select'
 import { Shell } from '../components/Shell'
 import { Btn, Card, CardHead, Check, Initial, Kbd, Notice, Segmented, Tag } from '../components/ui'
@@ -94,6 +94,7 @@ export function Reports() {
         foot={<JKHint />}
       >
         <div key={status} className="rise-list space-y-1">
+          <ListError error={cases.error} what="Cases" onRetry={() => void cases.refetch()} />
           {rows.map((c) => (
             <QueueRow key={c.account.id + (c.resolution?.at ?? '')} c={c} on={c.account.id === id} now={now} onClick={() => go(c)} />
           ))}

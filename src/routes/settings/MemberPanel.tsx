@@ -274,7 +274,7 @@ function ManagedByCli({ m, now }: { m: Member; now: number }) {
           <IconTerminal width={18} height={18} className="text-primary" />
           Managed from the server
         </p>
-        <p className="mt-1 text-body-small text-on-surface-variant">Admins change their password, two-step and access with the console CLI on the server.</p>
+        <p className="mt-1 text-body-small text-on-surface-variant">An admin resets another admin’s password, two-step or access with the console CLI on the server.</p>
         <p className="mt-2.5 truncate rounded-xl bg-surface-container-lowest px-3 py-2 font-mono text-body-small">console reset-password --email {m.email}</p>
       </div>
     </Section>

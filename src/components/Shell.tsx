@@ -6,6 +6,7 @@ import IconCollapse from '~icons/material-symbols-light/left-panel-close-outline
 import IconExpand from '~icons/material-symbols-light/left-panel-open-outline-rounded'
 import IconLock from '~icons/material-symbols-light/lock-outline'
 import IconLogout from '~icons/material-symbols-light/logout-rounded'
+import IconKey from '~icons/material-symbols-light/key-outline-rounded'
 import IconNew from '~icons/material-symbols-light/edit-square-outline'
 import IconOpen from '~icons/material-symbols-light/north-east-rounded'
 import IconSearch from '~icons/material-symbols-light/search-rounded'
@@ -19,6 +20,7 @@ import { navigation, useNavCollapsed } from '../lib/navigation'
 import { useCases } from '../lib/reports'
 import { useForgetMe, useMe } from '../lib/session'
 import { useOpenCount } from '../lib/support'
+import { ChangePassword } from './ChangePassword'
 import { ChatMenu } from './chat/ChatMenu'
 import { SearchMenu } from './SearchMenu'
 import { Initial, Kbd, ThemeSwitch } from './ui'
@@ -316,6 +318,7 @@ export function MemberMenu({ rail }: { rail: boolean }) {
   const navigate = useNavigate()
   const forget = useForgetMe()
   const [open, setOpen] = useState(false)
+  const [changing, setChanging] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const ref = useDismiss<HTMLDivElement>(open, close)
   const at = useAnchor(ref, open, 'above')
@@ -348,6 +351,16 @@ export function MemberMenu({ rail }: { rail: boolean }) {
         <div style={at} className="fixed z-30 w-[220px] origin-bottom-left animate-pop rounded-3xl border border-hairline bg-surface-container-lowest p-1.5 shadow-float">
           <ThemeRow />
           <button
+            onClick={() => {
+              setOpen(false)
+              setChanging(true)
+            }}
+            className="mt-1 flex h-9 w-full items-center gap-2 rounded-lg px-2.5 text-label-medium text-on-surface-variant hover:bg-surface-container-low"
+          >
+            <IconKey width={18} height={18} />
+            Change password
+          </button>
+          <button
             onClick={signOut}
             className="mt-1 flex h-9 w-full items-center gap-2 rounded-lg px-2.5 text-label-medium text-on-surface-variant hover:bg-surface-container-low"
           >
@@ -356,6 +369,7 @@ export function MemberMenu({ rail }: { rail: boolean }) {
           </button>
         </div>
       )}
+      {changing && <ChangePassword onClose={() => setChanging(false)} />}
     </div>
   )
 }

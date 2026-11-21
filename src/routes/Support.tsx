@@ -10,11 +10,14 @@ import IconClose from '~icons/material-symbols-light/close-rounded'
 import IconFilter from '~icons/material-symbols-light/filter-list-rounded'
 import IconSee from '~icons/material-symbols-light/visibility-outline'
 import IconUndo from '~icons/material-symbols-light/undo-rounded'
+import IconReply from '~icons/material-symbols-light/reply-rounded'
+import IconError from '~icons/material-symbols-light/error-outline-rounded'
+import IconImage from '~icons/material-symbols-light/image-outline-rounded'
 import IconInfo from '~icons/material-symbols-light/info-outline-rounded'
 import IconShip from '~icons/material-symbols-light/local-shipping-outline-rounded'
 import IconSpark from '~icons/material-symbols/auto-awesome-outline-rounded'
 import { RecordAgent } from '../components/chat/RecordAgent'
-import { DotFact, DragEdge, JKHint, ListColumn, ListRow } from '../components/Panes'
+import { DotFact, DragEdge, JKHint, ListColumn, ListError, ListRow } from '../components/Panes'
 import type { Attachment } from '../lib/agent'
 import type { Command } from '../lib/commands'
 import { Select } from '../components/Select'
@@ -32,6 +35,7 @@ import {
   kindLabel,
   ticketTitle,
   personName,
+  quoteOf,
   shopNexusId,
   type Ticket,
   type TicketKind,
@@ -101,6 +105,7 @@ function Queue({
       foot={<JKHint />}
     >
       <div key={`${status}-${kind}`} className="rise-list space-y-1">
+        <ListError error={queue.error} what="Tickets" onRetry={() => void queue.refetch()} />
         {queue.items?.map((t) => (
           <ListRow
             key={t.ticket.id}
@@ -234,9 +239,30 @@ export interface ReplyDraft {
   text: string
   fromAgent?: boolean
   offered?: string
+  /** The message the reply answers, quoted above it. */
+  replyTo?: { id: string; who: string; quote: string }
 }
 
 const maxReply = 1000
+
+/** A message's photos, up to 3 a row; each opens full size in a new tab. */
+function Photos({ photos }: { photos: { upload_id: string; url?: string; thumb_url?: string }[] }) {
+  return (
+    <span className="flex flex-wrap gap-1.5">
+      {photos.map((p) =>
+        p.url ? (
+          <a key={p.upload_id} href={p.url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-2xl">
+            <img src={p.thumb_url ?? p.url} alt="" loading="lazy" className="h-[140px] w-[140px] object-cover" />
+          </a>
+        ) : (
+          <span key={p.upload_id} className="flex h-[140px] w-[140px] items-center justify-center rounded-2xl bg-surface-container text-on-surface-variant">
+            <IconImage width={28} height={28} />
+          </span>
+        ),
+      )}
+    </span>
+  )
+}
 
 /** The person's chat with ShopNexus, oldest first, with the reply box under it. */
 function CustomerChat({ d, reply, onReply, onFailure }: { d: ConsoleTicketDetail; reply: ReplyDraft; onReply: (r: ReplyDraft) => void; onFailure?: (e: unknown) => void }) {
@@ -282,7 +308,7 @@ function CustomerChat({ d, reply, onReply, onFailure }: { d: ConsoleTicketDetail
     e?.preventDefault()
     const body = text.trim()
     if (!body || over || commands.reply.isPending) return
-    commands.reply.mutate(body, { onSuccess: () => onReply({ text: '' }), onError: onFailure })
+    commands.reply.mutate({ body, reply_to: reply.replyTo?.id }, { onSuccess: () => onReply({ text: '' }), onError: onFailure })
   }
 
   return (
@@ -310,14 +336,31 @@ function CustomerChat({ d, reply, onReply, onFailure }: { d: ConsoleTicketDetail
           const m = it.m.message
           const mine = m.sender_id === shopNexusId
           const first = m.id === t.first_message_id
+          const failed = m.status === 'failed'
+          const quote = { id: m.id, who: mine ? 'ShopNexus' : name, quote: quoteOf({ text: m.text, photos: m.photos.length }) }
           return (
             <div key={m.id}>
               {label}
               {/* Messages stay as the person and the members wrote them. */}
-              <div className={`max-w-[72%] ${mine ? 'ml-auto' : ''}`}>
+              <div className={`group relative max-w-[72%] ${mine ? 'ml-auto' : ''}`}>
+                {!failed && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onReply({ ...reply, replyTo: quote })
+                      document.querySelector<HTMLTextAreaElement>('[data-reply-box] textarea')?.focus()
+                    }}
+                    className={`absolute top-1 hidden h-7 items-center gap-1 whitespace-nowrap rounded-full border border-hairline bg-surface-container-lowest px-2.5 text-label-small text-primary shadow-soft group-hover:flex focus-visible:flex ${
+                      mine ? 'right-[calc(100%+8px)]' : 'left-[calc(100%+8px)]'
+                    }`}
+                  >
+                    <IconReply width={15} height={15} />
+                    Reply
+                  </button>
+                )}
                 <div
                   className={`whitespace-pre-wrap rounded-[20px] px-4 py-2.5 text-body-medium ${
-                    mine ? 'rounded-br-[6px] bg-primary/10' : 'rounded-bl-[6px] bg-surface-container-low'
+                    mine ? `rounded-br-[6px] bg-primary/10 ${failed ? 'opacity-60' : ''}` : 'rounded-bl-[6px] bg-surface-container-low'
                   }`}
                 >
                   {first && (
@@ -330,16 +373,30 @@ function CustomerChat({ d, reply, onReply, onFailure }: { d: ConsoleTicketDetail
                   {m.reply_to && (
                     <span className="mb-1.5 flex gap-2 rounded-lg bg-surface-container-low px-2 py-1.5">
                       <span className="w-[3px] shrink-0 rounded-full bg-primary" />
-                      <span className="line-clamp-2 text-label-small font-normal text-on-surface-variant">{m.reply_to.text}</span>
+                      <span className="min-w-0 leading-tight">
+                        <span className="block text-label-small text-primary">{m.reply_to.sender_id === shopNexusId ? 'ShopNexus' : name}</span>
+                        <span className="line-clamp-2 text-label-small font-normal text-on-surface-variant">{quoteOf(m.reply_to)}</span>
+                      </span>
                     </span>
                   )}
-                  {m.text}
+                  {m.photos.length > 0 && <Photos photos={m.photos} />}
+                  {m.photos.length > 0 && m.text ? <span className="mt-2 block">{m.text}</span> : m.text}
                 </div>
-                <p className={`mt-1 flex items-center gap-1 px-1 tabular-nums text-label-small font-normal text-on-surface-variant ${mine ? 'justify-end' : ''}`}>
-                  {it.m.automatic && <IconBolt width={13} height={13} />}
-                  {it.m.automatic ? 'Sent on close · ' : it.m.member ? `${it.m.member} · ` : ''}
-                  {time(m.created_at)}
-                </p>
+                {failed ? (
+                  <p className="mt-1 flex items-center justify-end gap-1.5 px-1 text-label-small font-normal text-error">
+                    <IconError width={14} height={14} />
+                    Not delivered ·
+                    <button type="button" onClick={() => onReply({ text: m.text })} className="font-medium text-primary hover:underline">
+                      Try again
+                    </button>
+                  </p>
+                ) : (
+                  <p className={`mt-1 flex items-center gap-1 px-1 tabular-nums text-label-small font-normal text-on-surface-variant ${mine ? 'justify-end' : ''}`}>
+                    {it.m.automatic && <IconBolt width={13} height={13} />}
+                    {it.m.automatic ? 'Sent on close · ' : it.m.member ? `${it.m.member} · ` : ''}
+                    {m.status === 'processing' ? 'Sending…' : time(m.created_at)}
+                  </p>
+                )}
               </div>
             </div>
           )
@@ -360,6 +417,18 @@ function CustomerChat({ d, reply, onReply, onFailure }: { d: ConsoleTicketDetail
                 Keep mine
               </button>
             </p>
+          )}
+          {reply.replyTo && (
+            <div className="flex items-center gap-2 border-b border-hairline px-4 py-2.5">
+              <IconReply width={17} height={17} className="text-primary" />
+              <span className="min-w-0 flex-1 leading-tight">
+                <span className="block text-label-small text-primary">Replying to {reply.replyTo.who}</span>
+                <span className="block truncate text-body-small text-on-surface-variant">{reply.replyTo.quote}</span>
+              </span>
+              <IconBtn title="Not a reply" onClick={() => onReply({ ...reply, replyTo: undefined })}>
+                <IconClose width={16} height={16} />
+              </IconBtn>
+            </div>
           )}
           {reply.fromAgent && (
             <p className="flex items-center gap-1.5 px-4 pt-3 text-label-small text-primary">

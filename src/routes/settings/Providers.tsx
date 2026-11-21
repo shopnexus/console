@@ -26,6 +26,7 @@ import { ModelTag, ProviderTile } from '../../components/AiBits'
 import { Select } from '../../components/Select'
 import { SettingsShell } from '../../components/SettingsShell'
 import { useNumberDraft } from '../../lib/draft'
+import IconDelete from '~icons/material-symbols-light/delete-outline-rounded'
 import { Btn, Card, IconBtn, Meter, Notice, Segmented, Tag, Toggle } from '../../components/ui'
 import { contextSize, price } from '../../lib/aiLook'
 import { count, duration, int, time, when } from '../../lib/format'
@@ -441,10 +442,39 @@ function ProviderForm({ provider }: { provider?: Provider }) {
               </button>
             </div>
           )}
+          {provider && <RemoveProvider provider={provider} />}
         </Card>
         {provider && <ProviderModelsCard provider={provider} />}
       </div>
     </SettingsShell>
+  )
+}
+
+/** Remove asks first; an agent still on the provider makes the server refuse. */
+function RemoveProvider({ provider }: { provider: Provider }) {
+  const navigate = useNavigate()
+  const { deleteProvider } = useSettingsCommands()
+  const [asking, setAsking] = useState(false)
+  if (!asking)
+    return (
+      <div className="mt-4 border-t border-hairline pt-4">
+        <Btn icon={<IconDelete width={17} height={17} />} onClick={() => setAsking(true)}>
+          Remove provider
+        </Btn>
+      </div>
+    )
+  return (
+    <div className="mt-4 animate-rise rounded-2xl bg-surface-container-low px-4 py-3.5">
+      <p className="text-title-small">Remove {provider.name}?</p>
+      <p className="mt-1 text-body-small text-on-surface-variant">Its {count(provider.models.length, 'model')} leave the rotation and its key is deleted from LiteLLM.</p>
+      {deleteProvider.error && <p className="mt-2 text-body-small text-error">{settingsFailure(deleteProvider.error)}</p>}
+      <div className="mt-3 flex justify-end gap-2">
+        <Btn onClick={() => setAsking(false)}>Cancel</Btn>
+        <Btn kind="danger-fill" disabled={deleteProvider.isPending} onClick={() => deleteProvider.mutate(provider.id, { onSuccess: () => navigate('/settings/providers', { replace: true }) })}>
+          Remove
+        </Btn>
+      </div>
+    </div>
   )
 }
 

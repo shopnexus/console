@@ -1,5 +1,6 @@
-// Fixtures for the AI paths the server does not serve yet, behind
-// VITE_MOCK_AI=1. api() asks here first and goes to the server on unmocked.
+// Fixtures for the AI, settings and commerce paths, behind VITE_MOCK_AI=1, to
+// work without the agent and LiteLLM. api() asks here first and goes to the
+// server on unmocked.
 // Settings come from ./settings, the agent's chats and runs from ./agent.
 
 import { agentRoutes } from './agent'

@@ -1,7 +1,5 @@
 import { type ReactNode, useState } from 'react'
 import { Link } from 'react-router'
-import IconBadge from '~icons/material-symbols-light/badge-outline'
-import IconBlock from '~icons/material-symbols-light/do-not-disturb-on-outline-rounded'
 import IconCheck from '~icons/material-symbols-light/check-circle-outline-rounded'
 import IconGuard from '~icons/material-symbols-light/verified-user-outline-rounded'
 import IconLoop from '~icons/material-symbols-light/all-inclusive-rounded'
@@ -13,12 +11,9 @@ import { Card, CardHead, IconTile, Initial } from '../../components/ui'
 import { firstName, int, when } from '../../lib/format'
 import { rangeLabel, type SpendRange, useGuardrails, useMemberName } from '../../lib/settings'
 
-// The agent's guardrails (agent/src/guardrails). They are always on and set
-// in code; the run shows each block as a notice, and the counts come from the
-// same guardrail events.
+// The guardrails the agent and the server enforce, always on and set in code.
+// Only loop_stopped (agent) and rate_limited (server) send guardrail events.
 const rules: { rule?: string; icon: ReactNode; tone: string; title: string; detail: string }[] = [
-  { rule: 'pii_masked', icon: <IconBadge width={20} height={20} />, tone: 'bg-primary/8 text-primary', title: 'Mask personal data', detail: 'Phone numbers, emails, card and ID numbers are masked in answers' },
-  { rule: 'off_topic', icon: <IconBlock width={20} height={20} />, tone: 'bg-surface-container text-on-surface-variant', title: 'Block off-topic', detail: 'Refuses requests unrelated to tickets, reports and accounts' },
   { rule: 'loop_stopped', icon: <IconLoop width={20} height={20} />, tone: 'bg-surface-container text-on-surface-variant', title: 'Loop detection', detail: 'Stops a run that calls one tool the same way three times' },
   { rule: 'rate_limited', icon: <IconSpeed width={20} height={20} />, tone: 'bg-secondary-container text-on-secondary-container', title: 'Rate limit', detail: '30 questions a minute per member' },
   { icon: <IconLog width={20} height={20} />, tone: 'bg-surface-container text-on-surface-variant', title: 'Tool call log', detail: 'Who asked, which tool, which record' },

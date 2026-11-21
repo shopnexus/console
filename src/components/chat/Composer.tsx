@@ -4,6 +4,7 @@ import IconBolt from '~icons/material-symbols-light/bolt-outline-rounded'
 import IconCommand from '~icons/material-symbols-light/keyboard-command-key'
 import IconCheck from '~icons/material-symbols-light/check-rounded'
 import IconClose from '~icons/material-symbols-light/close-rounded'
+import IconDelete from '~icons/material-symbols-light/delete-outline-rounded'
 import IconExpand from '~icons/material-symbols-light/expand-more-rounded'
 import IconLockClock from '~icons/material-symbols-light/lock-clock-outline-rounded'
 import IconPause from '~icons/material-symbols-light/pause-rounded'
@@ -11,13 +12,14 @@ import IconPlay from '~icons/material-symbols-light/play-arrow-rounded'
 import IconRoute from '~icons/material-symbols-light/alt-route-rounded'
 import IconSend from '~icons/material-symbols-light/arrow-upward-rounded'
 import IconStop from '~icons/material-symbols-light/stop-rounded'
-import { maxQuestion, type Skill } from '../../lib/agent'
+import { maxQuestion, type Skill, useSkillCommands } from '../../lib/agent'
+import { useMe } from '../../lib/session'
 import { type Command, matchCommands, parseCommand } from '../../lib/commands'
 import { useDismiss } from '../../lib/dom'
 import { compact, count } from '../../lib/format'
 import type { PickableAgent } from '../../lib/settings'
 import { AgentIcon } from '../AiBits'
-import { Btn, Kbd } from '../ui'
+import { Btn, IconBtn, Kbd } from '../ui'
 
 const noCommands: Command[] = []
 
@@ -136,6 +138,10 @@ function SlashMenu({
 }) {
   const [naming, setNaming] = useState(false)
   const [name, setName] = useState('')
+  // A skill is deleted by its author or an admin, on a second click.
+  const me = useMe()
+  const { remove } = useSkillCommands()
+  const [deleting, setDeleting] = useState<string>()
   const cmds = commands
   const shown = shownSkillsOf(skills, filter)
   const row = (on: boolean) => `flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left ${on ? 'bg-primary/6' : 'hover:bg-surface-container-low'}`
@@ -164,23 +170,45 @@ function SlashMenu({
       ))}
       {cmds.length > 0 && shown.length > 0 && <p className="px-3 pb-1 pt-2 text-label-small font-normal text-on-surface-variant">Skills</p>}
       {shown.map((s, i) => (
-        <button
-          key={s.id}
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => onPick(s)}
-          className={row(cmds.length + i === active)}
-        >
-          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] ${skillTones[i % skillTones.length]}`}>
-            <IconBolt width={18} height={18} />
-          </span>
-          <span className="min-w-0 flex-1 leading-tight">
-            <span className="block text-title-small">
-              /{s.slug} <span className="font-normal text-on-surface-variant">· {s.name}</span>
+        <div key={s.id} className="group relative">
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => onPick(s)}
+            className={row(cmds.length + i === active)}
+          >
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] ${skillTones[i % skillTones.length]}`}>
+              <IconBolt width={18} height={18} />
             </span>
-            <span className="mt-0.5 block truncate text-body-small text-on-surface-variant">{s.description}</span>
-          </span>
-        </button>
+            <span className="min-w-0 flex-1 leading-tight">
+              <span className="block text-title-small">
+                /{s.slug} <span className="font-normal text-on-surface-variant">· {s.name}</span>
+              </span>
+              <span className="mt-0.5 block truncate text-body-small text-on-surface-variant">{s.description}</span>
+            </span>
+          </button>
+          {(s.created_by === me.id || me.role === 'admin') &&
+            (deleting === s.id ? (
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => remove.mutate(s.id, { onSettled: () => setDeleting(undefined) })}
+                disabled={remove.isPending}
+                className="absolute right-2 top-1/2 h-8 -translate-y-1/2 rounded-full bg-error px-3 text-label-small text-on-error disabled:opacity-60"
+              >
+                Delete /{s.slug}
+              </button>
+            ) : (
+              <IconBtn
+                title={`Delete /${s.slug}`}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setDeleting(s.id)}
+                className="absolute right-2 top-1/2 hidden -translate-y-1/2 bg-surface-container-lowest group-hover:flex"
+              >
+                <IconDelete width={17} height={17} />
+              </IconBtn>
+            ))}
+        </div>
       ))}
       {shown.length === 0 && cmds.length === 0 && <p className="px-3 py-2 text-body-medium text-on-surface-variant">No skill matches.</p>}
       {onMake && (

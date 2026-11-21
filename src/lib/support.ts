@@ -49,6 +49,12 @@ export interface Message {
   created_at: string
 }
 
+/** A message as a quote reads it: "2 photos · " before its text. */
+export function quoteOf(m: { text: string; photos: number }): string {
+  const photos = m.photos ? `${m.photos} photo${m.photos === 1 ? '' : 's'}` : ''
+  return [photos, m.text].filter(Boolean).join(' · ')
+}
+
 export interface ConsoleMessage {
   message: Message
   member?: string
@@ -144,10 +150,10 @@ export function useTicketCommands(id: string) {
   const done = () => client.invalidateQueries({ queryKey: ['support'] })
   return {
     reply: useMutation({
-      mutationFn: (body: string) =>
+      mutationFn: (r: string | { body: string; reply_to?: string }) =>
         api<ConsoleMessage>(`/console/support/tickets/${id}/replies`, {
           method: 'POST',
-          body: JSON.stringify({ body }),
+          body: JSON.stringify(typeof r === 'string' ? { body: r } : r),
           headers: { 'idempotency-key': crypto.randomUUID() },
         }),
       onSettled: done,

@@ -14,7 +14,7 @@ import { signInText, useMembersToSee } from '../../lib/members'
 import { budgetUse, rangeLabel, settingsFailure, type SpendRange, useAgents, useAgentUsage, useBudgets, useMembers, useSpend } from '../../lib/settings'
 import { SpendBars } from './SpendBars'
 
-/** Settings › Overview: spend over a range, the agents and their budgets, the providers, and members who need an admin. */
+/** Settings › Overview: spend over a range, the agents and their budgets, spend by member, and members who need an admin. */
 export function Overview() {
   const [range, setRange] = useState<SpendRange>('30d')
   const spend = useSpend(range)

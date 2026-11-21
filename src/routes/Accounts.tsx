@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import IconSpark from '~icons/material-symbols/auto-awesome-outline-rounded'
 import IconCopy from '~icons/material-symbols-light/content-copy-outline-rounded'
 import IconCreated from '~icons/material-symbols-light/person-add-outline-rounded'
@@ -10,7 +10,7 @@ import IconUnlock from '~icons/material-symbols-light/lock-open-outline-rounded'
 import IconVerified from '~icons/material-symbols-light/verified-rounded'
 import IconVerifiedOutline from '~icons/material-symbols-light/verified-outline-rounded'
 import IconHistory from '~icons/material-symbols-light/history-rounded'
-import { Crumbs, DotFact, FactRow, Hero, JKHint, ListColumn, ListRow, Missing, StatusPill } from '../components/Panes'
+import { Crumbs, DotFact, FactRow, Hero, JKHint, ListColumn, ListError, ListRow, Missing, StatusPill } from '../components/Panes'
 import { Shell } from '../components/Shell'
 import { Btn, Card, CardHead, IconTile, Initial, Kbd, Meter, Notice, Segmented, Tag } from '../components/ui'
 import {
@@ -29,6 +29,7 @@ import {
 import { useAskAgent } from '../lib/agent'
 import { type Account, type Action, actionDetail, shortId } from '../lib/api'
 import { useDismiss, useListKeys } from '../lib/dom'
+import { useMe } from '../lib/session'
 import { count, DAY, date, day, firstName, stamp } from '../lib/format'
 
 const daysLeft = (until: string, now: number) => Math.max(1, Math.ceil((new Date(until).getTime() - now) / DAY))
@@ -110,7 +111,7 @@ export function Accounts() {
                   setQ(e.target.value)
                   if (e.target.value === '') setAsked('')
                 }}
-                placeholder="Id or phone"
+                placeholder="Id, email or phone"
                 aria-label="Find an account"
                 className="h-full min-w-0 flex-1 bg-transparent text-body-medium text-on-surface outline-none placeholder:text-on-surface-variant"
               />
@@ -121,6 +122,7 @@ export function Accounts() {
         foot={<JKHint />}
       >
         <div key={asked ? 'found' : tab} className="rise-list space-y-1">
+          <ListError error={asked ? found.error : list.error} what="Accounts" onRetry={() => void (asked ? found.refetch() : list.refetch())} />
           {rows.map((a) => {
             const locked = a.status === 'suspended'
             return (
@@ -179,6 +181,7 @@ export function Accounts() {
 
 function AccountPane({ id, onMove }: { id: string; onMove: (step: 1 | -1) => void }) {
   const detail = useAccountDetail(id)
+  const me = useMe()
   const navigate = useNavigate()
   const askAgent = useAskAgent()
   const commands = useAccountCommands(id)
@@ -277,7 +280,17 @@ function AccountPane({ id, onMove }: { id: string; onMove: (step: 1 | -1) => voi
         {locked && <TermCard a={a} last={suspensions[0]} now={now} />}
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_300px]">
           <Card>
-            <CardHead title="History" />
+            <CardHead
+              title="History"
+              right={
+                /* The audit log is in Settings, which only admins open. */
+                me.role === 'admin' && (
+                  <Link to={`/settings/audit?target=${a.id}`} className="text-label-medium text-primary hover:underline">
+                    Audit log
+                  </Link>
+                )
+              }
+            />
             <History d={detail.data} />
           </Card>
           <Card className="p-5 pb-3">

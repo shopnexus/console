@@ -4,11 +4,12 @@ import IconCategory from '~icons/material-symbols-light/category-outline-rounded
 import IconDownload from '~icons/material-symbols-light/download-rounded'
 import IconEvent from '~icons/material-symbols-light/event-note-outline-rounded'
 import IconHistory from '~icons/material-symbols-light/history-rounded'
+import IconClose from '~icons/material-symbols-light/close-rounded'
 import IconMembers from '~icons/material-symbols-light/group-outline-rounded'
 import { groupOf, lookOf } from '../../components/actionLook'
 import { Select } from '../../components/Select'
 import { SettingsShell } from '../../components/SettingsShell'
-import { Btn, Card, CardHead, Initial, Notice } from '../../components/ui'
+import { Btn, Card, CardHead, IconBtn, Initial, Notice } from '../../components/ui'
 import { type Action, actionDetail, shortId } from '../../lib/api'
 import { firstName, time, when } from '../../lib/format'
 import { useActions } from '../../lib/actions'
@@ -21,10 +22,12 @@ export function Audit() {
   // The member filter lives in the URL, so a member's panel can link here.
   const [params, setParams] = useSearchParams()
   const member = params.get('member') ?? ''
-  const setMember = (id: string) => setParams(id ? { member: id } : {}, { replace: true })
+  const target = params.get('target') ?? ''
+  const setMember = (id: string) => setParams({ ...(id && { member: id }), ...(target && { target }) }, { replace: true })
   const memberName = useMemberName()
-  const log = useActions(member)
+  const log = useActions(member, target)
   const items = useMemo(() => log.items ?? [], [log.items])
+  const targetKind = items.find((a) => a.target.id === target)?.target.kind
   const days = useMemo(() => {
     const out: [string, Action[]][] = []
     for (const a of items) {
@@ -76,6 +79,14 @@ export function Audit() {
                 options={[{ value: '', label: 'Everyone' }, ...(members.data?.items.map((m) => ({ value: m.id, label: m.display_name })) ?? [])]}
               />
             </span>
+            {target && (
+              <span className="flex h-9 items-center gap-1 rounded-full border border-primary/40 bg-primary/6 pl-3 pr-1 text-label-medium text-primary">
+                On {targetKind ? kindName(targetKind).toLowerCase() : 'record'} <span className="tabular-nums">{shortId(target)}</span>
+                <IconBtn title="Every record" onClick={() => setParams(member ? { member } : {}, { replace: true })} className="h-7 w-7 text-primary">
+                  <IconClose width={16} height={16} />
+                </IconBtn>
+              </span>
+            )}
           </div>
           {log.error && <Notice>The audit log did not load.</Notice>}
           <Card className="p-5 pb-1">

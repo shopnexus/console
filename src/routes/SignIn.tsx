@@ -3,15 +3,13 @@ import { type FormEvent, type ReactNode, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import IconArrow from '~icons/material-symbols/arrow-forward-rounded'
 import IconKey from '~icons/material-symbols-light/key-outline-rounded'
-import IconLock from '~icons/material-symbols-light/lock-outline'
+import IconDone from '~icons/material-symbols/check-circle-rounded'
 import IconMail from '~icons/material-symbols-light/mail-outline-rounded'
 import IconCopy from '~icons/material-symbols/content-copy-outline-rounded'
-import IconDone from '~icons/material-symbols/check-circle-rounded'
-import IconTodo from '~icons/material-symbols/radio-button-unchecked'
-import IconHidden from '~icons/material-symbols/visibility-off-outline-rounded'
-import IconShown from '~icons/material-symbols/visibility-outline-rounded'
 import { CodeInput } from '../components/CodeInput'
 import { Field } from '../components/Field'
+import { NewPassword, PasswordField } from '../components/NewPassword'
+import { passwordRules } from '../lib/password'
 import { QrCode } from '../components/QrCode'
 import { Button, Notice, Steps, ThemeSwitch } from '../components/ui'
 import { ApiError, type Me, post } from '../lib/api'
@@ -95,6 +93,11 @@ export function SignIn() {
       <form onSubmit={(e) => submit(e, () => login({ password }))}>
         <img src="/mascot-shield.webp" alt="" className="mx-auto -mt-20 h-[120px] w-[120px] animate-[sn-float_4s_ease-in-out_infinite] object-contain drop-shadow-[0_10px_20px_rgb(0_0_0/0.12)]" />
         <h1 className="mt-2 text-center text-display-small">Sign in</h1>
+        {params.get('changed') && !error && (
+          <p role="status" className="mt-4 rounded-2xl bg-primary/8 px-3.5 py-2.5 text-center text-body-medium text-primary">
+            Password changed. Sign in with the new one.
+          </p>
+        )}
         <div className="mt-7 space-y-4">
           <Field label="Email" type="email" autoComplete="username" autoFocus icon={<IconMail width={18} height={18} />} value={email} onChange={(e) => setEmail(e.target.value)} required />
           <PasswordField label="Password" autoComplete="current-password" value={password} onChange={setPassword} />
@@ -119,13 +122,7 @@ export function SignIn() {
       </form>
     )
   } else if (step === 'new-password') {
-    const rules: [string, boolean][] = [
-      ['12 characters or more', next.length >= 12 && next.length <= 128],
-      ['Not your email', next !== '' && next.toLowerCase() !== email.trim().toLowerCase()],
-      ['Not the temporary password', next !== '' && next !== password],
-      ['Both fields match', next !== '' && next === again],
-    ]
-    const met = rules.filter(([, ok]) => ok).length
+    const rules = passwordRules(next, again, email, password, 'Not the temporary password')
     form = (
       <form onSubmit={(e) => submit(e, () => login({ password, new_password: next }))}>
         <div className="mb-6"><Steps active={1} /></div>
@@ -143,23 +140,9 @@ export function SignIn() {
             </p>
           </div>
         </div>
-        <div className="mt-7 space-y-4">
-          <PasswordField label="New password" autoComplete="new-password" autoFocus value={next} onChange={setNext} />
-          <div className="-mt-2 flex gap-1.5" aria-hidden>
-            {rules.map((_, i) => (
-              <span key={i} className={`h-1.5 flex-1 rounded-full ${i < met ? 'bg-primary' : 'bg-surface-container'}`} />
-            ))}
-          </div>
-          <PasswordField label="Again" autoComplete="new-password" value={again} onChange={setAgain} />
+        <div className="mt-7">
+          <NewPassword rules={rules} next={next} again={again} onNext={setNext} onAgain={setAgain} autoFocus />
         </div>
-        <ul className="mt-5 space-y-2 rounded-3xl bg-surface-container-low p-4">
-          {rules.map(([text, ok]) => (
-            <li key={text} className={`flex items-center gap-2 text-body-small ${ok ? 'text-primary' : 'text-on-surface-variant'}`}>
-              {ok ? <IconDone width={17} height={17} /> : <IconTodo width={17} height={17} />}
-              {text}
-            </li>
-          ))}
-        </ul>
         {error && <div className="mt-5"><Notice>{error}</Notice></div>}
         <Button type="submit" full className="mt-6" disabled={busy || !rules.every(([, ok]) => ok)}>
           Save and continue
@@ -197,38 +180,6 @@ export function SignIn() {
       </div>
       <p className="absolute bottom-6 text-body-small text-on-surface-variant">{location.host}</p>
     </main>
-  )
-}
-
-function PasswordField(props: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  autoComplete: string
-  autoFocus?: boolean
-}) {
-  const [shown, setShown] = useState(false)
-  return (
-    <Field
-      label={props.label}
-      type={shown ? 'text' : 'password'}
-      autoComplete={props.autoComplete}
-      autoFocus={props.autoFocus}
-      value={props.value}
-      onChange={(e) => props.onChange(e.target.value)}
-      icon={<IconLock width={18} height={18} />}
-      required
-      trailing={
-        <button
-          type="button"
-          title={shown ? 'Hide password' : 'Show password'}
-          onClick={() => setShown(!shown)}
-          className="-mr-1.5 flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-low"
-        >
-          {shown ? <IconHidden width={18} height={18} /> : <IconShown width={18} height={18} />}
-        </button>
-      }
-    />
   )
 }
 

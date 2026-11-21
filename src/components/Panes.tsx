@@ -20,6 +20,19 @@ export function ListColumn({ head, children, foot, width = 'w-[310px]' }: { head
   )
 }
 
+/** A list that did not load: what failed and Try again. */
+export function ListError({ error, what, onRetry }: { error: unknown; what: string; onRetry: () => void }) {
+  if (!error) return null
+  return (
+    <p role="alert" className="mx-1 my-2 flex items-center gap-2 rounded-2xl bg-error-container px-3.5 py-2.5 text-body-small text-error">
+      <span className="flex-1">{what} did not load.</span>
+      <button type="button" onClick={onRetry} className="font-medium hover:underline">
+        Try again
+      </button>
+    </p>
+  )
+}
+
 /** "j k  Next, previous" under a list. */
 export function JKHint({ children = 'Next, previous' }: { children?: ReactNode }) {
   return (
