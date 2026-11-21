@@ -9,8 +9,8 @@ import IconOverview from '~icons/material-symbols-light/space-dashboard-outline-
 import IconPay from '~icons/material-symbols-light/payments-outline-rounded'
 import { RangePicker, SettingsShell } from '../../components/SettingsShell'
 import { Card, CardHead, IconTile, Initial, Meter, Notice, Tag } from '../../components/ui'
-import { int, time, usd } from '../../lib/format'
-import { useMembersToSee } from '../../lib/members'
+import { int, usd } from '../../lib/format'
+import { signInText, useMembersToSee } from '../../lib/members'
 import { budgetUse, rangeLabel, settingsFailure, type SpendRange, useAgents, useAgentUsage, useBudgets, useMembers, useSpend } from '../../lib/settings'
 import { SpendBars } from './SpendBars'
 
@@ -112,13 +112,13 @@ export function Overview() {
           <Card className="p-5 pb-3">
             <CardHead title="Needs a look" right={toSee.data?.length ? <Tag tone="bg-primary text-on-primary">{toSee.data.length}</Tag> : undefined} />
             {toSee.data?.map((m) => (
-              <Link key={m.id} to="/settings/members" className="-mx-2 flex items-center gap-3 rounded-xl px-2 py-2 text-body-medium hover:bg-on-surface/5">
+              <Link key={m.id} to={`/settings/members?member=${m.id}`} className="-mx-2 flex items-center gap-3 rounded-xl px-2 py-2 text-body-medium hover:bg-on-surface/5">
                 <IconTile size={32} round tone="bg-surface-container text-on-surface-variant">
                   <IconKey width={17} height={17} />
                 </IconTile>
                 <span className="min-w-0 flex-1">
                   {m.display_name}
-                  <span className="block text-body-small text-on-surface-variant">{m.locked_until ? `Sign-in locked until ${time(m.locked_until)}` : 'Two-step sign-in not set up'}</span>
+                  <span className="block text-body-small text-on-surface-variant">{signInText(m)}</span>
                 </span>
                 <IconChevron width={18} height={18} className="text-on-surface-variant" />
               </Link>

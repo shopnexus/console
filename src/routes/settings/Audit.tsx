@@ -1,60 +1,28 @@
-import { type ReactNode, useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useSearchParams } from 'react-router'
 import IconCategory from '~icons/material-symbols-light/category-outline-rounded'
-import IconCheck from '~icons/material-symbols-light/check-rounded'
 import IconDownload from '~icons/material-symbols-light/download-rounded'
 import IconEvent from '~icons/material-symbols-light/event-note-outline-rounded'
-import IconFlag from '~icons/material-symbols-light/flag-outline-rounded'
-import IconHide from '~icons/material-symbols-light/visibility-off-outline'
 import IconHistory from '~icons/material-symbols-light/history-rounded'
-import IconKey from '~icons/material-symbols-light/key-outline-rounded'
-import IconLock from '~icons/material-symbols-light/lock-outline'
 import IconMembers from '~icons/material-symbols-light/group-outline-rounded'
-import IconPerson from '~icons/material-symbols-light/person-add-outline-rounded'
-import IconPersonOff from '~icons/material-symbols-light/person-off-outline-rounded'
-import IconShow from '~icons/material-symbols-light/visibility-outline'
-import IconTune from '~icons/material-symbols-light/tune-rounded'
-import IconUnlock from '~icons/material-symbols-light/lock-open-outline-rounded'
+import { groupOf, lookOf } from '../../components/actionLook'
 import { Select } from '../../components/Select'
 import { SettingsShell } from '../../components/SettingsShell'
 import { Btn, Card, CardHead, Initial, Notice } from '../../components/ui'
 import { type Action, actionDetail, shortId } from '../../lib/api'
 import { firstName, time, when } from '../../lib/format'
 import { useActions } from '../../lib/actions'
-import { useMembers } from '../../lib/settings'
+import { useMemberName, useMembers } from '../../lib/settings'
 import { kindName } from '../../lib/sources'
-
-type Look = [string, ReactNode, string]
-
-// What each action reads as in the log: the verb, its icon and its tint.
-const looks: Record<string, Look> = {
-  'account.suspend': ['suspended', <IconLock key="a" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
-  'account.unsuspend': ['lifted the suspension of', <IconUnlock key="b" width={17} height={17} />, 'bg-primary/8 text-primary'],
-  'member.create': ['added', <IconPerson key="c" width={17} height={17} />, 'bg-secondary-container text-on-secondary-container'],
-  'member.disable': ['disabled', <IconPersonOff key="d" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
-  'member.enable': ['enabled', <IconPerson key="e" width={17} height={17} />, 'bg-secondary-container text-on-secondary-container'],
-  'member.reset_password': ['reset the password of', <IconKey key="f" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
-  'member.reset_totp': ['reset two-step sign-in of', <IconKey key="g" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
-  'member.unlock': ['unlocked sign-in of', <IconKey key="h" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
-  'report.dismiss': ['found no violation by', <IconCheck key="i" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
-  'report.resolve': ['resolved the case of', <IconFlag key="j" width={17} height={17} />, 'bg-primary/8 text-primary'],
-  'report.reopen': ['reopened the case of', <IconFlag key="k" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
-  'listing.hide': ['hid listing', <IconHide key="l" width={17} height={17} />, 'bg-surface-container text-on-surface-variant'],
-  'listing.unhide': ['restored listing', <IconShow key="m" width={17} height={17} />, 'bg-primary/8 text-primary'],
-}
-
-/** A settings change or anything the console does not name yet: "settings.agent.update" reads "changed settings · agent update". */
-function lookOf(kind: string): Look {
-  return looks[kind] ?? [`changed ${kind.replace(/^settings\./, 'settings · ').replace(/[._]/g, ' ')}`, <IconTune key="x" width={17} height={17} />, 'bg-secondary-container text-on-secondary-container']
-}
-
-const groupOf = (kind: string) =>
-  kind.startsWith('account.') ? 'Suspensions' : kind.startsWith('listing.') ? 'Hidden listings' : kind.startsWith('report.') ? 'Report cases' : kind.startsWith('member.') ? 'Members' : 'Settings'
-
 
 /** Settings › Audit log: every action in the console, newest first, grouped by day; a member filter and a CSV of what is loaded. */
 export function Audit() {
   const members = useMembers()
-  const [member, setMember] = useState('')
+  // The member filter lives in the URL, so a member's panel can link here.
+  const [params, setParams] = useSearchParams()
+  const member = params.get('member') ?? ''
+  const setMember = (id: string) => setParams(id ? { member: id } : {}, { replace: true })
+  const memberName = useMemberName()
   const log = useActions(member)
   const items = useMemo(() => log.items ?? [], [log.items])
   const days = useMemo(() => {
@@ -129,8 +97,13 @@ export function Audit() {
                               <span className="font-semibold">{firstName(who)}</span>
                               {verb}
                               <span className="inline-flex h-7 items-center rounded-full border border-hairline bg-surface-container-lowest px-2.5 text-label-small text-primary">
-                                {kindName(a.target.kind)}{' '}
-                                <span className="ml-1 tabular-nums">{shortId(a.target.id)}</span>
+                                {a.target.kind === 'member' ? (
+                                  memberName(a.target.id)
+                                ) : (
+                                  <>
+                                    {kindName(a.target.kind)} <span className="ml-1 tabular-nums">{shortId(a.target.id)}</span>
+                                  </>
+                                )}
                               </span>
                             </p>
                             {/* The reason is the one the person saw, as written. */}

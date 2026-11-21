@@ -1,26 +1,30 @@
 import { type FormEvent, useCallback, useState } from 'react'
-import IconMore from '~icons/material-symbols-light/more-horiz'
+import { useSearchParams } from 'react-router'
 import IconMembers from '~icons/material-symbols-light/group-outline-rounded'
+import IconAttention from '~icons/material-symbols-light/error-outline-rounded'
+import IconChevron from '~icons/material-symbols-light/chevron-right-rounded'
 import IconMail from '~icons/material-symbols-light/mail-outline-rounded'
 import IconPersonAdd from '~icons/material-symbols-light/person-add-outline-rounded'
-import IconPerson from '~icons/material-symbols-light/person-outline-rounded'
 import IconShield from '~icons/material-symbols-light/shield-person-outline-rounded'
-import IconCopy from '~icons/material-symbols-light/content-copy-outline-rounded'
 import { SearchPill, SettingsShell } from '../../components/SettingsShell'
-import { Btn, Card, Dot, IconBtn, Initial, Meter, Notice, Segmented, Tag } from '../../components/ui'
+import { Btn, Card, Initial, Meter, Notice, Segmented } from '../../components/ui'
 import { ApiError, type Member, roleName } from '../../lib/api'
 import { useDismiss } from '../../lib/dom'
-import { time, usd } from '../../lib/format'
+import { usd, when } from '../../lib/format'
+import { needsAttention } from '../../lib/members'
 import { useMe } from '../../lib/session'
 import { useBudgets, useMemberCommands, useMembers, useSpend } from '../../lib/settings'
+import { CopyOnce, MemberPanel, RoleTag, SignInTag } from './MemberPanel'
 
-type Filter = 'all' | 'admin' | 'moderator'
+type Filter = 'all' | 'admin' | 'moderator' | 'attention'
 
-/** Settings › Members: every console member, their role, status and spend this month, and what an admin can do to each. */
+/** Settings › Members: every console member, how they sign in and their agent spend; a row opens the member's panel. */
 export function Members() {
   const members = useMembers()
   const spend = useSpend('30d')
   const budgets = useBudgets()
+  const me = useMe()
+  const [params, setParams] = useSearchParams()
   const [filter, setFilter] = useState<Filter>('all')
   const [q, setQ] = useState('')
   const [inviting, setInviting] = useState(false)
@@ -28,11 +32,17 @@ export function Members() {
   const inviteBox = useDismiss<HTMLDivElement>(inviting, closeInvite)
   const [now] = useState(() => Date.now())
   const all = members.data?.items ?? []
+  const attention = all.filter((m) => needsAttention(m, now))
   const needle = q.trim().toLowerCase()
-  const rows = all.filter(
-    (m) => (filter === 'all' || m.role === filter) && (!needle || m.display_name.toLowerCase().includes(needle) || m.email.toLowerCase().includes(needle)),
+  const rows = (filter === 'attention' ? attention : all).filter(
+    (m) =>
+      (filter === 'attention' || filter === 'all' || m.role === filter) &&
+      (!needle || m.display_name.toLowerCase().includes(needle) || m.email.toLowerCase().includes(needle)),
   )
-  const locked = (m: Member) => !!m.locked_until && new Date(m.locked_until).getTime() > now
+  const admins = all.filter((m) => m.role === 'admin').length
+  const daily = (m: Member) => budgets.data?.overrides?.find((o) => o.member_id === m.id)?.daily_usd ?? budgets.data?.member_daily_usd?.[m.role]
+  const open = all.find((m) => m.id === params.get('member'))
+  const pick = useCallback((id?: string) => setParams(id ? { member: id } : {}, { replace: true }), [setParams])
 
   return (
     <SettingsShell
@@ -40,7 +50,8 @@ export function Members() {
       icon={<IconMembers />}
       chips={[
         [<IconMembers key="a" width={16} height={16} />, `${all.length} people`],
-        [<IconShield key="b" width={16} height={16} />, `${all.filter((m) => m.role === 'admin').length} admins`],
+        [<IconShield key="b" width={16} height={16} />, `${admins} admins`],
+        attention.length > 0 && [<IconAttention key="c" width={16} height={16} />, `${attention.length} need attention`],
       ]}
       actions={
         <div ref={inviteBox} className="relative">
@@ -51,69 +62,86 @@ export function Members() {
         </div>
       }
     >
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <Segmented
           label="Role"
-          value={filter}
+          value={filter === 'attention' ? 'all' : filter}
           onChange={setFilter}
           items={[
             { value: 'all', label: `All · ${all.length}` },
-            { value: 'admin', label: `Admins · ${all.filter((m) => m.role === 'admin').length}` },
-            { value: 'moderator', label: `Moderators · ${all.filter((m) => m.role === 'moderator').length}` },
+            { value: 'admin', label: `Admins · ${admins}` },
+            { value: 'moderator', label: `Moderators · ${all.length - admins}` },
           ]}
         />
+        {attention.length > 0 && (
+          <button
+            type="button"
+            aria-pressed={filter === 'attention'}
+            onClick={() => setFilter((f) => (f === 'attention' ? 'all' : 'attention'))}
+            className={`flex h-10 items-center gap-1.5 rounded-full border px-3.5 text-label-medium ${
+              filter === 'attention' ? 'border-primary/40 bg-primary/8 text-primary' : 'border-hairline bg-surface-container-lowest font-normal text-on-surface-variant hover:bg-on-surface/4'
+            }`}
+          >
+            <IconAttention width={17} height={17} />
+            Needs attention
+            <span className="rounded-full bg-primary px-1.5 text-label-small tabular-nums text-on-primary">{attention.length}</span>
+          </button>
+        )}
         <span className="flex-1" />
-        <SearchPill value={q} onChange={setQ} placeholder="Name or email" label="Find a member" className="w-[280px]" />
+        <SearchPill value={q} onChange={setQ} placeholder="Name or email" label="Find a member" className="w-[260px]" />
       </div>
       {members.error && <Notice>{members.error instanceof ApiError && members.error.status === 403 ? 'Admins only.' : 'Members did not load.'}</Notice>}
       <Card className="overflow-hidden p-0">
         <div className="flex items-center gap-5 border-b border-hairline bg-surface-container-low/60 px-5 py-3 text-body-small text-on-surface-variant">
-          <span className="w-[280px]">Member</span>
-          <span className="w-[150px]">Role</span>
-          <span className="w-[170px]">Status</span>
+          <span className="w-[250px]">Member</span>
+          <span className="w-[120px]">Role</span>
+          <span className="w-[190px]">Sign-in</span>
+          <span className="w-[110px]">Last sign-in</span>
           <span className="flex-1">30 days</span>
-          <span className="w-8" />
+          <span className="w-[18px]" />
         </div>
         <div className="rise-list">
-          {rows.map((m) => {
-            return (
-              <div key={m.id} className="flex items-center gap-5 border-t border-hairline px-5 py-2.5 first:border-t-0 hover:bg-on-surface/3">
-                <span className="flex w-[280px] min-w-0 items-center gap-3">
-                  <Initial name={m.display_name} id={m.id} size={38} member={m.status === 'active'} />
-                  <span className="min-w-0 leading-tight">
-                    <span className="block truncate text-title-small">{m.display_name}</span>
-                    <span className="block truncate text-body-small text-on-surface-variant">{m.email}</span>
+          {rows.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => pick(m.id)}
+              className={`flex w-full items-center gap-5 border-t border-hairline px-5 py-2.5 text-left first:border-t-0 ${open?.id === m.id ? 'bg-primary/6' : 'hover:bg-on-surface/3'}`}
+            >
+              <span className="flex w-[250px] min-w-0 items-center gap-3">
+                <Initial name={m.display_name} id={m.id} size={38} member={m.status === 'active'} />
+                <span className="min-w-0 leading-tight">
+                  <span className="block truncate text-title-small">
+                    {m.display_name}
+                    {m.id === me.id && <span className="ml-1.5 text-body-small text-on-surface-variant">You</span>}
                   </span>
+                  <span className="block truncate text-body-small text-on-surface-variant">{m.email}</span>
                 </span>
-                <span className="w-[150px]">
-                  <Tag tone={m.role === 'admin' ? 'bg-primary/8 text-primary' : 'bg-secondary-container/70 text-on-secondary-container'}>
-                    {m.role === 'admin' ? <IconShield width={14} height={14} /> : <IconPerson width={14} height={14} />}
-                    {roleName[m.role]}
-                  </Tag>
-                </span>
-                <span className="w-[170px]">
-                  {m.status === 'disabled' ? (
-                    <Tag tone="bg-error-container text-error">Disabled</Tag>
-                  ) : locked(m) ? (
-                    <Tag tone="bg-surface-container text-on-surface">Locked until {time(m.locked_until!)}</Tag>
-                  ) : (
-                    <Tag>
-                      <Dot />
-                      Active
-                    </Tag>
-                  )}
-                </span>
-                <SpendCell
-                  usd={spend.data?.members?.find((x) => x.member_id === m.id)?.usd}
-                  daily={budgets.data?.overrides?.find((o) => o.member_id === m.id)?.daily_usd ?? budgets.data?.member_daily_usd?.[m.role]}
-                />
-                <MemberActions m={m} locked={locked(m)} />
-              </div>
-            )
-          })}
+              </span>
+              <span className="w-[120px]">
+                <RoleTag role={m.role} />
+              </span>
+              <span className="w-[190px]">
+                <SignInTag m={m} now={now} />
+              </span>
+              <span className={`w-[110px] text-body-small ${m.last_sign_in_at ? '' : 'text-on-surface-variant'}`}>{m.last_sign_in_at ? when(m.last_sign_in_at, now) : 'Never'}</span>
+              <SpendCell usd={spend.data?.members?.find((x) => x.member_id === m.id)?.usd} daily={daily(m)} />
+              <IconChevron width={18} height={18} className="text-on-surface-variant" />
+            </button>
+          ))}
           {members.data && rows.length === 0 && <p className="px-5 py-6 text-body-medium text-on-surface-variant">No member matches.</p>}
         </div>
       </Card>
+      {open && (
+        <MemberPanel
+          key={open.id}
+          m={open}
+          now={now}
+          spent={spend.data?.members?.find((x) => x.member_id === open.id)}
+          daily={daily(open)}
+          onClose={() => pick()}
+        />
+      )}
     </SettingsShell>
   )
 }
@@ -129,69 +157,6 @@ function SpendCell({ usd: spent, daily }: { usd?: number; daily?: number }) {
       </span>
       {daily ? <Meter pct={(spent / (daily * 30)) * 100} tone="bg-primary/70" className="mt-1.5 h-[5px] max-w-[160px]" /> : null}
     </span>
-  )
-}
-
-/** The row's menu: unlock, reset the password, disable or enable. An admin cannot act on themself. */
-function MemberActions({ m, locked }: { m: Member; locked: boolean }) {
-  const me = useMe()
-  const commands = useMemberCommands()
-  const [open, setOpen] = useState(false)
-  const [temp, setTemp] = useState<string>()
-  const close = useCallback(() => {
-    setOpen(false)
-    setTemp(undefined)
-  }, [])
-  const ref = useDismiss<HTMLDivElement>(open, close)
-  const failure = commands.disable.error ?? commands.enable.error ?? commands.unlock.error ?? commands.resetPassword.error
-  if (m.id === me.id) return <span className="w-8" />
-  const item = 'flex h-9 w-full items-center rounded-lg px-2.5 text-left text-label-medium font-normal hover:bg-surface-container-low disabled:opacity-50'
-  return (
-    <div ref={ref} className="relative">
-      <IconBtn title="More" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        <IconMore width={18} height={18} />
-      </IconBtn>
-      {open && (
-        <div className="absolute right-0 top-full z-20 mt-1 w-[240px] origin-top-right animate-pop rounded-3xl border border-hairline bg-surface-container-lowest p-1.5 shadow-float">
-          {temp ? (
-            <div className="p-2">
-              <p className="text-body-small text-on-surface-variant">Temporary password, shown once</p>
-              <p className="mt-1.5 flex items-center gap-2 rounded-xl bg-surface-container px-3 py-2 tabular-nums text-body-medium">
-                <span className="min-w-0 flex-1 break-all">{temp}</span>
-                <IconBtn title="Copy" onClick={() => void navigator.clipboard?.writeText(temp)}>
-                  <IconCopy width={16} height={16} />
-                </IconBtn>
-              </p>
-            </div>
-          ) : (
-            <>
-              {locked && (
-                <button className={item} disabled={commands.unlock.isPending} onClick={() => commands.unlock.mutate(m.id, { onSuccess: close })}>
-                  Unlock sign-in
-                </button>
-              )}
-              <button
-                className={item}
-                disabled={commands.resetPassword.isPending}
-                onClick={() => commands.resetPassword.mutate(m.id, { onSuccess: (r) => setTemp(r.temporary_password) })}
-              >
-                Reset password
-              </button>
-              {m.status === 'active' ? (
-                <button className={item} disabled={commands.disable.isPending} onClick={() => commands.disable.mutate(m.id, { onSuccess: close })}>
-                  Disable
-                </button>
-              ) : (
-                <button className={item} disabled={commands.enable.isPending} onClick={() => commands.enable.mutate(m.id, { onSuccess: close })}>
-                  Enable
-                </button>
-              )}
-              {failure && <p className="px-2.5 py-1.5 text-body-small text-error">That did not go through.</p>}
-            </>
-          )}
-        </div>
-      )}
-    </div>
   )
 }
 
@@ -215,13 +180,7 @@ function InvitePopover({ onClose }: { onClose: () => void }) {
       {created ? (
         <>
           <p className="text-title-small">{created.member.display_name} can sign in</p>
-          <p className="text-body-small text-on-surface-variant">Temporary password, shown once</p>
-          <p className="flex items-center gap-2 rounded-xl bg-surface-container px-3 py-2 tabular-nums text-body-medium">
-            <span className="min-w-0 flex-1 break-all">{created.temporary_password}</span>
-            <IconBtn title="Copy" onClick={() => void navigator.clipboard?.writeText(created.temporary_password)}>
-              <IconCopy width={16} height={16} />
-            </IconBtn>
-          </p>
+          <CopyOnce secret={created.temporary_password} />
           <div className="flex justify-end">
             <Btn onClick={onClose}>Done</Btn>
           </div>

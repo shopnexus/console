@@ -114,6 +114,10 @@ export interface Member {
   status: 'active' | 'disabled'
   totp_enrolled: boolean
   locked_until?: string
+  /** True while the member holds a temporary password. */
+  must_change_password: boolean
+  /** The start of the newest session; absent before the first sign-in. */
+  last_sign_in_at?: string
   created_at: string
 }
 
@@ -135,6 +139,7 @@ export type ActionKind =
   | 'member.reset_password'
   | 'member.reset_totp'
   | 'member.unlock'
+  | 'member.rename'
   | 'report.dismiss'
   | 'report.resolve'
   | 'report.reopen'

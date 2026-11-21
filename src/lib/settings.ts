@@ -477,5 +477,7 @@ export function useMemberCommands() {
     enable: useCommand(members, (id: string) => post<Member>(`/console/members/${id}/enable`)),
     unlock: useCommand(members, (id: string) => post<Member>(`/console/members/${id}/unlock`)),
     resetPassword: useCommand(members, (id: string) => post<{ temporary_password: string }>(`/console/members/${id}/reset-password`)),
+    resetTotp: useCommand(members, (id: string) => post<Member>(`/console/members/${id}/reset-totp`)),
+    rename: useCommand(members, ({ id, display_name }: { id: string; display_name: string }) => patch<Member>(`/console/members/${id}`, { display_name })),
   }
 }
